@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "biomejs.biome",
+    "github.vscode-github-actions",
+    "redhat.vscode-yaml",
+    "mikestead.dotenv"
+  ]
+}

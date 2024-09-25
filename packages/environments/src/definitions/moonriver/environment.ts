@@ -1,0 +1,34 @@
+import { createEnvironment } from "../../types/environment.js";
+import { moonriverChain } from "./chain.js";
+import { moonriverMarketsList } from "./core-markets.js";
+import { moonriverTokenList } from "./tokens.js";
+
+const moonriver = createEnvironment<typeof moonriverTokenList, typeof moonriverMarketsList>({
+  name: "Moonriver",
+  chain: moonriverChain,
+  apis: {
+    indexerUrl: "https://ponder.moonwell.fi",
+  },
+  tokens: moonriverTokenList,
+  contracts: {
+    governanceToken: "MFAM",
+    stakingToken: "stkMFAM",
+    wrappedNativeToken: "WMOVR",
+    core: {
+      comptroller: "0x0b7a0EAA884849c6Af7a129e899536dDDcA4905E",
+      views: "0xb4104C02BBf4E9be85AAa41a62974E4e28D59A33",
+      oracle: "0x892bE716Dcf0A6199677F355f45ba8CC123BAF60",
+      governor: "0x2BE2e230e89c59c8E20E633C524AD2De246e7370",
+      markets: moonriverMarketsList,
+    },
+  },
+  settings: {
+    governance: {
+      token: "MFAM",
+      chainIds: [],
+      snapshotEnsName: "moonwell-apollo-governance.eth",
+    },
+  },
+});
+
+export { moonriver, moonriverChain, moonriverTokenList, moonriverMarketsList };

@@ -1,0 +1,61 @@
+{
+  "name": "@moonwell-sdk/environments",
+  "version": "0.0.1",
+  "description": "Moonwell SDK",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moonwell-fi/moonwell-sdk",
+    "directory": "packages/environments"
+  },
+  "files": ["dist", "!dist/**/*.tsbuildinfo", "src/**/*.ts", "!src/**/*.test.ts", "!src/**/*.bench.ts", "!src/**/_test/**/*"],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typings": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js",
+      "default": "./dist/types/index.cjs"
+    },
+    "./abis": {
+      "types": "./dist/abis/index.d.ts",
+      "import": "./dist/abis/index.js",
+      "default": "./dist/abis/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "test:typecheck": "vitest --typecheck.only",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "hono": ">=4.5",
+    "typescript": ">=5.0.4",
+    "viem": "^2.19.7"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "tsup": "^8.2.4",
+    "vitest": "^2.0.5"
+  },
+  "imports": {},
+  "engines": {
+    "node": ">=18.14"
+  },
+  "dependencies": {
+    "@moonwell-fi/moonwell.js": "^0.5.63"
+  }
+}
