@@ -1,6 +1,6 @@
 import type { SnapshotProposal } from "@/types/snapshotProposal.js";
+import type { Environment } from "@moonwell-sdk/environments";
 import _ from "lodash";
-import type { Environment } from "../../../../environments/src/types/environment.js";
 import { getSnapshotProposalData } from "./common.js";
 
 export const getSnapshotProposal = async (params: {

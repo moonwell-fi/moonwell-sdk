@@ -1,5 +1,5 @@
 import type { SnapshotProposal } from "@/types/snapshotProposal.js";
-import type { Environment } from "../../../../environments/src/types/environment.js";
+import type { Environment } from "@moonwell-sdk/environments";
 import { getSnapshotProposalData } from "./common.js";
 
 export type GetSnapshotProposalsReturnType = {

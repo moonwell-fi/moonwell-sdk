@@ -1,4 +1,6 @@
-import { base, moonbeam, moonriver } from "viem/chains";
+import { base } from "./base/chain.js";
+import { moonbeam } from "./moonbeam/chain.js";
+import { moonriver } from "./moonriver/chain.js";
 
 export interface GovernanceTokenInfo {
   id: string;

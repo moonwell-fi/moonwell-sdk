@@ -21,7 +21,7 @@ import type { optimismTokenList } from "./definitions/optimism/tokens.js";
 import type { Chain } from "./types/chain.js";
 import type { Environment, TokenConfig } from "./types/environment.js";
 
-export type { Chain, Environment, TokenConfig, GovernanceToken, GovernanceTokenInfo, GovernanceTokensType };
+export type { Chain, TokenConfig, Environment, GovernanceToken, GovernanceTokenInfo, GovernanceTokensType };
 export { base, moonbeam, moonriver, optimism, GovernanceTokensConfig };
 
 const supportedChains = {

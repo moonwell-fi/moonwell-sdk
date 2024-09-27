@@ -1,4 +1,4 @@
-import type { ChainContract, Prettify, Chain as viemChain } from "viem";
+import type { ChainContract, Chain as viemChain } from "viem";
 
 export type Chain = viemChain & {
   testnet: boolean;
@@ -16,8 +16,8 @@ export type Chain = viemChain & {
   };
 };
 
-export const createChain = <T>(config: {
-  chain: T;
+export const createChain = <const chain>(config: {
+  chain: chain;
   testnet: boolean;
   custom: {
     wormhole?: {
@@ -32,10 +32,10 @@ export const createChain = <T>(config: {
     };
   };
 }) => {
-  const chain = {
+  const result = {
     ...config.chain,
     testnet: config.testnet,
     custom: config.custom,
   };
-  return chain as Prettify<typeof chain>;
+  return result;
 };
