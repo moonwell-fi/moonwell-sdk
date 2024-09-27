@@ -3,7 +3,7 @@ import _ from "lodash";
 
 import { type ExtendedProposalData, MultichainProposalStateMapping, type Proposal, ProposalState } from "@/types/proposal.js";
 import { Amount } from "@moonwell-sdk/common";
-import { type Environment, environments } from "@moonwell-sdk/environments";
+import { type Environment, publicEnvironments } from "@moonwell-sdk/environments";
 import { moonriver } from "viem/chains";
 
 axios.defaults.timeout = 5_000;
@@ -185,7 +185,7 @@ export const getCrossChainProposalData = async (params: {
     const xcGovernanceSettings = params.environment.settings?.governance;
     if (params.environment.contracts.core.multichainGovernor && xcGovernanceSettings && xcGovernanceSettings.chainIds.length > 0) {
       const xcEnvironments = xcGovernanceSettings.chainIds
-        .map((chainId) => environments.find((env) => env.chain.id === chainId))
+        .map((chainId) => Object.values(publicEnvironments).find((env) => env.chain.id === chainId))
         .filter((xcEnvironment) => !!xcEnvironment)
         .filter((xcEnvironment) => xcEnvironment.chain.custom?.wormhole?.chainId && xcEnvironment.contracts.core?.voteCollector);
 

@@ -1,15 +1,8 @@
-import { defineChain } from "viem";
-import { moonriver as viem_moonriver } from "viem/chains";
-import type { Chain } from "../../types/chain.js";
+import { moonriver as viem_moonrinverChain } from "viem/chains";
+import { createChain } from "../../types/chain.js";
 
-export const moonriverChain = defineChain<{}, Chain>({
-  ...viem_moonriver,
-  rpcUrls: {
-    private: {
-      http: ["https://rpc.moonwell.fi/main/evm/1285", "https://rpc.api.moonriver.moonbeam.network", ...viem_moonriver.rpcUrls.default.http],
-      webSocket: viem_moonriver.rpcUrls.default.webSocket,
-    },
-    default: viem_moonriver.rpcUrls.default,
-  },
+export const moonriver = createChain<typeof viem_moonrinverChain>({
+  chain: viem_moonrinverChain,
+  testnet: false,
   custom: {},
 });

@@ -1,6 +1,6 @@
 import type { Delegate } from "@/types/delegate.js";
 import { HttpRequestError } from "@moonwell-sdk/common";
-import { environments, moonbeam } from "@moonwell-sdk/environments";
+import { publicEnvironments } from "@moonwell-sdk/environments";
 import type { Environment } from "@moonwell-sdk/environments";
 import axios from "axios";
 import { isAddress } from "viem";
@@ -79,7 +79,7 @@ export async function getDelegates(): Promise<GetDelegatesReturnType> {
   });
 
   //Get delegate voting powers
-  const envs = [environments] as unknown as Environment[];
+  const envs = [publicEnvironments] as unknown as Environment[];
 
   const votingPowers = await Promise.all(
     users.map(async (user) =>
@@ -153,7 +153,7 @@ const getDelegatesExtendedData = async (params: {
         }[];
       };
     };
-  }>(moonbeam.apis.indexerUrl, {
+  }>(publicEnvironments.moonbeam.apis.indexerUrl, {
     query: `
       query {
         proposers(where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}) {

@@ -1,19 +1,20 @@
 import type { StakingInfo } from "@/types/staking.js";
 import { Amount, DAYS_PER_YEAR, type MultichainReturnType, SECONDS_PER_DAY } from "@moonwell-sdk/common";
-import { type Environment, environments } from "@moonwell-sdk/environments";
+import { type Environment, publicEnvironments } from "@moonwell-sdk/environments";
 
 export type GetStakingInfoType = MultichainReturnType<StakingInfo>;
 
-export async function getStakingInfo(params?: {
-  environments?: Environment[];
+export async function getStakingInfo(params: {
+  environments: Environment[];
 }): Promise<GetStakingInfoType> {
-  const envs = (params?.environments || environments) as Environment[];
+  const envs = params.environments;
   const envsWithStaking = envs.filter((env) => env.contracts.stakingToken);
 
   try {
     const envStakingInfo = await Promise.all(
       envsWithStaking.map((environment) => {
-        const homeEnvironment = environments.find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
+        const homeEnvironment =
+          Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
 
         return Promise.all([
           environment.contracts.core?.views.read.getStakingInfo(),

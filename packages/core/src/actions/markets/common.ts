@@ -1,11 +1,12 @@
 import type { CoreMarket, Market } from "@/types/market.js";
 import { calculateApy, findMarketByAddress, findTokenByAddress, perDay } from "@/utils/index.js";
 import { Amount, DAYS_PER_YEAR } from "@moonwell-sdk/common";
-import { type Environment, environments } from "@moonwell-sdk/environments";
+import { type Environment, publicEnvironments } from "@moonwell-sdk/environments";
 import { zeroAddress } from "viem";
 
 export const getMarketsData = async (environment: Environment) => {
-  const homeEnvironment = environments.find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
+  const homeEnvironment =
+    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
 
   const viewsContract = environment.contracts.core?.views;
   const homeViewsContract = homeEnvironment.contracts.core?.views;

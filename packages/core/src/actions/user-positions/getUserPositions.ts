@@ -1,15 +1,15 @@
 import type { UserPosition } from "@/types/userPosition.js";
 import type { MultichainReturnType } from "@moonwell-sdk/common";
-import { type Environment, environments } from "@moonwell-sdk/environments";
+import type { Environment } from "@moonwell-sdk/environments";
 import { getUserPositionData } from "./common.js";
 
 export type GetUserPositionsReturnType = MultichainReturnType<UserPosition>;
 
 export async function getUserPositions(params: {
-  environments?: Environment[];
+  environments: Environment[];
   account: `0x${string}`;
 }): Promise<GetUserPositionsReturnType | undefined> {
-  const envs = (params?.environments || environments) as Environment[];
+  const envs = params.environments;
 
   try {
     const environmentsUserPositions = await Promise.all(

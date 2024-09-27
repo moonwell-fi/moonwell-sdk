@@ -58,14 +58,6 @@ import type {
 import type { GovernanceToken } from "./../definitions/governance.js";
 import type { Chain } from "./chain.js";
 
-export type EnvironmentsConfig<environmentList> = {
-  [name in keyof environmentList]: Environment<environmentList[name]>;
-};
-
-export const createEnvironmentList = <const environmentList = {}>(
-  environments: EnvironmentsConfig<Narrow<environmentList>>,
-): Prettify<EnvironmentsConfig<Narrow<environmentList>>> => environments as Prettify<EnvironmentsConfig<Narrow<environmentList>>>;
-
 export type TokenConfig = {
   address: Address;
   decimals: number;
@@ -138,6 +130,7 @@ export const createMorphoMarketList = <const tokenList, const marketList>(config
 
 export type EnvironmentApiConfig = {
   indexerUrl: `https://${string}`;
+  rpcUrls: string[];
 };
 
 export type EnvironmentGovernanceSettingsConfig = {
@@ -255,7 +248,12 @@ export type EnvironmentConfig<tokenList = any> = {
   settings?: Prettify<EnvironmentGovernanceSettingsConfig>;
 };
 
-export const createEnvironment = <const tokenList, const marketList = {}, const vaultList = {}>(
+const getChainRpcUrls = (chain: Chain) => {
+  const urls: string[] = [...chain.rpcUrls.default.http.map((url) => url)];
+  return urls;
+};
+
+export const createEnvironmenConfig = <const tokenList, const marketList = {}, const vaultList = {}>(
   config: EnvironmentConfig<tokenList>,
 ): Prettify<Environment<tokenList, marketList, vaultList>> => {
   const publicClient = createPublicClient({
@@ -266,7 +264,7 @@ export const createEnvironment = <const tokenList, const marketList = {}, const 
       },
     },
     cacheTime: 5_000,
-    transport: fallback(config.chain.rpcUrls.private!.http.map((url) => http(url, { timeout: 5_000 }))),
+    transport: fallback(getChainRpcUrls(config.chain).map((url) => http(url, { timeout: 5_000 }))),
   });
 
   const getContract = <const abi extends Abi>(address: Address, abi: abi) => {

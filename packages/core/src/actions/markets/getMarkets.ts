@@ -1,16 +1,16 @@
 import type { CoreMarket } from "@/types/market.js";
 import type { MultichainReturnType } from "@moonwell-sdk/common";
-import { type Environment, environments } from "@moonwell-sdk/environments";
+import type { Environment } from "@moonwell-sdk/environments";
 import { getMarketsData } from "./common.js";
 
 export type GetMarketsReturnType = MultichainReturnType<CoreMarket>;
 
-export async function getMarkets(params?: {
-  environments?: Environment[];
+export async function getMarkets(params: {
+  environments: Environment[];
 }): Promise<GetMarketsReturnType | undefined> {
-  const envs = (params?.environments || environments) as Environment[];
+  const { environments } = params;
 
-  const environmentsMarkets = await Promise.all(envs.map((environment) => getMarketsData(environment)));
+  const environmentsMarkets = await Promise.all(environments.map((environment) => getMarketsData(environment)));
 
   return environmentsMarkets.reduce((prev, curr) => {
     return {

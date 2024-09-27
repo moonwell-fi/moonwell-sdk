@@ -1,16 +1,9 @@
-import { defineChain } from "viem";
 import { moonbeam as viem_moonbeam } from "viem/chains";
-import type { Chain } from "../../types/chain.js";
+import { createChain } from "../../types/chain.js";
 
-export const moonbeamChain = defineChain<{}, Chain>({
-  ...viem_moonbeam,
-  rpcUrls: {
-    private: {
-      http: ["https://rpc.moonwell.fi/main/evm/1284", "https://rpc.api.moonbeam.network", ...viem_moonbeam.rpcUrls.default.http],
-      webSocket: viem_moonbeam.rpcUrls.default.webSocket,
-    },
-    default: viem_moonbeam.rpcUrls.default,
-  },
+export const moonbeam = createChain<typeof viem_moonbeam>({
+  chain: viem_moonbeam,
+  testnet: false,
   custom: {
     wormhole: {
       chainId: 16,

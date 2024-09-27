@@ -1,10 +1,8 @@
-import type { ChainContract, ChainFormatters, Chain as viem_Chain } from "viem";
+import type { ChainContract, Prettify, Chain as viemChain } from "viem";
 
-export type Chain<
-  formatters extends ChainFormatters | undefined = ChainFormatters | undefined,
-> = viem_Chain<
-  formatters,
-  {
+export type Chain = viemChain & {
+  testnet: boolean;
+  custom?: {
     wormhole?: {
       chainId: number;
       tokenBridge?: ChainContract | undefined;
@@ -15,5 +13,29 @@ export type Chain<
     xWELL?: {
       bridgeAdapter?: ChainContract | undefined;
     };
-  }
->;
+  };
+};
+
+export const createChain = <T>(config: {
+  chain: T;
+  testnet: boolean;
+  custom: {
+    wormhole?: {
+      chainId: number;
+      tokenBridge?: ChainContract | undefined;
+    };
+    socket?: {
+      gateway?: ChainContract | undefined;
+    };
+    xWELL?: {
+      bridgeAdapter?: ChainContract | undefined;
+    };
+  };
+}) => {
+  const chain = {
+    ...config.chain,
+    testnet: config.testnet,
+    custom: config.custom,
+  };
+  return chain as Prettify<typeof chain>;
+};

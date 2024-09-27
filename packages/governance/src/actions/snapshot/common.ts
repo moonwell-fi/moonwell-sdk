@@ -1,10 +1,10 @@
 import type { SnapshotProposal } from "@/types/snapshotProposal.js";
-import { type Environment, moonbeam, moonriver } from "@moonwell-sdk/environments";
+import { type Environment, base, optimism } from "@moonwell-sdk/environments";
 import axios from "axios";
 import type { GetSnapshotProposalsReturnType } from "./getSnapshotProposals.js";
 
 export const getSnapshotProposalData = async (params: {
-  environments?: Environment[];
+  environments: Environment[];
   pagination?: {
     size?: number;
     page?: number;
@@ -14,7 +14,7 @@ export const getSnapshotProposalData = async (params: {
     id?: string;
   };
 }): Promise<GetSnapshotProposalsReturnType> => {
-  const environments = (params.environments || [moonbeam, moonriver]) as Environment[];
+  const environments = params.environments;
 
   const snapshotApiUrl = "https://hub.snapshot.org/graphql";
   const snapshotEnsNames = environments.map((env) => env.settings?.governance?.snapshotEnsName).filter((name) => !!name);
@@ -92,11 +92,11 @@ export const getSnapshotProposalData = async (params: {
       let chain = environments.find((env) => env.chain.id === networkId)!.chain;
 
       if (proposal.title.toLowerCase().includes("base")) {
-        chain = baseChain as any;
+        chain = base as any;
       }
 
       if (proposal.title.toLowerCase().includes("optimism")) {
-        chain = baseChain as any;
+        chain = optimism as any;
       }
 
       const votes = proposal.scores.reduce((a, b) => a + b, 0);

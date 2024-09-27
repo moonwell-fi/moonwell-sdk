@@ -1,11 +1,12 @@
 import type { UserMarketPosition, UserMarketReward, UserPosition } from "@/types/userPosition.js";
 import { findMarketByAddress, findTokenByAddress } from "@/utils/index.js";
 import { Amount } from "@moonwell-sdk/common";
-import { type Environment, environments } from "@moonwell-sdk/environments";
+import { type Environment, publicEnvironments } from "@moonwell-sdk/environments";
 import { type Address, zeroAddress } from "viem";
 
 export const getUserPositionData = async (environment: Environment, account: Address) => {
-  const homeEnvironment = environments.find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
+  const homeEnvironment =
+    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
 
   const viewsContract = environment.contracts.core?.views;
   const homeViewsContract = homeEnvironment.contracts.core?.views;

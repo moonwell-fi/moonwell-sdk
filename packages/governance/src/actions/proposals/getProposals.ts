@@ -1,16 +1,15 @@
 import type { Proposal } from "@/types/proposal.js";
 import type { MultichainReturnType } from "@moonwell-sdk/common";
-import { moonbeam, moonriver } from "@moonwell-sdk/environments";
 import type { Environment } from "@moonwell-sdk/environments";
 import _ from "lodash";
 import { appendProposalExtendedData, getCrossChainProposalData, getExtendedProposalData, getProposalData } from "./common.js";
 
 export type GetProposalsReturnType = MultichainReturnType<Proposal[]>;
 
-export async function getProposals(params?: {
-  environments?: Environment[];
+export async function getProposals(params: {
+  environments: Environment[];
 }): Promise<GetProposalsReturnType> {
-  const envs = (params?.environments || [moonbeam, moonriver]) as Environment[];
+  const envs = params.environments;
 
   try {
     const environmentProposals = await Promise.all(

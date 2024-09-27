@@ -1,19 +1,19 @@
 import type { UserBalance } from "@/types/userBalance.js";
 import { findTokenByAddress } from "@/utils/index.js";
 import { Amount, type MultichainReturnType } from "@moonwell-sdk/common";
-import { type Environment, environments } from "@moonwell-sdk/environments";
+import type { Environment } from "@moonwell-sdk/environments";
 
 export type GetUserBalancesReturnType = MultichainReturnType<UserBalance[]>;
 
 export async function getUserBalances(params: {
-  environments?: Environment[];
+  environments: Environment[];
   account: `0x${string}`;
 }): Promise<GetUserBalancesReturnType | undefined> {
-  const envs = (params?.environments || environments) as Environment[];
+  const { environments, account } = params;
 
   try {
     const environmentsTokensBalances = await Promise.all(
-      envs.map((environment) => {
+      environments.map((environment) => {
         return Promise.all([
           environment.contracts.core?.views.read.getTokensBalances([
             Object.values(environment.tokens).map((token) => token.address),
@@ -23,7 +23,7 @@ export async function getUserBalances(params: {
       }),
     );
 
-    const tokensBalances = envs.reduce((prev, curr, index) => {
+    const tokensBalances = environments.reduce((prev, curr, index) => {
       const balances = environmentsTokensBalances[index]![0]!;
 
       const userBalances = balances
@@ -32,7 +32,7 @@ export async function getUserBalances(params: {
           if (token) {
             const result: UserBalance = {
               chainId: curr.chain.id,
-              account: params.account,
+              account,
               token,
               tokenBalance: new Amount(balance.amount, token.decimals),
             };

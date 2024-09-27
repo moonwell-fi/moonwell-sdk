@@ -1,7 +1,6 @@
 import type { VoteReceipt } from "@/types/voteReceipt.js";
 import { Amount, type MultichainReturnType } from "@moonwell-sdk/common";
-import { environments } from "@moonwell-sdk/environments";
-import type { Environment } from "@moonwell-sdk/environments";
+import { type Environment, publicEnvironments } from "@moonwell-sdk/environments";
 
 export type GetUserVoteReceiptReturnType = MultichainReturnType<VoteReceipt>;
 
@@ -39,7 +38,7 @@ export async function getUserVoteReceipt(params: {
     };
 
     for (const chainId of governanceChainIds) {
-      const multichainEnvironment = environments.find((r) => r.chain.id === chainId);
+      const multichainEnvironment = Object.values(publicEnvironments).find((r) => r.chain.id === chainId);
       if (multichainEnvironment) {
         const receipt = await multichainEnvironment.contracts.core?.voteCollector?.read.getReceipt([BigInt(proposalId), params.account]);
 

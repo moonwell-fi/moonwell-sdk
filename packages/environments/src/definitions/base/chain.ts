@@ -1,21 +1,9 @@
-import { defineChain } from "viem";
-import { base as viemBaseChain } from "viem/chains";
-import type { Chain } from "../../types/chain.js";
+import { base as viem_baseChain } from "viem/chains";
+import { createChain } from "../../types/chain.js";
 
-export const baseChain = defineChain<{}, Chain>({
-  ...viemBaseChain,
+export const base = createChain<typeof viem_baseChain>({
+  chain: viem_baseChain,
   testnet: false,
-  rpcUrls: {
-    private: {
-      http: [
-        "https://rpc.moonwell.fi/main/evm/8453",
-        "https://api.developer.coinbase.com/rpc/v1/base/JYfv6ozmwoiWJsIVQaTmrMuJYnpJgJBy",
-        ...viemBaseChain.rpcUrls.default.http,
-      ],
-      webSocket: ["wss://base-mainnet.blastapi.io/745df601-de88-4079-8898-12f7e9688150"],
-    },
-    default: viemBaseChain.rpcUrls.default,
-  },
   custom: {
     wormhole: {
       chainId: 30,

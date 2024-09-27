@@ -9,7 +9,7 @@ export type GetSnapshotProposalsReturnType = {
 };
 
 export const getSnapshotProposals = async (params: {
-  environments?: Environment[];
+  environments: Environment[];
   pagination?: {
     size?: number;
     page?: number;

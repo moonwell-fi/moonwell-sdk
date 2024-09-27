@@ -1,15 +1,16 @@
 import type { UserVotingPowers } from "@/types/userVotingPowers.js";
 import { Amount } from "@moonwell-sdk/common";
-import { type GovernanceToken, environments } from "@moonwell-sdk/environments";
+import type { Environment, GovernanceToken } from "@moonwell-sdk/environments";
 import { zeroAddress } from "viem";
 
 export type GetUserVotingPowersType = UserVotingPowers[];
 
 export async function getUserVotingPowers(params: {
+  environments: Environment[];
   user: `0x${string}`;
   governanceToken: GovernanceToken;
 }): Promise<GetUserVotingPowersType | undefined> {
-  const tokenEnvironments = environments.filter((env) => env.config.settings?.governance?.token === params.governanceToken);
+  const tokenEnvironments = params.environments.filter((env) => env.config.settings?.governance?.token === params.governanceToken);
 
   const environmentsUserVotingPowers = await Promise.all(
     tokenEnvironments.map((environment) => environment.contracts.core?.views?.read.getUserVotingPower([params.user])),
