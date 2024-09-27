@@ -1,4 +1,4 @@
-import type { Prettify } from "viem";
+import type { Chain, Prettify } from "viem";
 import { type baseMarketsList, type baseMorphoMarketsList, createBaseEnvironment } from "./definitions/base/environment.js";
 import type { baseVaultList } from "./definitions/base/morpho-vaults.js";
 import { base } from "./definitions/base/network.js";
@@ -24,7 +24,7 @@ import type { Network } from "./types/network.js";
 export type { Network, TokenConfig, Environment, GovernanceToken, GovernanceTokenInfo, GovernanceTokensType };
 export { base, moonbeam, moonriver, optimism, GovernanceTokensConfig };
 
-const supportedChains = {
+const supportedNetworks = {
   base,
   moonbeam,
   moonriver,
@@ -54,7 +54,7 @@ export type CreateEnvironmentsReturnType<chains> = {
   [name in keyof chains]: GetEnvironment<chains[name]>;
 };
 
-export const createEnvironment = <networkType>(network: Network, rpcUrls?: string[]) => {
+export const createEnvironment = <networkType extends Chain>(network: Network<networkType>, rpcUrls?: string[]) => {
   const result =
     network.chain.id === base.chain.id
       ? createBaseEnvironment(rpcUrls ?? [])
@@ -72,10 +72,10 @@ export const createEnvironments = <const chains>(config: { [name in keyof chains
   const result = Object.keys(config).reduce(
     (prev, curr: string) => {
       const item = config[curr as keyof chains] as ChainConfig;
-      const chain = supportedChains[curr as keyof typeof supportedChains];
+      const network = supportedNetworks[curr as keyof typeof supportedNetworks] as unknown as Network<any>;
       return {
         ...prev,
-        curr: createEnvironment(chain, item.rpcUrls),
+        curr: createEnvironment(network, item.rpcUrls),
       };
     },
     {} as { [name in keyof chains]?: unknown },
@@ -83,12 +83,12 @@ export const createEnvironments = <const chains>(config: { [name in keyof chains
   return result as Prettify<CreateEnvironmentsReturnType<chains>>;
 };
 
-export const publicEnvironments = createEnvironments<typeof supportedChains>({
+export const publicEnvironments = createEnvironments<typeof supportedNetworks>({
   base: {},
   moonbeam: {},
   moonriver: {},
   optimism: {},
-}) as { [name in keyof typeof supportedChains]: Environment };
+}) as { [name in keyof typeof supportedNetworks]: Environment };
 
 export type TokensType<T> = T extends BaseEnvironmentType
   ? typeof baseTokenList

@@ -1,7 +1,7 @@
 import type { Chain, ChainContract } from "viem";
 
-export type Network = {
-  chain: Chain;
+export type Network<chain extends Chain = Chain> = {
+  chain: chain;
   testnet: boolean;
   custom?: {
     wormhole?: {
@@ -17,7 +17,7 @@ export type Network = {
   };
 };
 
-export const createNetwork = <const chain>(config: {
+export const createNetwork = <const chain extends Chain>(config: {
   chain: chain;
   testnet: boolean;
   custom: {
