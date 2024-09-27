@@ -6,7 +6,7 @@ import { zeroAddress } from "viem";
 
 export const getMarketsData = async (environment: Environment) => {
   const homeEnvironment =
-    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
+    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.network.chain.id)) || environment;
 
   const viewsContract = environment.contracts.core?.views;
   const homeViewsContract = homeEnvironment.contracts.core?.views;
@@ -72,7 +72,7 @@ export const getMarketsData = async (environment: Environment) => {
       const baseBorrowApy = calculateApy(borrowRate.value);
 
       const market: Market = {
-        chainId: environment.chain.id,
+        chainId: environment.network.chain.id,
         deprecated: marketConfig.deprecated === true,
         borrowCaps,
         borrowCapsUsd,
@@ -141,7 +141,7 @@ export const getMarketsData = async (environment: Environment) => {
   const totalBorrowsUsd = markets.reduce((prev, curr) => prev + curr.totalBorrowsUsd, 0);
 
   const result: CoreMarket = {
-    chainId: environment.chain.id,
+    chainId: environment.network.chain.id,
     seizeGuardianPaused: seizePaused,
     transferGuardianPaused: transferPaused,
     markets,

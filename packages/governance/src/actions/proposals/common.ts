@@ -104,7 +104,7 @@ export const getProposalData = async (params: {
     let count = 0n;
     let quorum = 0n;
 
-    if (params.environment.chain.id === moonriver.id) {
+    if (params.environment.network.chain.id === moonriver.id) {
       [count, quorum] = await Promise.all([
         params.environment.contracts.core.governor.read.proposalCount(),
         params.environment.contracts.core.governor.read.getQuorum(),
@@ -150,7 +150,7 @@ export const getProposalData = async (params: {
       ] = item!;
 
       const proposal: Proposal = {
-        chainId: params.environment.chain.id,
+        chainId: params.environment.network.chain.id,
         id: Number(id),
         proposalId: Number(id),
         proposer,
@@ -281,7 +281,7 @@ export const getCrossChainProposalData = async (params: {
         const multichainState = (MultichainProposalStateMapping as { [key: number]: ProposalState })[state]!;
 
         const proposal: Proposal = {
-          chainId: params.environment.chain.id,
+          chainId: params.environment.network.chain.id,
           id,
           proposalId: Number(xcId),
           proposer,
@@ -357,7 +357,7 @@ export const getExtendedProposalData = async (params: {
               orderDirection: "desc", 
               orderBy: "proposalId", 
               where: { 
-                chainId: ${params.environment.chain.id}
+                chainId: ${params.environment.network.chain.id}
                 ${params.id ? `, proposalId: ${params.id}` : lastId >= 0 ? `, proposalId_lt: ${lastId}` : ""} 
               }
             ) {

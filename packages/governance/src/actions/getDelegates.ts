@@ -102,7 +102,7 @@ export async function getDelegates(): Promise<GetDelegatesReturnType> {
 
           return {
             ...prev,
-            [curr.chain.id]: Number(totalVotes / BigInt(10 ** 18)),
+            [curr.network.chain.id]: Number(totalVotes / BigInt(10 ** 18)),
           };
         },
         {} as { [chainId: string]: number },

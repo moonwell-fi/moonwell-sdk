@@ -1,7 +1,7 @@
 import { optimism as viem_optimismChain } from "viem/chains";
-import { createChain } from "../../types/chain.js";
+import { createNetwork } from "../../types/network.js";
 
-export const optimism = createChain<typeof viem_optimismChain>({
+export const optimism = createNetwork<typeof viem_optimismChain>({
   chain: viem_optimismChain,
   testnet: false,
   custom: {},

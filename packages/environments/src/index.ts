@@ -1,7 +1,7 @@
 import type { Prettify } from "viem";
-import { base } from "./definitions/base/chain.js";
 import { type baseMarketsList, type baseMorphoMarketsList, createBaseEnvironment } from "./definitions/base/environment.js";
 import type { baseVaultList } from "./definitions/base/morpho-vaults.js";
+import { base } from "./definitions/base/network.js";
 import type { baseTokenList } from "./definitions/base/tokens.js";
 import {
   type GovernanceToken,
@@ -9,19 +9,19 @@ import {
   GovernanceTokensConfig,
   type GovernanceTokensType,
 } from "./definitions/governance.js";
-import { moonbeam } from "./definitions/moonbeam/chain.js";
 import type { moonbeamMarketsList } from "./definitions/moonbeam/core-markets.js";
 import { createMoonbeamEnvironment } from "./definitions/moonbeam/environment.js";
+import { moonbeam } from "./definitions/moonbeam/network.js";
 import type { moonbeamTokenList } from "./definitions/moonbeam/tokens.js";
-import { moonriver } from "./definitions/moonriver/chain.js";
 import { createMoonriverEnvironment, type moonriverMarketsList } from "./definitions/moonriver/environment.js";
+import { moonriver } from "./definitions/moonriver/network.js";
 import type { moonriverTokenList } from "./definitions/moonriver/tokens.js";
 import { createOptimismEnvironment, optimism, type optimismMarketsList } from "./definitions/optimism/environment.js";
 import type { optimismTokenList } from "./definitions/optimism/tokens.js";
-import type { Chain } from "./types/chain.js";
 import type { Environment, TokenConfig } from "./types/environment.js";
+import type { Network } from "./types/network.js";
 
-export type { Chain, TokenConfig, Environment, GovernanceToken, GovernanceTokenInfo, GovernanceTokensType };
+export type { Network, TokenConfig, Environment, GovernanceToken, GovernanceTokenInfo, GovernanceTokensType };
 export { base, moonbeam, moonriver, optimism, GovernanceTokensConfig };
 
 const supportedChains = {
@@ -54,18 +54,18 @@ export type CreateEnvironmentsReturnType<chains> = {
   [name in keyof chains]: GetEnvironment<chains[name]>;
 };
 
-export const createEnvironment = <const chain>(chain: Chain, rpcUrls?: string[]) => {
+export const createEnvironment = <networkType>(network: Network, rpcUrls?: string[]) => {
   const result =
-    chain.id === base.id
+    network.chain.id === base.chain.id
       ? createBaseEnvironment(rpcUrls ?? [])
-      : chain.id === moonbeam.id
+      : network.chain.id === moonbeam.chain.id
         ? createMoonbeamEnvironment(rpcUrls ?? [])
-        : chain.id === moonriver.id
+        : network.chain.id === moonriver.chain.id
           ? createMoonriverEnvironment(rpcUrls ?? [])
-          : chain.id === optimism.id
+          : network.chain.id === optimism.chain.id
             ? createOptimismEnvironment(rpcUrls ?? [])
             : undefined;
-  return result as GetEnvironment<chain>;
+  return result as GetEnvironment<networkType>;
 };
 
 export const createEnvironments = <const chains>(config: { [name in keyof chains]: ChainConfig }) => {

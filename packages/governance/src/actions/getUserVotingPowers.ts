@@ -20,7 +20,7 @@ export async function getUserVotingPowers(params: {
     const votingPowers = environmentsUserVotingPowers[index]!;
 
     return {
-      chainId: environment.chain.id,
+      chainId: environment.network.chain.id,
 
       //Claims balances
       claimsDelegates: votingPowers.claimsVotes.delegates,

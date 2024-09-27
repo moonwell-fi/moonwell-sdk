@@ -89,7 +89,7 @@ export const getSnapshotProposalData = async (params: {
     const result: SnapshotProposal[] = response.data.data.proposals.map((proposal) => {
       const networkId = Number.parseInt(proposal.network);
 
-      let chain = environments.find((env) => env.chain.id === networkId)!.chain;
+      let chain = environments.find((env) => env.network.chain.id === networkId)!.network.chain;
 
       if (proposal.title.toLowerCase().includes("base")) {
         chain = base as any;

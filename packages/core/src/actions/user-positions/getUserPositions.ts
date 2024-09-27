@@ -22,7 +22,7 @@ export async function getUserPositions(params: {
       const position = environmentsUserPositions[index]!;
       return {
         ...prev,
-        [curr.chain.id]: position,
+        [curr.network.chain.id]: position,
       };
     }, {} as GetUserPositionsReturnType);
 

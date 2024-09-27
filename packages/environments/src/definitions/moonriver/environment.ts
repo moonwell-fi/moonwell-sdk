@@ -1,12 +1,12 @@
 import { createEnvironmenConfig } from "../../types/environment.js";
-import { moonriver } from "./chain.js";
 import { moonriverMarketsList } from "./core-markets.js";
+import { moonriver } from "./network.js";
 import { moonriverTokenList } from "./tokens.js";
 
 const createMoonriverEnvironment = (rpcUrls: string[]) =>
   createEnvironmenConfig<typeof moonriverTokenList, typeof moonriverMarketsList>({
     name: "Moonriver",
-    chain: moonriver,
+    network: moonriver,
     apis: {
       indexerUrl: "https://ponder.moonwell.fi",
       rpcUrls,

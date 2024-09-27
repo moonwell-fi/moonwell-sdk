@@ -6,7 +6,7 @@ import { type Address, zeroAddress } from "viem";
 
 export const getUserPositionData = async (environment: Environment, account: Address) => {
   const homeEnvironment =
-    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
+    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.network.chain.id)) || environment;
 
   const viewsContract = environment.contracts.core?.views;
   const homeViewsContract = homeEnvironment.contracts.core?.views;
@@ -68,7 +68,7 @@ export const getUserPositionData = async (environment: Environment, account: Add
         const collateralUsd = collateral.value * underlyingPrice;
 
         const result: UserMarketPosition = {
-          chainId: environment.chain.id,
+          chainId: environment.network.chain.id,
           account,
           market: market.marketToken,
           collateralEnabled: marketCollateralEnabled,
@@ -89,7 +89,7 @@ export const getUserPositionData = async (environment: Environment, account: Add
                 const borrowRewards = new Amount(reward.borrowRewardsAmount, token.decimals);
 
                 const result: UserMarketReward = {
-                  chainId: environment.chain.id,
+                  chainId: environment.network.chain.id,
                   account,
                   market: market.marketToken,
                   rewardToken: token,
@@ -117,7 +117,7 @@ export const getUserPositionData = async (environment: Environment, account: Add
 
   const result: UserPosition = {
     account,
-    chainId: environment.chain.id,
+    chainId: environment.network.chain.id,
     markets,
     totalBorrowedUsd: markets.reduce((acc, market) => acc + market.borrowedUsd, 0),
     totalSuppliedUsd: markets.reduce((acc, market) => acc + market.suppliedUsd, 0),

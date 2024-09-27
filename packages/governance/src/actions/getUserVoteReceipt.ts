@@ -30,7 +30,7 @@ export async function getUserVoteReceipt(params: {
 
     const [hasVoted, voteValue, votes] = receipt || [false, 0, 0];
 
-    result[params.environment.chain.id] = {
+    result[params.environment.network.chain.id] = {
       account: params.account,
       option: voteValue,
       voted: hasVoted,
@@ -38,13 +38,13 @@ export async function getUserVoteReceipt(params: {
     };
 
     for (const chainId of governanceChainIds) {
-      const multichainEnvironment = Object.values(publicEnvironments).find((r) => r.chain.id === chainId);
+      const multichainEnvironment = Object.values(publicEnvironments).find((r) => r.network.chain.id === chainId);
       if (multichainEnvironment) {
         const receipt = await multichainEnvironment.contracts.core?.voteCollector?.read.getReceipt([BigInt(proposalId), params.account]);
 
         const [hasVoted, voteValue, votes] = receipt || [false, 0, 0];
 
-        result[multichainEnvironment.chain.id] = {
+        result[multichainEnvironment.network.chain.id] = {
           account: params.account,
           option: voteValue,
           voted: hasVoted,
@@ -55,7 +55,7 @@ export async function getUserVoteReceipt(params: {
   } else {
     const receipt = await params.environment.contracts.core?.governor?.read.getReceipt([BigInt(proposalId), params.account]);
 
-    result[params.environment.chain.id] = {
+    result[params.environment.network.chain.id] = {
       account: params.account,
       option: receipt?.voteValue || 0,
       voted: receipt?.hasVoted || false,

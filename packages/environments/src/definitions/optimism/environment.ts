@@ -1,12 +1,12 @@
 import { createEnvironmenConfig } from "../../types/environment.js";
-import { optimism } from "./chain.js";
 import { optimismMarketsList } from "./core-markets.js";
+import { optimism } from "./network.js";
 import { optimismTokenList } from "./tokens.js";
 
 const createOptimismEnvironment = (rpcUrls: string[]) =>
   createEnvironmenConfig<typeof optimismTokenList, typeof optimismMarketsList>({
     name: "Optimism",
-    chain: optimism,
+    network: optimism,
     apis: {
       indexerUrl: "https://ponder.moonwell.fi",
       rpcUrls,

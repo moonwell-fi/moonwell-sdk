@@ -31,7 +31,7 @@ export async function getProposals(params: {
 
       return {
         ...prev,
-        [curr.chain.id]: proposals,
+        [curr.network.chain.id]: proposals,
       };
     }, {} as GetProposalsReturnType);
 

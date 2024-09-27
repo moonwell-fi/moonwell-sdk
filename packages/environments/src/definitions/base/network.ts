@@ -1,7 +1,7 @@
 import { base as viem_baseChain } from "viem/chains";
-import { createChain } from "../../types/chain.js";
+import { createNetwork } from "../../types/network.js";
 
-export const base = createChain<typeof viem_baseChain>({
+export const base = createNetwork<typeof viem_baseChain>({
   chain: viem_baseChain,
   testnet: false,
   custom: {

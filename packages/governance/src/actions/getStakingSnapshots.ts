@@ -19,7 +19,7 @@ export async function getStakingSnapshots(params: {
               limit: 365,
               orderBy: "timestamp"
               orderDirection: "desc"
-              where: {chainId: ${params.environment.chain.id}}
+              where: {chainId: ${params.environment.network.chain.id}}
             ) {
               items {
                 chainId

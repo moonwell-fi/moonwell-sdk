@@ -1,6 +1,6 @@
 import type { CoreMarket } from "@/types/market.js";
 import type { MultichainReturnType } from "@moonwell-sdk/common";
-import { type Environment, base as baseChain, createEnvironment, optimism as optimismChain } from "@moonwell-sdk/environments";
+import type { Environment } from "@moonwell-sdk/environments";
 import { getMarketsData } from "./common.js";
 
 export type GetMarketsReturnType = MultichainReturnType<CoreMarket>;

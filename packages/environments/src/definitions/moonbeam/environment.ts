@@ -1,13 +1,13 @@
 import { base as viem_base } from "viem/chains";
 import { createEnvironmenConfig } from "../../types/environment.js";
-import { moonbeam } from "./chain.js";
 import { moonbeamMarketsList } from "./core-markets.js";
+import { moonbeam } from "./network.js";
 import { moonbeamTokenList } from "./tokens.js";
 
 const createMoonbeamEnvironment = (rpcUrls: string[]) =>
   createEnvironmenConfig<typeof moonbeamTokenList, typeof moonbeamMarketsList>({
     name: "Moonbeam",
-    chain: moonbeam,
+    network: moonbeam,
     apis: {
       indexerUrl: "https://ponder.moonwell.fi",
       rpcUrls,

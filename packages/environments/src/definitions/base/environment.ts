@@ -1,14 +1,14 @@
 import { createEnvironmenConfig } from "../../types/environment.js";
-import { base } from "./chain.js";
 import { baseMarketsList } from "./core-markets.js";
 import { baseMorphoMarketsList } from "./morpho-markets.js";
 import { baseVaultList } from "./morpho-vaults.js";
+import { base } from "./network.js";
 import { baseTokenList } from "./tokens.js";
 
 const createBaseEnvironment = (rpcUrls: string[]) =>
   createEnvironmenConfig<typeof baseTokenList, typeof baseMarketsList, typeof baseVaultList>({
     name: "Base",
-    chain: base,
+    network: base,
     apis: {
       indexerUrl: "https://ponder.moonwell.fi",
       rpcUrls,

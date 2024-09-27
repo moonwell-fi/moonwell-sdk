@@ -1,6 +1,6 @@
-import { base } from "./base/chain.js";
-import { moonbeam } from "./moonbeam/chain.js";
-import { moonriver } from "./moonriver/chain.js";
+import { base } from "./base/network.js";
+import { moonbeam } from "./moonbeam/network.js";
+import { moonriver } from "./moonriver/network.js";
 
 export interface GovernanceTokenInfo {
   id: string;
@@ -30,14 +30,14 @@ export const GovernanceTokensConfig = createGovernanceTokensConfig({
     id: "WELL",
     symbol: "WELL",
     name: "WELL",
-    chainIds: [moonbeam.id, base.id] as number[],
+    chainIds: [moonbeam.chain.id, base.chain.id] as number[],
     testnet: false,
   },
   MFAM: {
     id: "MFAM",
     symbol: "MFAM",
     name: "MFAM",
-    chainIds: [moonriver.id] as number[],
+    chainIds: [moonriver.chain.id] as number[],
     testnet: false,
   },
 });

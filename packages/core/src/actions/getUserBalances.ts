@@ -31,7 +31,7 @@ export async function getUserBalances(params: {
           const token = findTokenByAddress(curr, balance.token);
           if (token) {
             const result: UserBalance = {
-              chainId: curr.chain.id,
+              chainId: curr.network.chain.id,
               account,
               token,
               tokenBalance: new Amount(balance.amount, token.decimals),
@@ -45,7 +45,7 @@ export async function getUserBalances(params: {
 
       return {
         ...prev,
-        [curr.chain.id]: userBalances,
+        [curr.network.chain.id]: userBalances,
       };
     }, {} as GetUserBalancesReturnType);
 

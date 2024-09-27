@@ -14,7 +14,8 @@ export async function getStakingInfo(params: {
     const envStakingInfo = await Promise.all(
       envsWithStaking.map((environment) => {
         const homeEnvironment =
-          Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.chain.id)) || environment;
+          Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.network.chain.id)) ||
+          environment;
 
         return Promise.all([
           environment.contracts.core?.views.read.getStakingInfo(),
@@ -48,7 +49,7 @@ export async function getStakingInfo(params: {
 
       const result: StakingInfo = {
         apr,
-        chainId: curr.chain.id,
+        chainId: curr.network.chain.id,
         cooldown: Number(cooldown),
         distributionEnd: Number(distributionEnd),
         token,
@@ -61,7 +62,7 @@ export async function getStakingInfo(params: {
 
       return {
         ...prev,
-        [curr.chain.id]: result,
+        [curr.network.chain.id]: result,
       };
     }, {} as GetStakingInfoType);
 

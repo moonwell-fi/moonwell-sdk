@@ -1,7 +1,7 @@
 import { moonbeam as viem_moonbeam } from "viem/chains";
-import { createChain } from "../../types/chain.js";
+import { createNetwork } from "../../types/network.js";
 
-export const moonbeam = createChain<typeof viem_moonbeam>({
+export const moonbeam = createNetwork<typeof viem_moonbeam>({
   chain: viem_moonbeam,
   testnet: false,
   custom: {

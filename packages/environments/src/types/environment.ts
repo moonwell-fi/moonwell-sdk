@@ -56,7 +56,7 @@ import type {
 } from "./contracts.js";
 
 import type { GovernanceToken } from "./../definitions/governance.js";
-import type { Chain } from "./chain.js";
+import type { Network } from "./network.js";
 
 export type TokenConfig = {
   address: Address;
@@ -230,7 +230,7 @@ export type Environment<
   vaultList = Record<string, TokenConfig>,
 > = {
   name: string;
-  chain: Chain;
+  network: Network;
   apis: EnvironmentApiConfig;
   tokens: EnvironmentTokensConfig<tokenList>;
   contracts: EnvironmentContracts<tokenList, marketList, vaultList>;
@@ -241,15 +241,15 @@ export type Environment<
 
 export type EnvironmentConfig<tokenList = any> = {
   name: string;
-  chain: Chain;
+  network: Network;
   apis: EnvironmentApiConfig;
   tokens: EnvironmentTokensConfig<tokenList>;
   contracts: EnvironmentContractsConfig<tokenList>;
   settings?: Prettify<EnvironmentGovernanceSettingsConfig>;
 };
 
-const getChainRpcUrls = (chain: Chain) => {
-  const urls: string[] = [...chain.rpcUrls.default.http.map((url) => url)];
+const getNetworkRpcUrls = (config: EnvironmentConfig) => {
+  const urls: string[] = [...config.apis.rpcUrls, ...config.network.chain.rpcUrls.default.http.map((url) => url)];
   return urls;
 };
 
@@ -257,14 +257,14 @@ export const createEnvironmenConfig = <const tokenList, const marketList = {}, c
   config: EnvironmentConfig<tokenList>,
 ): Prettify<Environment<tokenList, marketList, vaultList>> => {
   const publicClient = createPublicClient({
-    chain: config.chain,
+    chain: config.network.chain,
     batch: {
       multicall: {
         wait: 100,
       },
     },
     cacheTime: 5_000,
-    transport: fallback(getChainRpcUrls(config.chain).map((url) => http(url, { timeout: 5_000 }))),
+    transport: fallback(getNetworkRpcUrls(config).map((url) => http(url, { timeout: 5_000 }))),
   });
 
   const getContract = <const abi extends Abi>(address: Address, abi: abi) => {
@@ -330,7 +330,7 @@ export const createEnvironmenConfig = <const tokenList, const marketList = {}, c
   const environment = {
     name: config.name,
     apis: config.apis,
-    chain: config.chain,
+    network: config.network,
     tokens: config.tokens,
     contracts: {
       tokens: tokenContracts,
