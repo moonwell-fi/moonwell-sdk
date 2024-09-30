@@ -8,7 +8,6 @@ import {
   type Prettify,
   type Transport,
   createPublicClient,
-  custom,
   getContract,
 } from "viem";
 import {
@@ -281,7 +280,7 @@ export const createEnvironmentConfig = <
 
   const contracts = Object.keys(config.contracts).reduce((prev, curr) => {
     const key = curr as keyof ContractConfig<any>;
-    const item = (config.contracts as any)[key] as Address;
+    let contractAddress = (config.contracts as any)[key] as Address;
     let abi: Abi = TokenAbi;
     switch (key) {
       case "comptroller":
@@ -324,18 +323,27 @@ export const createEnvironmentConfig = <
         abi = MorphoPublicAllocatorAbi;
         break;
       case "stakingToken":
+        contractAddress = (
+          (config.tokens as any)[contractAddress] as TokenConfig
+        ).address;
         abi = StakingTokenAbi;
         break;
       case "governanceToken":
+        contractAddress = (
+          (config.tokens as any)[contractAddress] as TokenConfig
+        ).address;
         abi = GovernanceTokenAbi;
         break;
       case "wrappedNativeToken":
+        contractAddress = (
+          (config.tokens as any)[contractAddress] as TokenConfig
+        ).address;
         abi = WrappedNativeTokenAbi;
         break;
     }
     return {
       ...prev,
-      [curr]: createContract(item, abi),
+      [curr]: createContract(contractAddress, abi),
     };
   }, {}) as Prettify<
     {
@@ -424,15 +432,25 @@ export const createEnvironmentConfig = <
   return {
     name: config.name,
     chainId: config.chain.id,
+    chain: config.chain,
     indexerUrl: config.indexerUrl,
     tokens: tokenContracts,
     markets: marketContracts,
     vaults: vaultsContracts,
     contracts: contracts,
-    custom,
+    custom: config.custom as custom,
     config: {
       tokens: config.tokens as {
         [name in keyof tokens]: TokenConfig;
+      },
+      vaults: config.vaults as {
+        [name in keyof vaults]: VaultConfig<tokens>;
+      },
+      markets: config.markets as {
+        [name in keyof markets]: MarketConfig<tokens>;
+      },
+      morphoMarkets: config.morphoMarkets as {
+        [key: string]: MorphoMarketConfig<tokens>;
       },
       contracts: config.contracts,
     },
@@ -448,6 +466,7 @@ export type Environment<
 > = {
   name: string;
   chainId: number;
+  chain: Chain;
   indexerUrl: string;
   tokens: {
     [name in keyof tokens]: TokenContractReturnType;
@@ -547,14 +566,14 @@ export type Environment<
       [name in keyof tokens]: TokenConfig;
     };
     markets: {
-      [name in keyof markets]: MarketConfig<tokens>;
+      [name in keyof markets]: MarketConfig<Record<string, any>>;
     };
     vaults: {
-      [name in keyof vaults]: VaultConfig<tokens>;
+      [name in keyof vaults]: VaultConfig<Record<string, any>>;
     };
     morphoMarkets: {
-      [id: string]: MorphoMarketConfig<tokens>;
+      [id: string]: MorphoMarketConfig<Record<string, any>>;
     };
-    contracts: ContractConfig<tokens>;
+    contracts: ContractConfig<Record<string, any>>;
   };
 };

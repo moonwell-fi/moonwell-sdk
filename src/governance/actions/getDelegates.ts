@@ -2,7 +2,6 @@ import axios from "axios";
 import { isAddress } from "viem";
 import { HttpRequestError } from "../../common/index.js";
 import { publicEnvironments } from "../../environments/index.js";
-import type { Environment } from "../../environments/index.js";
 import type { Delegate } from "../types/delegate.js";
 
 export type GetDelegatesErrorType = HttpRequestError;
@@ -74,9 +73,9 @@ export async function getDelegates(): Promise<GetDelegatesReturnType> {
     users = users.concat(results);
 
     if (
-      !response.data.directory_items.some(
+      response.data.directory_items.filter(
         (r) => r.user.user_fields[1] === undefined,
-      )
+      ).length > 0
     ) {
       await getUsersPaginated(page + 1);
     }
@@ -88,9 +87,8 @@ export async function getDelegates(): Promise<GetDelegatesReturnType> {
   const proposals = await getDelegatesExtendedData({
     users: users.map((r) => r.wallet),
   });
-
   //Get delegate voting powers
-  const envs = [publicEnvironments] as unknown as Environment[];
+  const envs = Object.values(publicEnvironments);
 
   const votingPowers = await Promise.all(
     users.map(async (user) =>

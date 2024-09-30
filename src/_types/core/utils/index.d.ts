@@ -1,7 +1,7 @@
 import type { Environment } from "../../environments/index.js";
 export declare const findMarketByAddress: (environment: Environment, address: `0x${string}`) => {
     marketKey: string;
-    marketConfig: import("../../environments/types/config.js").MarketConfig<any>;
+    marketConfig: import("../../environments/types/config.js").MarketConfig<Record<string, any>>;
     marketToken: import("../../environments/index.js").TokenConfig;
     underlyingToken: import("../../environments/index.js").TokenConfig;
 } | undefined;

@@ -16,13 +16,15 @@ export async function getStakingInfo(params: {
   environments: Environment[];
 }): Promise<GetStakingInfoType> {
   const envs = params.environments;
-  const envsWithStaking = envs.filter((env) => env.contracts.stakingToken);
+  const envsWithStaking = envs.filter(
+    (env) => env.config.contracts.stakingToken,
+  );
 
   try {
     const envStakingInfo = await Promise.all(
       envsWithStaking.map((environment) => {
         const homeEnvironment =
-          Object.values(publicEnvironments).find((e) =>
+          (Object.values(publicEnvironments) as Environment[]).find((e) =>
             e.custom?.governance?.chainIds?.includes(environment.chainId),
           ) || environment;
 

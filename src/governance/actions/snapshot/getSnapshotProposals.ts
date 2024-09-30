@@ -18,5 +18,14 @@ export const getSnapshotProposals = async (params: {
     onlyActive?: boolean;
   };
 }): Promise<GetSnapshotProposalsReturnType> => {
-  return getSnapshotProposalData(params);
+  try {
+    return getSnapshotProposalData(params);
+  } catch (ex) {
+    console.error("An error occured while fetching snapshot proposals...", ex);
+    return {
+      proposals: [],
+      total: 0,
+      active: 0,
+    };
+  }
 };

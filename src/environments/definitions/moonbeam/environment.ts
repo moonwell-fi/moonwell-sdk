@@ -13,7 +13,7 @@ const createEnvironment = (rpcUrls?: string[], indexerUrl?: string) =>
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(moonbeam.rpcUrls.default.http[0]),
-    indexerUrl: indexerUrl || "https//ponder.moonwell.fi",
+    indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     tokens,
     markets,
     vaults: {},

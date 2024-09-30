@@ -110,36 +110,36 @@ export const createEnvironment = <const chain extends Chain>(config: {
 };
 
 export const publicEnvironments = {
-  base: createEnvironment({ chain: base }),
-  moonbeam: createEnvironment({ chain: moonbeam }),
-  moonriver: createEnvironment({ chain: moonriver }),
-  optimism: createEnvironment({ chain: optimism }),
-} as unknown as { [name in keyof typeof supportedChains]: Environment };
+  base: createBaseEnvironment(),
+  moonbeam: createMoonbeamEnvironment(),
+  moonriver: createMoonriverEnvironment(),
+  optimism: createOptimismEnvironment(),
+};
 
-export type TokensType<chain> = chain extends typeof base
+export type TokensType<environment> = environment extends BaseEnvironment
   ? typeof baseTokens
-  : chain extends typeof moonbeam
+  : environment extends MoonbeamEnvironment
     ? typeof moonbeamTokens
-    : chain extends typeof moonriver
+    : environment extends MoonriverEnvironment
       ? typeof moonriverTokens
-      : chain extends typeof optimism
+      : environment extends OptimismEnvironment
         ? typeof optimismTokens
         : undefined;
 
-export type MarketsType<chain> = chain extends typeof base
+export type MarketsType<environment> = environment extends BaseEnvironment
   ? typeof baseMarkets
-  : chain extends typeof moonbeam
+  : environment extends MoonbeamEnvironment
     ? typeof moonbeamMarkets
-    : chain extends typeof moonriver
+    : environment extends MoonriverEnvironment
       ? typeof moonriverMarkets
-      : chain extends typeof optimism
+      : environment extends OptimismEnvironment
         ? typeof optimismMarkets
         : undefined;
 
-export type VaultsType<chain> = chain extends typeof base
+export type VaultsType<environment> = environment extends BaseEnvironment
   ? typeof baseVaults
   : undefined;
 
-export type MorphoMarketsType<chain> = chain extends typeof base
+export type MorphoMarketsType<environment> = environment extends BaseEnvironment
   ? typeof baseMorphoMarkets
   : undefined;

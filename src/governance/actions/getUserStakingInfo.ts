@@ -19,7 +19,7 @@ export async function getUserStakingInfo(params: {
     const envStakingInfo = await Promise.all(
       envsWithStaking.map((environment) => {
         const homeEnvironment =
-          Object.values(publicEnvironments).find((e) =>
+          (Object.values(publicEnvironments) as Environment[]).find((e) =>
             e.custom?.governance?.chainIds?.includes(environment.chainId),
           ) || environment;
 

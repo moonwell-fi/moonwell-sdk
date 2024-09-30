@@ -16,7 +16,7 @@ export const getUserPositionData = async (
   account: Address,
 ) => {
   const homeEnvironment =
-    Object.values(publicEnvironments).find((e) =>
+    (Object.values(publicEnvironments) as Environment[]).find((e) =>
       e.custom?.governance?.chainIds?.includes(environment.chainId),
     ) || environment;
 

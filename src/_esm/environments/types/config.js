@@ -1,4 +1,4 @@
-import { createPublicClient, custom, getContract, } from "viem";
+import { createPublicClient, getContract, } from "viem";
 import { ChainLinkOracleAbi, ComptrollerTokenAbi, CoreRouterAbi, CoreViewsAbi, GovernanceTokenAbi, GovernorAbi, MarketTokenAbi, MorphoBlueAbi, MorphoBundlerAbi, MorphoPublicAllocatorAbi, MorphoViewsAbi, MultiRewardDistributorAbi, MultichainGovernorAbi, StakingTokenAbi, TemporalGovernorAbi, TokenAbi, VoteCollectorAbi, WrappedNativeTokenAbi, } from "../abis/index.js";
 export const createTokenConfig = (tokens) => tokens;
 export const createVaultConfig = (config) => config.vaults;
@@ -62,7 +62,7 @@ export const createEnvironmentConfig = (config) => {
     }, {});
     const contracts = Object.keys(config.contracts).reduce((prev, curr) => {
         const key = curr;
-        const item = config.contracts[key];
+        let contractAddress = config.contracts[key];
         let abi = TokenAbi;
         switch (key) {
             case "comptroller":
@@ -105,31 +105,38 @@ export const createEnvironmentConfig = (config) => {
                 abi = MorphoPublicAllocatorAbi;
                 break;
             case "stakingToken":
+                contractAddress = config.tokens[contractAddress].address;
                 abi = StakingTokenAbi;
                 break;
             case "governanceToken":
+                contractAddress = config.tokens[contractAddress].address;
                 abi = GovernanceTokenAbi;
                 break;
             case "wrappedNativeToken":
+                contractAddress = config.tokens[contractAddress].address;
                 abi = WrappedNativeTokenAbi;
                 break;
         }
         return {
             ...prev,
-            [curr]: createContract(item, abi),
+            [curr]: createContract(contractAddress, abi),
         };
     }, {});
     return {
         name: config.name,
         chainId: config.chain.id,
+        chain: config.chain,
         indexerUrl: config.indexerUrl,
         tokens: tokenContracts,
         markets: marketContracts,
         vaults: vaultsContracts,
         contracts: contracts,
-        custom,
+        custom: config.custom,
         config: {
             tokens: config.tokens,
+            vaults: config.vaults,
+            markets: config.markets,
+            morphoMarkets: config.morphoMarkets,
             contracts: config.contracts,
         },
     };

@@ -71,7 +71,7 @@ const createEnvironmentConfig = (config) => {
     }, {});
     const contracts = Object.keys(config.contracts).reduce((prev, curr) => {
         const key = curr;
-        const item = config.contracts[key];
+        let contractAddress = config.contracts[key];
         let abi = index_js_1.TokenAbi;
         switch (key) {
             case "comptroller":
@@ -114,31 +114,38 @@ const createEnvironmentConfig = (config) => {
                 abi = index_js_1.MorphoPublicAllocatorAbi;
                 break;
             case "stakingToken":
+                contractAddress = config.tokens[contractAddress].address;
                 abi = index_js_1.StakingTokenAbi;
                 break;
             case "governanceToken":
+                contractAddress = config.tokens[contractAddress].address;
                 abi = index_js_1.GovernanceTokenAbi;
                 break;
             case "wrappedNativeToken":
+                contractAddress = config.tokens[contractAddress].address;
                 abi = index_js_1.WrappedNativeTokenAbi;
                 break;
         }
         return {
             ...prev,
-            [curr]: createContract(item, abi),
+            [curr]: createContract(contractAddress, abi),
         };
     }, {});
     return {
         name: config.name,
         chainId: config.chain.id,
+        chain: config.chain,
         indexerUrl: config.indexerUrl,
         tokens: tokenContracts,
         markets: marketContracts,
         vaults: vaultsContracts,
         contracts: contracts,
-        custom: viem_1.custom,
+        custom: config.custom,
         config: {
             tokens: config.tokens,
+            vaults: config.vaults,
+            markets: config.markets,
+            morphoMarkets: config.morphoMarkets,
             contracts: config.contracts,
         },
     };

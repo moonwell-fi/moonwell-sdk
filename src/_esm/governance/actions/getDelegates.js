@@ -34,7 +34,7 @@ export async function getDelegates() {
             return result;
         });
         users = users.concat(results);
-        if (!response.data.directory_items.some((r) => r.user.user_fields[1] === undefined)) {
+        if (response.data.directory_items.filter((r) => r.user.user_fields[1] === undefined).length > 0) {
             await getUsersPaginated(page + 1);
         }
     };
@@ -44,7 +44,7 @@ export async function getDelegates() {
         users: users.map((r) => r.wallet),
     });
     //Get delegate voting powers
-    const envs = [publicEnvironments];
+    const envs = Object.values(publicEnvironments);
     const votingPowers = await Promise.all(users.map(async (user) => Promise.all(envs.map((environment) => environment.contracts.views?.read.getUserVotingPower([
         user.wallet,
     ])))));

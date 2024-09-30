@@ -8,7 +8,7 @@ export const contracts = createContractsConfig({
     stakingToken: "stkWELL",
     wrappedNativeToken: "WETH",
     comptroller: "0xCa889f40aae37FFf165BccF69aeF1E82b5C511B9",
-    views: "0x821Ff3a967b39bcbE8A018a9b1563EAf878bad39",
+    views: "0xD6C66868f937f00604d0FB860241970D6CC2CBfE",
     multiRewardDistributor: "0xF9524bfa18C19C3E605FbfE8DFd05C6e967574Aa",
     oracle: "0x2f1490bD6aD10C9CE42a2829afa13EAc0b746dcf",
     router: "0xc4Ab8C031717d7ecCCD653BE898e0f92410E11dC",

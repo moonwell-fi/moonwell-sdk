@@ -21,9 +21,9 @@ export const createEnvironment = (config) => {
     }
 };
 export const publicEnvironments = {
-    base: createEnvironment({ chain: base }),
-    moonbeam: createEnvironment({ chain: moonbeam }),
-    moonriver: createEnvironment({ chain: moonriver }),
-    optimism: createEnvironment({ chain: optimism }),
+    base: createBaseEnvironment(),
+    moonbeam: createMoonbeamEnvironment(),
+    moonriver: createMoonriverEnvironment(),
+    optimism: createOptimismEnvironment(),
 };
 //# sourceMappingURL=index.js.map

@@ -6,7 +6,7 @@ const config_js_1 = require("../../types/config.js");
 exports.custom = (0, config_js_1.createCustomConfig)({
     governance: {
         token: "WELL",
-        chainIds: [chains_1.base.id],
+        chainIds: [chains_1.base.id, chains_1.optimism.id],
         proposalIdOffset: 79,
         snapshotEnsName: "moonwell-governance.eth",
     },

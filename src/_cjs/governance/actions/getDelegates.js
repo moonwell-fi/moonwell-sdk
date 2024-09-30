@@ -32,7 +32,7 @@ async function getDelegates() {
             return result;
         });
         users = users.concat(results);
-        if (!response.data.directory_items.some((r) => r.user.user_fields[1] === undefined)) {
+        if (response.data.directory_items.filter((r) => r.user.user_fields[1] === undefined).length > 0) {
             await getUsersPaginated(page + 1);
         }
     };
@@ -40,7 +40,7 @@ async function getDelegates() {
     const proposals = await getDelegatesExtendedData({
         users: users.map((r) => r.wallet),
     });
-    const envs = [index_js_2.publicEnvironments];
+    const envs = Object.values(index_js_2.publicEnvironments);
     const votingPowers = await Promise.all(users.map(async (user) => Promise.all(envs.map((environment) => environment.contracts.views?.read.getUserVotingPower([
         user.wallet,
     ])))));

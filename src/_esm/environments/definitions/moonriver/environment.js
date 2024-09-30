@@ -11,7 +11,7 @@ const createEnvironment = (rpcUrls, indexerUrl) => createEnvironmentConfig({
     transport: rpcUrls
         ? fallback(rpcUrls.map((url) => http(url)))
         : http(moonriver.rpcUrls.default.http[0]),
-    indexerUrl: indexerUrl || "https//ponder.moonwell.fi",
+    indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     tokens,
     markets,
     vaults: {},

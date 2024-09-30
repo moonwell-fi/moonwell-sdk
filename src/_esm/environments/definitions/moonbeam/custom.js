@@ -1,9 +1,9 @@
-import { base } from "viem/chains";
+import { base, optimism } from "viem/chains";
 import { createCustomConfig } from "../../types/config.js";
 export const custom = createCustomConfig({
     governance: {
         token: "WELL",
-        chainIds: [base.id],
+        chainIds: [base.id, optimism.id],
         proposalIdOffset: 79,
         snapshotEnsName: "moonwell-governance.eth",
     },

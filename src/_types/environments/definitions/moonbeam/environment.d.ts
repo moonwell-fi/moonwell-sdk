@@ -177,7 +177,7 @@ declare const createEnvironment: (rpcUrls?: string[], indexerUrl?: string) => im
 }, {
     governance: {
         token: "WELL";
-        chainIds: 8453[];
+        chainIds: (10 | 8453)[];
         proposalIdOffset: number;
         snapshotEnsName: string;
     };

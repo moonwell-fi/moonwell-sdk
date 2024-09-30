@@ -47,9 +47,9 @@ export async function getUserVoteReceipt(params: {
     };
 
     for (const chainId of governanceChainIds) {
-      const multichainEnvironment = Object.values(publicEnvironments).find(
-        (r) => r.chainId === chainId,
-      );
+      const multichainEnvironment = (
+        Object.values(publicEnvironments) as Environment[]
+      ).find((r) => r.chainId === chainId);
       if (multichainEnvironment) {
         const receipt =
           await multichainEnvironment.contracts.voteCollector?.read.getReceipt([

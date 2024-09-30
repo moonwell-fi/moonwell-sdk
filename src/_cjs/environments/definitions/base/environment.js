@@ -22,7 +22,7 @@ const createEnvironment = (rpcUrls, indexerUrl) => (0, config_js_1.createEnviron
     transport: rpcUrls
         ? (0, viem_1.fallback)(rpcUrls.map((url) => (0, viem_1.http)(url)))
         : (0, viem_1.http)(base.rpcUrls.default.http[0]),
-    indexerUrl: indexerUrl || "https//ponder.moonwell.fi",
+    indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     tokens: tokens_js_1.tokens,
     markets: core_markets_js_1.markets,
     vaults: morpho_vaults_js_1.vaults,

@@ -13,14 +13,14 @@ export async function getGovernanceTokenInfo(params: {
 }): Promise<GetGovernanceTokenInfoType | undefined> {
   if (params.governanceToken === "WELL") {
     const totalSupply =
-      await publicEnvironments.moonbeam.contracts.governanceToken?.read.totalSupply();
+      await publicEnvironments.moonbeam.contracts.governanceToken.read.totalSupply();
 
     return {
       totalSupply: new Amount(totalSupply || 0n, 18),
     };
   } else {
     const totalSupply =
-      await publicEnvironments.moonriver.contracts.governanceToken?.read.totalSupply();
+      await publicEnvironments.moonriver.contracts.governanceToken.read.totalSupply();
 
     return {
       totalSupply: new Amount(totalSupply || 0n, 18),

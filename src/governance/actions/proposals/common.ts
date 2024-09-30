@@ -216,7 +216,7 @@ export const getCrossChainProposalData = async (params: {
     ) {
       const xcEnvironments = xcGovernanceSettings.chainIds
         .map((chainId) =>
-          Object.values(publicEnvironments).find(
+          (Object.values(publicEnvironments) as Environment[]).find(
             (env) => env.chainId === chainId,
           ),
         )

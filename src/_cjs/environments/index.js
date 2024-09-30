@@ -30,9 +30,9 @@ const createEnvironment = (config) => {
 };
 exports.createEnvironment = createEnvironment;
 exports.publicEnvironments = {
-    base: (0, exports.createEnvironment)({ chain: environment_js_1.base }),
-    moonbeam: (0, exports.createEnvironment)({ chain: chains_1.moonbeam }),
-    moonriver: (0, exports.createEnvironment)({ chain: chains_1.moonriver }),
-    optimism: (0, exports.createEnvironment)({ chain: chains_1.optimism }),
+    base: (0, environment_js_1.createEnvironment)(),
+    moonbeam: (0, environment_js_2.createEnvironment)(),
+    moonriver: (0, environment_js_3.createEnvironment)(),
+    optimism: (0, environment_js_4.createEnvironment)(),
 };
 //# sourceMappingURL=index.js.map

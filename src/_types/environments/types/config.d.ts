@@ -127,6 +127,7 @@ export declare const createEnvironmentConfig: <tokens, markets, vaults, morphoMa
 export type Environment<tokens = any, markets = any, vaults = any, contracts = Partial<ContractsConfigReturnType>, custom = CustomConfigType> = {
     name: string;
     chainId: number;
+    chain: Chain;
     indexerUrl: string;
     tokens: {
         [name in keyof tokens]: TokenContractReturnType;
@@ -176,15 +177,15 @@ export type Environment<tokens = any, markets = any, vaults = any, contracts = P
             [name in keyof tokens]: TokenConfig;
         };
         markets: {
-            [name in keyof markets]: MarketConfig<tokens>;
+            [name in keyof markets]: MarketConfig<Record<string, any>>;
         };
         vaults: {
-            [name in keyof vaults]: VaultConfig<tokens>;
+            [name in keyof vaults]: VaultConfig<Record<string, any>>;
         };
         morphoMarkets: {
-            [id: string]: MorphoMarketConfig<tokens>;
+            [id: string]: MorphoMarketConfig<Record<string, any>>;
         };
-        contracts: ContractConfig<tokens>;
+        contracts: ContractConfig<Record<string, any>>;
     };
 };
 //# sourceMappingURL=config.d.ts.map

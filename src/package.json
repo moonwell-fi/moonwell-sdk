@@ -35,10 +35,10 @@
       "import": "./_esm/core/index.js",
       "default": "./_cjs/core/index.js"
     },
-    "./environment": {
-      "types": "./_types/environment/index.d.ts",
-      "import": "./_esm/environment/index.js",
-      "default": "./_cjs/environment/index.js"
+    "./environments": {
+      "types": "./_types/environments/index.d.ts",
+      "import": "./_esm/environments/index.js",
+      "default": "./_cjs/environments/index.js"
     },
     "./governance": {
       "types": "./_types/governance/index.d.ts",
