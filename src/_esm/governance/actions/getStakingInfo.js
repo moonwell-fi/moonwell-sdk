@@ -3,7 +3,6 @@ import { publicEnvironments, } from "../../environments/index.js";
 export async function getStakingInfo(params) {
     const envs = params.environments;
     const envsWithStaking = envs.filter((env) => env.config.contracts.stakingToken);
-    console.log(`envsWithStaking`, envsWithStaking);
     try {
         const envStakingInfo = await Promise.all(envsWithStaking.map((environment) => {
             const homeEnvironment = Object.values(publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;

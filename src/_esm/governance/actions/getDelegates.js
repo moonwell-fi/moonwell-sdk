@@ -22,7 +22,7 @@ export async function getDelegates() {
             const avatar = item.user.avatar_template.replace("{size}", "160");
             const result = {
                 avatar: avatar.startsWith("/user_avatar")
-                    ? `https://dub1.discourse-cdn.com/standard20${avatar}`
+                    ? `https://dub1.discourse-cdn.com/flex017${avatar}`
                     : avatar,
                 name: item.user.username,
                 wallet: item.user.user_fields[1],

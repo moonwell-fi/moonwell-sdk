@@ -8,7 +8,7 @@ export const getSnapshotProposals = async (params) => {
         return {
             proposals: [],
             total: 0,
-            active: 0
+            active: 0,
         };
     }
 };
