@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@2.3.0/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "moonwell-fi/moonwell-sdk" }],
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "moonwell-fi/moonwell-sdk" }
+  ],
   "commit": false,
   "fixed": [["@moonwell-sdk/core"]],
   "ignore": ["@moonwell-sdk/common"],

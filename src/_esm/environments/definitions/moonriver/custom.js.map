@@ -1,0 +1,1 @@
+{"version":3,"file":"custom.js","sourceRoot":"","sources":["../../../../environments/definitions/moonriver/custom.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,kBAAkB,EAAE,MAAM,uBAAuB,CAAC;AAE3D,MAAM,CAAC,MAAM,MAAM,GAAG,kBAAkB,CAAC;IACvC,UAAU,EAAE;QACV,KAAK,EAAE,MAAM;QACb,QAAQ,EAAE,EAAE;QACZ,eAAe,EAAE,gCAAgC;KAClD;CACF,CAAC,CAAC"}

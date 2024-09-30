@@ -1,0 +1,158 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.tokens = void 0;
+const viem_1 = require("viem");
+const config_js_1 = require("../../types/config.js");
+exports.tokens = (0, config_js_1.createTokenConfig)({
+    ETH: {
+        address: viem_1.zeroAddress,
+        decimals: 18,
+        name: "Ethereum",
+        symbol: "ETH",
+    },
+    WETH: {
+        address: "0x4200000000000000000000000000000000000006",
+        decimals: 18,
+        name: "Wrapped Ethereum",
+        symbol: "WETH",
+    },
+    USDC: {
+        address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        decimals: 6,
+        name: "USD Coin",
+        symbol: "USDC",
+    },
+    MOONWELL_USDC: {
+        address: "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22",
+        decimals: 8,
+        name: "Moonwell USDC",
+        symbol: "USDC",
+    },
+    MOONWELL_ETH: {
+        address: "0x628ff693426583D9a7FB391E54366292F509D457",
+        decimals: 8,
+        name: "Moonwell ETH",
+        symbol: "ETH",
+    },
+    cbETH: {
+        address: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
+        decimals: 18,
+        name: "Coinbase Staked Ethereum",
+        symbol: "cbETH",
+    },
+    MOONWELL_cbETH: {
+        address: "0x3bf93770f2d4a794c3d9EBEfBAeBAE2a8f09A5E5",
+        decimals: 8,
+        name: "Moonwell cbETH",
+        symbol: "cbETH",
+    },
+    wstETH: {
+        address: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+        decimals: 18,
+        name: "Lido Staked Ethereum",
+        symbol: "wstETH",
+    },
+    MOONWELL_wstETH: {
+        address: "0x627Fe393Bc6EdDA28e99AE648fD6fF362514304b",
+        decimals: 8,
+        name: "Moonwell wstETH",
+        symbol: "wstETH",
+    },
+    rETH: {
+        address: "0xb6fe221fe9eef5aba221c348ba20a1bf5e73624c",
+        decimals: 18,
+        name: "Rocket Pool Staked Ethereum",
+        symbol: "rETH",
+    },
+    MOONWELL_rETH: {
+        address: "0xCB1DaCd30638ae38F2B94eA64F066045B7D45f44",
+        decimals: 8,
+        name: "Moonwell rETH",
+        symbol: "rETH",
+    },
+    weETH: {
+        address: "0x04c0599ae5a44757c0af6f9ec3b93da8976c150a",
+        decimals: 18,
+        name: "EtherFi Restaked Ethereum",
+        symbol: "weETH",
+    },
+    MOONWELL_weETH: {
+        address: "0xb8051464C8c92209C92F3a4CD9C73746C4c3CFb3",
+        decimals: 8,
+        name: "Moonwell weETH",
+        symbol: "weETH",
+    },
+    cbBTC: {
+        address: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+        decimals: 8,
+        name: "Coinbase Bitcoin",
+        symbol: "cbBTC",
+    },
+    MOONWELL_cbBTC: {
+        address: "0xF877ACaFA28c19b96727966690b2f44d35aD5976",
+        decimals: 8,
+        name: "Moonwell cbBTC",
+        symbol: "cbBTC",
+    },
+    AERO: {
+        address: "0x940181a94A35A4569E4529A3CDfB74e38FD98631",
+        decimals: 18,
+        name: "Aerodrome Finance",
+        symbol: "AERO",
+    },
+    MOONWELL_AERO: {
+        address: "0x73902f619CEB9B31FD8EFecf435CbDf89E369Ba6",
+        decimals: 8,
+        name: "Moonwell AERO",
+        symbol: "AERO",
+    },
+    DAI: {
+        address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+        decimals: 18,
+        name: "DAI Stablecoin",
+        symbol: "DAI",
+    },
+    MOONWELL_DAI: {
+        address: "0x73b06D8d18De422E269645eaCe15400DE7462417",
+        decimals: 8,
+        name: "Moonwell DAI",
+        symbol: "DAI",
+    },
+    USDbC: {
+        address: "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
+        decimals: 6,
+        name: "USD Coin",
+        symbol: "USDbC",
+    },
+    MOONWELL_USDbC: {
+        address: "0x703843C3379b52F9FF486c9f5892218d2a065cC8",
+        decimals: 8,
+        name: "Moonwell USDbC",
+        symbol: "USDbC",
+    },
+    mwETH: {
+        address: "0xa0E430870c4604CcfC7B38Ca7845B1FF653D0ff1",
+        decimals: 18,
+        name: "Moonwell Flagship ETH",
+        symbol: "mwETH",
+    },
+    mwUSDC: {
+        address: "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca",
+        decimals: 18,
+        name: "Moonwell Flagship USDC",
+        symbol: "mwUSDC",
+    },
+    WELL: {
+        address: "0xA88594D404727625A9437C3f886C7643872296AE",
+        decimals: 18,
+        name: "WELL",
+        symbol: "WELL",
+    },
+    stkWELL: {
+        address: "0xe66E3A37C3274Ac24FE8590f7D84A2427194DC17",
+        decimals: 18,
+        name: "stkWELL",
+        symbol: "stkWELL",
+    },
+});
+//# sourceMappingURL=tokens.js.map

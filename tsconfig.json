@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "src"
+  ],
+  "exclude": [],
+  "references": [
+    {
+      "path": "./scripts/tsconfig.json"
+    }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "~@moonwell-sdk/*": [
+        "./src/*"
+      ]
+    }
+  }
+}

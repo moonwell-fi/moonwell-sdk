@@ -1,0 +1,90 @@
+{
+  "name": "moonwell-sdk",
+  "description": "TypeScript Interface for Moonwell",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./_cjs/index.js",
+  "module": "./_esm/index.js",
+  "types": "./_types/index.d.ts",
+  "typings": "./_types/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "*",
+    "!**/*.bench.ts",
+    "!**/*.bench-d.ts",
+    "!**/*.test.ts",
+    "!**/*.test.ts.snap",
+    "!**/*.test-d.ts",
+    "!**/*.tsbuildinfo",
+    "!tsconfig.build.json",
+    "!jsr.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./_types/index.d.ts",
+      "import": "./_esm/index.js",
+      "default": "./_cjs/index.js"
+    },
+    "./common": {
+      "types": "./_types/common/index.d.ts",
+      "import": "./_esm/common/index.js",
+      "default": "./_cjs/common/index.js"
+    },
+    "./core": {
+      "types": "./_types/core/index.d.ts",
+      "import": "./_esm/core/index.js",
+      "default": "./_cjs/core/index.js"
+    },
+    "./environment": {
+      "types": "./_types/environment/index.d.ts",
+      "import": "./_esm/environment/index.js",
+      "default": "./_cjs/environment/index.js"
+    },
+    "./governance": {
+      "types": "./_types/governance/index.d.ts",
+      "import": "./_esm/governance/index.js",
+      "default": "./_cjs/governance/index.js"
+    },
+    "./morpho": {
+      "types": "./_types/morpho/index.d.ts",
+      "import": "./_esm/morpho/index.js",
+      "default": "./_cjs/morpho/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "common": ["./_types/common/index.d.ts"],
+      "core": ["./_types/core/index.d.ts"],
+      "environment": ["./_types/environment/index.d.ts"],
+      "governance": ["./_types/governance/index.d.ts"],
+      "morpho": ["./_types/morpho/index.d.ts"]
+    }
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.4"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "viem": "^2.21.16",
+    "axios": "^1.7.7",
+    "lodash": "^4.17.21"
+  },
+  "license": "MIT",
+  "homepage": "https://moonwell.fi",
+  "repository": "moonwell-fi/moonwell-sdk",
+  "authors": ["x0s0l.eth"],
+  "keywords": [
+    "eth",
+    "ethereum",
+    "dapps",
+    "sdk",
+    "moonwell",
+    "web3",
+    "typescript"
+  ]
+}

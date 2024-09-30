@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "types": "../_types/morpho/index.d.ts",
+  "module": "../_esm/morpho/index.js",
+  "main": "../_cjs/morpho/index.js"
+}

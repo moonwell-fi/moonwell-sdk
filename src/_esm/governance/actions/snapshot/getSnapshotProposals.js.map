@@ -1,0 +1,1 @@
+{"version":3,"file":"getSnapshotProposals.js","sourceRoot":"","sources":["../../../../governance/actions/snapshot/getSnapshotProposals.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,uBAAuB,EAAE,MAAM,aAAa,CAAC;AAQtD,MAAM,CAAC,MAAM,oBAAoB,GAAG,KAAK,EAAE,MAS1C,EAA2C,EAAE;IAC5C,OAAO,uBAAuB,CAAC,MAAM,CAAC,CAAC;AACzC,CAAC,CAAC"}

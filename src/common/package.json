@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "types": "../_types/common/index.d.ts",
+  "module": "../_esm/common/index.js",
+  "main": "../_cjs/common/index.js"
+}

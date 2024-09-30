@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "types": "../_types/governance/index.d.ts",
+  "module": "../_esm/governance/index.js",
+  "main": "../_cjs/governance/index.js",
+  "devDependencies": {
+    "@types/lodash": "^4.17.9"
+  }
+}

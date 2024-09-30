@@ -1,41 +1,45 @@
 {
   "private": true,
+  "type": "module",
   "scripts": {
-    "pre-build": "pnpm --filter \"./packages/**\" --parallel install",
-    "build": "pnpm --filter \"./packages/**\" --parallel build",
-    "changeset:release": "pnpm build && changeset publish",
-    "changeset:version": "changeset version && pnpm install --lockfile-only",
-    "format": "biome format . --write",
-    "lint": "biome check .",
-    "lint:fix": "pnpm lint --write",
-    "prepare": "npx simple-git-hooks",
-    "test": "pnpm --parallel --no-bail test",
-    "typecheck": "pnpm --filter \"./src/**\" --parallel typecheck"
+    "clean": "rm -rf *.tsbuildinfo src/*.tsbuildinfo src/_esm src/_cjs src/_types",
+    "build": "pnpm clean && pnpm build:cjs && pnpm build:esm && pnpm build:types",
+    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
+    "build:esm": "tsc --project ./tsconfig.build.json --module es2020 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
+    "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
+    "format": "biome format --write",
+    "lint": "biome check --fix",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.1",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
-    "hono": "4.5.0",
     "lint-staged": "^15.1.0",
     "simple-git-hooks": "^2.9.0",
-    "typescript": "5.0.4",
-    "viem": "^2.19.7"
+    "typescript": "5.0.4"
   },
   "lint-staged": {
-    "*.ts": ["biome format --no-errors-on-unmatched --write", "biome check --no-errors-on-unmatched"],
+    "*.ts": [
+      "biome format --no-errors-on-unmatched --write",
+      "biome check --no-errors-on-unmatched"
+    ],
     "!(*.ts)": ["biome format --no-errors-on-unmatched --write"]
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"
   },
-  "packageManager": "pnpm@8.6.10",
+  "packageManager": "pnpm@9.1.0",
   "pnpm": {
     "peerDependencyRules": {
       "ignoreMissing": ["node-fetch"]
     }
   },
   "engines": {
-    "node": ">=18.14"
+    "node": "22.x"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "lodash": "^4.17.21"
   }
 }

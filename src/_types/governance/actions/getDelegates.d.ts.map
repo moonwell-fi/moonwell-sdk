@@ -1,0 +1,1 @@
+{"version":3,"file":"getDelegates.d.ts","sourceRoot":"","sources":["../../../governance/actions/getDelegates.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,gBAAgB,EAAE,MAAM,uBAAuB,CAAC;AAGzD,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,sBAAsB,CAAC;AAErD,MAAM,MAAM,qBAAqB,GAAG,gBAAgB,CAAC;AAErD,MAAM,MAAM,sBAAsB,GAAG,QAAQ,EAAE,CAAC;AAEhD;;;;GAIG;AACH,wBAAsB,YAAY,IAAI,OAAO,CAAC,sBAAsB,CAAC,CA8HpE"}

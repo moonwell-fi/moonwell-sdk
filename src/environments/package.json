@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "types": "../_types/environments/index.d.ts",
+  "module": "../_esm/environments/index.js",
+  "main": "../_cjs/environments/index.js"
+}
