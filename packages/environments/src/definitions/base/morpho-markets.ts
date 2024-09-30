@@ -1,8 +1,8 @@
-import { createMorphoMarketList } from "../../types/environment.js";
-import { baseTokenList } from "./tokens.js";
+import { createMorphoMarketConfig } from "../../types/config.js";
+import { tokens } from "./tokens.js";
 
-export const baseMorphoMarketsList = createMorphoMarketList({
-  tokens: baseTokenList,
+export const morphoMarkets = createMorphoMarketConfig({
+  tokens,
   markets: {
     "wstETH-ETH": {
       collateralToken: "wstETH",

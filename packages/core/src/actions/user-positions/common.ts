@@ -6,10 +6,10 @@ import { type Address, zeroAddress } from "viem";
 
 export const getUserPositionData = async (environment: Environment, account: Address) => {
   const homeEnvironment =
-    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.network.chain.id)) || environment;
+    Object.values(publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
 
-  const viewsContract = environment.contracts.core?.views;
-  const homeViewsContract = homeEnvironment.contracts.core?.views;
+  const viewsContract = environment.contracts.views;
+  const homeViewsContract = homeEnvironment.contracts.views;
 
   const userData = await Promise.all([
     viewsContract?.read.getAllMarketsInfo(),
@@ -68,7 +68,7 @@ export const getUserPositionData = async (environment: Environment, account: Add
         const collateralUsd = collateral.value * underlyingPrice;
 
         const result: UserMarketPosition = {
-          chainId: environment.network.chain.id,
+          chainId: environment.chainId,
           account,
           market: market.marketToken,
           collateralEnabled: marketCollateralEnabled,
@@ -80,7 +80,7 @@ export const getUserPositionData = async (environment: Environment, account: Add
             ?.map((reward) => {
               const token = findTokenByAddress(environment, reward.rewardToken);
               if (token) {
-                const isGovernanceToken = token.symbol === environment.settings?.governance?.token;
+                const isGovernanceToken = token.symbol === environment.custom?.governance?.token;
                 const isNativeToken = token.address === zeroAddress;
                 const tokenPrice = tokenPrices?.find((r) => r.token.address === reward.rewardToken)?.tokenPrice.value;
                 const price = (isNativeToken ? nativeTokenPrice.value : isGovernanceToken ? governanceTokenPrice.value : tokenPrice) || 0;
@@ -89,7 +89,7 @@ export const getUserPositionData = async (environment: Environment, account: Add
                 const borrowRewards = new Amount(reward.borrowRewardsAmount, token.decimals);
 
                 const result: UserMarketReward = {
-                  chainId: environment.network.chain.id,
+                  chainId: environment.chainId,
                   account,
                   market: market.marketToken,
                   rewardToken: token,
@@ -117,7 +117,7 @@ export const getUserPositionData = async (environment: Environment, account: Add
 
   const result: UserPosition = {
     account,
-    chainId: environment.network.chain.id,
+    chainId: environment.chainId,
     markets,
     totalBorrowedUsd: markets.reduce((acc, market) => acc + market.borrowedUsd, 0),
     totalSuppliedUsd: markets.reduce((acc, market) => acc + market.suppliedUsd, 0),

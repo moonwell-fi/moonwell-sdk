@@ -1,8 +1,8 @@
-import { createVaultList } from "../../types/environment.js";
-import { baseTokenList } from "./tokens.js";
+import { createVaultConfig } from "../../types/config.js";
+import { tokens } from "./tokens.js";
 
-export const baseVaultList = createVaultList({
-  tokens: baseTokenList,
+export const vaults = createVaultConfig({
+  tokens,
   vaults: {
     mwETH: {
       underlyingToken: "ETH",

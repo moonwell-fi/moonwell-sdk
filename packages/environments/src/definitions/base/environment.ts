@@ -1,48 +1,30 @@
-import { createEnvironmenConfig } from "../../types/environment.js";
-import { baseMarketsList } from "./core-markets.js";
-import { baseMorphoMarketsList } from "./morpho-markets.js";
-import { baseVaultList } from "./morpho-vaults.js";
-import { base } from "./network.js";
-import { baseTokenList } from "./tokens.js";
+import { http, type Transport, defineChain } from "viem";
+import { base as baseChain } from "viem/chains";
+import { type Environment, createEnvironmentConfig } from "../../types/config.js";
+import { contracts } from "./contracts.js";
+import { markets } from "./core-markets.js";
+import { custom } from "./custom.js";
+import { morphoMarkets } from "./morpho-markets.js";
+import { vaults } from "./morpho-vaults.js";
+import { tokens } from "./tokens.js";
 
-const createBaseEnvironment = (rpcUrls: string[]) =>
-  createEnvironmenConfig<typeof baseTokenList, typeof baseMarketsList, typeof baseVaultList>({
+const base = defineChain({ ...baseChain, testnet: false });
+
+const createEnvironment = (
+  transport?: Transport,
+  indexerUrl?: string,
+): Environment<typeof tokens, typeof markets, typeof vaults, typeof contracts, typeof custom> =>
+  createEnvironmentConfig({
     name: "Base",
-    network: base,
-    apis: {
-      indexerUrl: "https://ponder.moonwell.fi",
-      rpcUrls,
-    },
-    tokens: baseTokenList,
-    contracts: {
-      governanceToken: "WELL",
-      stakingToken: "stkWELL",
-      wrappedNativeToken: "WETH",
-      core: {
-        markets: baseMarketsList,
-        comptroller: "0xfBb21d0380beE3312B33c4353c8936a0F13EF26C",
-        views: "0x821Ff3a967b39bcbE8A018a9b1563EAf878bad39",
-        multiRewardDistributor: "0xe9005b078701e2A0948D2EaC43010D35870Ad9d2",
-        oracle: "0xEC942bE8A8114bFD0396A5052c36027f2cA6a9d0",
-        router: "0x70778cfcFC475c7eA0f24cC625Baf6EaE475D0c9",
-        temporalGovernor: "0x8b621804a7637b781e2BbD58e256a591F2dF7d51",
-        voteCollector: "0xe0278B32c627FF6fFbbe7de6A18Ade145603e949",
-      },
-      morpho: {
-        blue: "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
-        bundler: "0x23055618898e202386e6c13955a58D3C68200BFB",
-        publicAllocator: "0xA090dD1a701408Df1d4d0B85b716c87565f90467",
-        views: "0xc72fCC9793a10b9c363EeaAcaAbe422E0672B42B",
-        markets: baseMorphoMarketsList,
-        vaults: baseVaultList,
-      },
-    },
-    settings: {
-      governance: {
-        token: "WELL",
-        chainIds: [],
-      },
-    },
-  });
+    chain: base,
+    transport: transport || http(base.rpcUrls.default.http[0]),
+    indexerUrl: indexerUrl || "https//ponder.moonwell.fi",
+    tokens,
+    markets,
+    vaults,
+    morphoMarkets,
+    contracts,
+    custom,
+  }) as Environment<typeof tokens, typeof markets, typeof vaults, typeof contracts, typeof custom>;
 
-export { base, baseMarketsList, baseMorphoMarketsList, baseTokenList, baseVaultList, createBaseEnvironment };
+export { base, createEnvironment, markets, morphoMarkets, vaults, tokens };

@@ -12,14 +12,14 @@ export async function getStakingSnapshots(params: {
           items: StakingSnapshot[];
         };
       };
-    }>(params.environment.apis.indexerUrl, {
+    }>(params.environment.indexerUrl, {
       query: `
           query {
             stakingDailySnapshots(
               limit: 365,
               orderBy: "timestamp"
               orderDirection: "desc"
-              where: {chainId: ${params.environment.network.chain.id}}
+              where: {chainId: ${params.environment.chainId}}
             ) {
               items {
                 chainId

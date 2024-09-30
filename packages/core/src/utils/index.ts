@@ -2,14 +2,14 @@ import { DAYS_PER_YEAR, SECONDS_PER_DAY } from "@moonwell-sdk/common";
 import type { Environment } from "@moonwell-sdk/environments";
 
 export const findMarketByAddress = (environment: Environment, address: `0x${string}`) => {
-  const marketKey = Object.keys(environment.contracts.core?.markets || {}).find((key) => {
-    return environment.contracts.core?.markets[key]?.address === address;
+  const marketKey = Object.keys(environment.markets || {}).find((key) => {
+    return environment.markets[key]?.address === address;
   });
 
   if (marketKey) {
-    const marketConfig = environment.config.contracts.core!.markets?.[marketKey]!;
-    const marketToken = environment.tokens[marketConfig.marketToken]!;
-    const underlyingToken = environment.tokens[marketConfig.underlyingToken]!;
+    const marketConfig = environment.config.markets?.[marketKey]!;
+    const marketToken = environment.config.tokens[marketConfig.marketToken as string]!;
+    const underlyingToken = environment.config.tokens[marketConfig.underlyingToken as string]!;
 
     return {
       marketKey,
@@ -23,7 +23,7 @@ export const findMarketByAddress = (environment: Environment, address: `0x${stri
 };
 
 export const findTokenByAddress = (environment: Environment, token: `0x${string}`) =>
-  Object.values(environment.tokens).find((r) => r.address === token);
+  Object.values(environment.config.tokens).find((r) => r.address === token);
 
 export const perDay = (value: number) => value * SECONDS_PER_DAY;
 

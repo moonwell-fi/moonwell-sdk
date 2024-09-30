@@ -100,19 +100,19 @@ export const getProposalData = async (params: {
   environment: Environment;
   id?: number;
 }) => {
-  if (params.environment.contracts.core?.governor) {
+  if (params.environment.contracts.governor) {
     let count = 0n;
     let quorum = 0n;
 
-    if (params.environment.network.chain.id === moonriver.id) {
+    if (params.environment.chainId === moonriver.id) {
       [count, quorum] = await Promise.all([
-        params.environment.contracts.core.governor.read.proposalCount(),
-        params.environment.contracts.core.governor.read.getQuorum(),
+        params.environment.contracts.governor.read.proposalCount(),
+        params.environment.contracts.governor.read.getQuorum(),
       ]);
     } else {
       [count, quorum] = await Promise.all([
-        params.environment.contracts.core.governor.read.proposalCount(),
-        params.environment.contracts.core.governor.read.quorumVotes(),
+        params.environment.contracts.governor.read.proposalCount(),
+        params.environment.contracts.governor.read.quorumVotes(),
       ]);
     }
 
@@ -125,9 +125,9 @@ export const getProposalData = async (params: {
 
     const ids = params.id ? [BigInt(params.id)] : Array.from({ length: Number(count) }, (_, i) => count - BigInt(i));
 
-    const proposalDataCall = Promise.all(ids.map((id) => params.environment.contracts.core?.governor?.read.proposals([id])));
+    const proposalDataCall = Promise.all(ids.map((id) => params.environment.contracts.governor?.read.proposals([id])));
 
-    const proposalStateCall = Promise.all(ids.map((id) => params.environment.contracts.core?.governor?.read.state([id])));
+    const proposalStateCall = Promise.all(ids.map((id) => params.environment.contracts.governor?.read.state([id])));
 
     const [proposalsData, proposalsState] = await Promise.all([proposalDataCall, proposalStateCall]);
 
@@ -150,7 +150,7 @@ export const getProposalData = async (params: {
       ] = item!;
 
       const proposal: Proposal = {
-        chainId: params.environment.network.chain.id,
+        chainId: params.environment.chainId,
         id: Number(id),
         proposalId: Number(id),
         proposer,
@@ -181,22 +181,22 @@ export const getCrossChainProposalData = async (params: {
   environment: Environment;
   id?: number;
 }) => {
-  if (params.environment.contracts.core?.governor) {
-    const xcGovernanceSettings = params.environment.settings?.governance;
-    if (params.environment.contracts.core.multichainGovernor && xcGovernanceSettings && xcGovernanceSettings.chainIds.length > 0) {
+  if (params.environment.contracts.governor) {
+    const xcGovernanceSettings = params.environment.custom.governance;
+    if (params.environment.contracts.multichainGovernor && xcGovernanceSettings && xcGovernanceSettings.chainIds.length > 0) {
       const xcEnvironments = xcGovernanceSettings.chainIds
-        .map((chainId) => Object.values(publicEnvironments).find((env) => env.chain.id === chainId))
+        .map((chainId) => Object.values(publicEnvironments).find((env) => env.chainId === chainId))
         .filter((xcEnvironment) => !!xcEnvironment)
-        .filter((xcEnvironment) => xcEnvironment.chain.custom?.wormhole?.chainId && xcEnvironment.contracts.core?.voteCollector);
+        .filter((xcEnvironment) => xcEnvironment.custom?.wormhole?.chainId && xcEnvironment.contracts.voteCollector);
 
       const [xcCount, xcQuorum] = await Promise.all([
-        params.environment.contracts.core.multichainGovernor.read.proposalCount(),
-        params.environment.contracts.core.multichainGovernor.read.quorum(),
+        params.environment.contracts.multichainGovernor.read.proposalCount(),
+        params.environment.contracts.multichainGovernor.read.quorum(),
       ]);
 
       if (params.id) {
         //Fix proposal id
-        params.id = Number(params.id) - (params.environment.settings?.governance?.proposalIdOffset || 0);
+        params.id = Number(params.id) - (params.environment.custom?.governance?.proposalIdOffset || 0);
 
         if (params.id < 0) {
           return [];
@@ -209,25 +209,20 @@ export const getCrossChainProposalData = async (params: {
 
       const xcIds = params.id ? [BigInt(params.id)] : Array.from({ length: Number(xcCount) }, (_, i) => xcCount - BigInt(i));
 
-      const xcProposalsDataCall = Promise.all(
-        xcIds.map((id) => params.environment.contracts.core!.multichainGovernor?.read.proposals([id])),
-      );
+      const xcProposalsDataCall = Promise.all(xcIds.map((id) => params.environment.contracts.multichainGovernor?.read.proposals([id])));
 
-      const xcProposalsStateCall = Promise.all(xcIds.map((id) => params.environment.contracts.core!.multichainGovernor?.read.state([id])));
+      const xcProposalsStateCall = Promise.all(xcIds.map((id) => params.environment.contracts.multichainGovernor?.read.state([id])));
 
       const xcProposalsCollectedVotes = xcEnvironments.map((xcEnvironment) => {
         return Promise.all(
           xcIds.map((id) =>
-            params.environment.contracts.core!.multichainGovernor!.read.chainVoteCollectorVotes([
-              xcEnvironment.chain.custom!.wormhole!.chainId,
-              id,
-            ]),
+            params.environment.contracts.multichainGovernor!.read.chainVoteCollectorVotes([xcEnvironment.custom!.wormhole!.chainId, id]),
           ),
         );
       });
 
       const xcProposalsVotes = xcEnvironments.map((xcEnvironment) => {
-        return Promise.all(xcIds.map((id) => xcEnvironment.contracts.core!.voteCollector!.read.proposalVotes([id])));
+        return Promise.all(xcIds.map((id) => xcEnvironment.contracts.voteCollector!.read.proposalVotes([id])));
       });
 
       const [xcProposalsData, xcProposalsState, xcCollectorVotes, xcVotes] = await Promise.all([
@@ -238,7 +233,7 @@ export const getCrossChainProposalData = async (params: {
       ]);
 
       const proposals = xcIds.map((xcId, proposalIndex) => {
-        const id = Number(xcId) + (params.environment.settings?.governance?.proposalIdOffset || 0);
+        const id = Number(xcId) + (params.environment.custom?.governance?.proposalIdOffset || 0);
 
         const state = xcProposalsState?.[proposalIndex]!;
 
@@ -281,7 +276,7 @@ export const getCrossChainProposalData = async (params: {
         const multichainState = (MultichainProposalStateMapping as { [key: number]: ProposalState })[state]!;
 
         const proposal: Proposal = {
-          chainId: params.environment.network.chain.id,
+          chainId: params.environment.chainId,
           id,
           proposalId: Number(xcId),
           proposer,
@@ -349,7 +344,7 @@ export const getExtendedProposalData = async (params: {
           }[];
         };
       };
-    }>(params.environment.apis.indexerUrl, {
+    }>(params.environment.indexerUrl, {
       query: `
           query {
             proposals(
@@ -357,7 +352,7 @@ export const getExtendedProposalData = async (params: {
               orderDirection: "desc", 
               orderBy: "proposalId", 
               where: { 
-                chainId: ${params.environment.network.chain.id}
+                chainId: ${params.environment.chainId}
                 ${params.id ? `, proposalId: ${params.id}` : lastId >= 0 ? `, proposalId_lt: ${lastId}` : ""} 
               }
             ) {

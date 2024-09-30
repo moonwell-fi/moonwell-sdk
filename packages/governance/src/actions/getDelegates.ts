@@ -83,7 +83,7 @@ export async function getDelegates(): Promise<GetDelegatesReturnType> {
 
   const votingPowers = await Promise.all(
     users.map(async (user) =>
-      Promise.all(envs.map((environment) => environment.contracts.core?.views?.read.getUserVotingPower([user.wallet as `0x${string}`]))),
+      Promise.all(envs.map((environment) => environment.contracts.views?.read.getUserVotingPower([user.wallet as `0x${string}`]))),
     ),
   );
 
@@ -102,7 +102,7 @@ export async function getDelegates(): Promise<GetDelegatesReturnType> {
 
           return {
             ...prev,
-            [curr.network.chain.id]: Number(totalVotes / BigInt(10 ** 18)),
+            [curr.chainId]: Number(totalVotes / BigInt(10 ** 18)),
           };
         },
         {} as { [chainId: string]: number },
@@ -153,7 +153,7 @@ const getDelegatesExtendedData = async (params: {
         }[];
       };
     };
-  }>(publicEnvironments.moonbeam.apis.indexerUrl, {
+  }>(publicEnvironments.moonbeam.indexerUrl, {
     query: `
       query {
         proposers(where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}) {

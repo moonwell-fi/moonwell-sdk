@@ -1,115 +1,122 @@
-import type { Chain, Prettify } from "viem";
-import { type baseMarketsList, type baseMorphoMarketsList, createBaseEnvironment } from "./definitions/base/environment.js";
-import type { baseVaultList } from "./definitions/base/morpho-vaults.js";
-import { base } from "./definitions/base/network.js";
-import type { baseTokenList } from "./definitions/base/tokens.js";
+import type { Chain, Prettify, Transport } from "viem";
 import {
   type GovernanceToken,
   type GovernanceTokenInfo,
   GovernanceTokensConfig,
   type GovernanceTokensType,
 } from "./definitions/governance.js";
-import type { moonbeamMarketsList } from "./definitions/moonbeam/core-markets.js";
-import { createMoonbeamEnvironment } from "./definitions/moonbeam/environment.js";
-import { moonbeam } from "./definitions/moonbeam/network.js";
-import type { moonbeamTokenList } from "./definitions/moonbeam/tokens.js";
-import { createMoonriverEnvironment, type moonriverMarketsList } from "./definitions/moonriver/environment.js";
-import { moonriver } from "./definitions/moonriver/network.js";
-import type { moonriverTokenList } from "./definitions/moonriver/tokens.js";
-import { createOptimismEnvironment, optimism, type optimismMarketsList } from "./definitions/optimism/environment.js";
-import type { optimismTokenList } from "./definitions/optimism/tokens.js";
-import type { Environment, TokenConfig } from "./types/environment.js";
-import type { Network } from "./types/network.js";
 
-export type { Network, TokenConfig, Environment, GovernanceToken, GovernanceTokenInfo, GovernanceTokensType };
-export { base, moonbeam, moonriver, optimism, GovernanceTokensConfig };
-
-const supportedNetworks = {
+import {
   base,
-  moonbeam,
-  moonriver,
-  optimism,
-};
+  type markets as baseMarkets,
+  type morphoMarkets as baseMorphoMarkets,
+  type tokens as baseTokens,
+  type vaults as baseVaults,
+  createEnvironment as createBaseEnvironment,
+} from "./definitions/base/environment.js";
 
-type BaseEnvironmentType = ReturnType<typeof createBaseEnvironment>;
-type MoonbeamEnvironmentType = ReturnType<typeof createMoonbeamEnvironment>;
-type MoonriverEnvironmentType = ReturnType<typeof createMoonriverEnvironment>;
-type OptimismEnvironmentType = ReturnType<typeof createOptimismEnvironment>;
+import {
+  createEnvironment as createMoonbeamEnvironment,
+  type markets as moonbeamMarkets,
+  type tokens as moonbeamTokens,
+} from "./definitions/moonbeam/environment.js";
 
-export type ChainConfig = {
-  rpcUrls?: string[];
+import {
+  createEnvironment as createMoonriverEnvironment,
+  type markets as moonriverMarkets,
+  type tokens as moonriverTokens,
+} from "./definitions/moonriver/environment.js";
+
+import {
+  createEnvironment as createOptimismEnvironment,
+  type markets as optimismMarkets,
+  type tokens as optimismTokens,
+} from "./definitions/optimism/environment.js";
+
+import { moonbeam, moonriver, optimism } from "viem/chains";
+import type { Environment, TokenConfig } from "./types/config.js";
+
+export type {
+  GovernanceToken,
+  GovernanceTokenInfo,
+  GovernanceTokensType,
+  Environment,
+  BaseEnvironment,
+  MoonbeamEnvironment,
+  MoonriverEnvironment,
+  OptimismEnvironment,
+  Chain,
+  Prettify,
+  Transport,
+  SupportedChains,
+  TokenConfig,
 };
+export { base, GovernanceTokensConfig, moonbeam, moonriver, optimism, supportedChains };
+
+const supportedChains = { base, optimism, moonriver, moonbeam };
+type SupportedChains = Prettify<keyof typeof supportedChains>;
+
+type BaseEnvironment = ReturnType<typeof createBaseEnvironment>;
+type MoonbeamEnvironment = ReturnType<typeof createMoonbeamEnvironment>;
+type MoonriverEnvironment = ReturnType<typeof createMoonriverEnvironment>;
+type OptimismEnvironment = ReturnType<typeof createOptimismEnvironment>;
 
 export type GetEnvironment<chain> = chain extends typeof base
-  ? BaseEnvironmentType
+  ? BaseEnvironment
   : chain extends typeof moonbeam
-    ? MoonbeamEnvironmentType
+    ? MoonbeamEnvironment
     : chain extends typeof moonriver
-      ? MoonriverEnvironmentType
+      ? MoonriverEnvironment
       : chain extends typeof optimism
-        ? OptimismEnvironmentType
+        ? OptimismEnvironment
         : undefined;
 
-export type CreateEnvironmentsReturnType<chains> = {
-  [name in keyof chains]: GetEnvironment<chains[name]>;
+export const createEnvironment = <const chain extends Chain>(config: {
+  chain: chain;
+  transport?: Transport;
+  indexerUrl?: string;
+}): GetEnvironment<chain> => {
+  switch (config.chain.id) {
+    case base.id:
+      return createBaseEnvironment(config.transport, config.indexerUrl) as GetEnvironment<chain>;
+    case moonbeam.id:
+      return createMoonbeamEnvironment(config.transport, config.indexerUrl) as GetEnvironment<chain>;
+    case moonriver.id:
+      return createMoonriverEnvironment(config.transport, config.indexerUrl) as GetEnvironment<chain>;
+    case optimism.id:
+      return createOptimismEnvironment(config.transport, config.indexerUrl) as GetEnvironment<chain>;
+    default:
+      throw new Error("Unsupported chainId");
+  }
 };
 
-export const createEnvironment = <networkType extends Chain>(network: Network<networkType>, rpcUrls?: string[]) => {
-  const result =
-    network.chain.id === base.chain.id
-      ? createBaseEnvironment(rpcUrls ?? [])
-      : network.chain.id === moonbeam.chain.id
-        ? createMoonbeamEnvironment(rpcUrls ?? [])
-        : network.chain.id === moonriver.chain.id
-          ? createMoonriverEnvironment(rpcUrls ?? [])
-          : network.chain.id === optimism.chain.id
-            ? createOptimismEnvironment(rpcUrls ?? [])
-            : undefined;
-  return result as GetEnvironment<networkType>;
-};
+export const publicEnvironments = {
+  base: createEnvironment({ chain: base }),
+  moonbeam: createEnvironment({ chain: moonbeam }),
+  moonriver: createEnvironment({ chain: moonriver }),
+  optimism: createEnvironment({ chain: optimism }),
+} as unknown as { [name in keyof typeof supportedChains]: Environment };
 
-export const createEnvironments = <const chains>(config: { [name in keyof chains]: ChainConfig }) => {
-  const result = Object.keys(config).reduce(
-    (prev, curr: string) => {
-      const item = config[curr as keyof chains] as ChainConfig;
-      const network = supportedNetworks[curr as keyof typeof supportedNetworks] as unknown as Network<any>;
-      return {
-        ...prev,
-        curr: createEnvironment(network, item.rpcUrls),
-      };
-    },
-    {} as { [name in keyof chains]?: unknown },
-  );
-  return result as Prettify<CreateEnvironmentsReturnType<chains>>;
-};
-
-export const publicEnvironments = createEnvironments<typeof supportedNetworks>({
-  base: {},
-  moonbeam: {},
-  moonriver: {},
-  optimism: {},
-}) as { [name in keyof typeof supportedNetworks]: Environment };
-
-export type TokensType<T> = T extends BaseEnvironmentType
-  ? typeof baseTokenList
-  : T extends MoonbeamEnvironmentType
-    ? typeof moonbeamTokenList
-    : T extends MoonriverEnvironmentType
-      ? typeof moonriverTokenList
-      : T extends OptimismEnvironmentType
-        ? typeof optimismTokenList
+export type TokensType<chain> = chain extends typeof base
+  ? typeof baseTokens
+  : chain extends typeof moonbeam
+    ? typeof moonbeamTokens
+    : chain extends typeof moonriver
+      ? typeof moonriverTokens
+      : chain extends typeof optimism
+        ? typeof optimismTokens
         : undefined;
 
-export type MarketsType<T> = T extends BaseEnvironmentType
-  ? typeof baseMarketsList
-  : T extends MoonbeamEnvironmentType
-    ? typeof moonbeamMarketsList
-    : T extends MoonriverEnvironmentType
-      ? typeof moonriverMarketsList
-      : T extends OptimismEnvironmentType
-        ? typeof optimismMarketsList
+export type MarketsType<chain> = chain extends typeof base
+  ? typeof baseMarkets
+  : chain extends typeof moonbeam
+    ? typeof moonbeamMarkets
+    : chain extends typeof moonriver
+      ? typeof moonriverMarkets
+      : chain extends typeof optimism
+        ? typeof optimismMarkets
         : undefined;
 
-export type VaultsType<T> = T extends BaseEnvironmentType ? typeof baseVaultList : undefined;
+export type VaultsType<chain> = chain extends typeof base ? typeof baseVaults : undefined;
 
-export type MorphoMarketsType<T> = T extends BaseEnvironmentType ? typeof baseMorphoMarketsList : undefined;
+export type MorphoMarketsType<chain> = chain extends typeof base ? typeof baseMorphoMarkets : undefined;

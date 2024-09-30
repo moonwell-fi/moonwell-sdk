@@ -15,8 +15,8 @@ export async function getUserBalances(params: {
     const environmentsTokensBalances = await Promise.all(
       environments.map((environment) => {
         return Promise.all([
-          environment.contracts.core?.views.read.getTokensBalances([
-            Object.values(environment.tokens).map((token) => token.address),
+          environment.contracts.views?.read.getTokensBalances([
+            Object.values(environment.config.tokens).map((token) => token.address),
             params.account,
           ]),
         ]);
@@ -31,7 +31,7 @@ export async function getUserBalances(params: {
           const token = findTokenByAddress(curr, balance.token);
           if (token) {
             const result: UserBalance = {
-              chainId: curr.network.chain.id,
+              chainId: curr.chainId,
               account,
               token,
               tokenBalance: new Amount(balance.amount, token.decimals),
@@ -45,7 +45,7 @@ export async function getUserBalances(params: {
 
       return {
         ...prev,
-        [curr.network.chain.id]: userBalances,
+        [curr.chainId]: userBalances,
       };
     }, {} as GetUserBalancesReturnType);
 

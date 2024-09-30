@@ -1,7 +1,7 @@
 import { zeroAddress } from "viem";
-import { createTokenList } from "../../types/environment.js";
+import { createTokenConfig } from "../../types/config.js";
 
-export const moonbeamTokenList = createTokenList({
+export const tokens = createTokenConfig({
   GLMR: {
     address: zeroAddress,
     decimals: 18,

@@ -1,8 +1,8 @@
-import { createMarketList } from "../../types/environment.js";
-import { moonriverTokenList } from "./tokens.js";
+import { createMarketConfig } from "../../types/config.js";
+import { tokens } from "./tokens.js";
 
-export const moonriverMarketsList = createMarketList({
-  tokens: moonriverTokenList,
+export const markets = createMarketConfig({
+  tokens,
   markets: {
     MOONWELL_MOVR: {
       marketToken: "MOONWELL_MOVR",

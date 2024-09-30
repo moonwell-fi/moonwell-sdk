@@ -6,10 +6,10 @@ import { zeroAddress } from "viem";
 
 export const getMarketsData = async (environment: Environment) => {
   const homeEnvironment =
-    Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.network.chain.id)) || environment;
+    Object.values(publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
 
-  const viewsContract = environment.contracts.core?.views;
-  const homeViewsContract = homeEnvironment.contracts.core?.views;
+  const viewsContract = environment.contracts.views;
+  const homeViewsContract = homeEnvironment.contracts.views;
 
   const marketData = await Promise.all([
     viewsContract?.read.getProtocolInfo(),
@@ -72,7 +72,7 @@ export const getMarketsData = async (environment: Environment) => {
       const baseBorrowApy = calculateApy(borrowRate.value);
 
       const market: Market = {
-        chainId: environment.network.chain.id,
+        chainId: environment.chainId,
         deprecated: marketConfig.deprecated === true,
         borrowCaps,
         borrowCapsUsd,
@@ -104,7 +104,7 @@ export const getMarketsData = async (environment: Environment) => {
         const token = findTokenByAddress(environment, tokenAddress);
 
         if (token) {
-          const isGovernanceToken = token.symbol === environment.settings?.governance?.token;
+          const isGovernanceToken = token.symbol === environment.custom?.governance?.token;
           const isNativeToken = token.address === zeroAddress;
           const tokenPrice = tokenPrices.find((r) => r.token.address === incentive.token)?.tokenPrice.value;
           const price = isNativeToken ? nativeTokenPrice.value : isGovernanceToken ? governanceTokenPrice.value : tokenPrice;
@@ -141,7 +141,7 @@ export const getMarketsData = async (environment: Environment) => {
   const totalBorrowsUsd = markets.reduce((prev, curr) => prev + curr.totalBorrowsUsd, 0);
 
   const result: CoreMarket = {
-    chainId: environment.network.chain.id,
+    chainId: environment.chainId,
     seizeGuardianPaused: seizePaused,
     transferGuardianPaused: transferPaused,
     markets,

@@ -14,19 +14,18 @@ export async function getStakingInfo(params: {
     const envStakingInfo = await Promise.all(
       envsWithStaking.map((environment) => {
         const homeEnvironment =
-          Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.network.chain.id)) ||
-          environment;
+          Object.values(publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
 
         return Promise.all([
-          environment.contracts.core?.views.read.getStakingInfo(),
-          homeEnvironment.contracts.core?.views.read.getGovernanceTokenPrice(),
+          environment.contracts.views?.read.getStakingInfo(),
+          homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
         ]);
       }),
     );
 
     const stakingInfo = envsWithStaking.reduce((prev, curr, index) => {
-      const token = curr.tokens[curr.config.contracts.governanceToken!]!;
-      const stakingToken = curr.tokens[curr.config.contracts.stakingToken!]!;
+      const token = curr.config.tokens[curr.config.contracts.governanceToken as string]!;
+      const stakingToken = curr.config.tokens[curr.config.contracts.stakingToken as string]!;
 
       const {
         cooldown,
@@ -49,7 +48,7 @@ export async function getStakingInfo(params: {
 
       const result: StakingInfo = {
         apr,
-        chainId: curr.network.chain.id,
+        chainId: curr.chainId,
         cooldown: Number(cooldown),
         distributionEnd: Number(distributionEnd),
         token,
@@ -62,7 +61,7 @@ export async function getStakingInfo(params: {
 
       return {
         ...prev,
-        [curr.network.chain.id]: result,
+        [curr.chainId]: result,
       };
     }, {} as GetStakingInfoType);
 

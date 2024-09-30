@@ -1,7 +1,6 @@
 import type { UserStakingInfo } from "@/types/staking.js";
 import { Amount, type MultichainReturnType } from "@moonwell-sdk/common";
-import { publicEnvironments } from "@moonwell-sdk/environments";
-import type { Environment } from "../../../environments/src/types/environment.js";
+import { type Environment, publicEnvironments } from "@moonwell-sdk/environments";
 
 export type GetUserStakingInfoReturnType = MultichainReturnType<UserStakingInfo>;
 
@@ -16,21 +15,20 @@ export async function getUserStakingInfo(params: {
     const envStakingInfo = await Promise.all(
       envsWithStaking.map((environment) => {
         const homeEnvironment =
-          Object.values(publicEnvironments).find((e) => e.settings?.governance?.chainIds?.includes(environment.network.chain.id)) ||
-          environment;
+          Object.values(publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
 
         return Promise.all([
-          environment.contracts.core?.views.read.getUserStakingInfo([params.account]),
+          environment.contracts.views?.read.getUserStakingInfo([params.account]),
           environment.contracts.governanceToken?.read.balanceOf([params.account]),
-          homeEnvironment.contracts.core?.views.read.getGovernanceTokenPrice(),
-          environment.contracts.core?.views.read.getStakingInfo(),
+          homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
+          environment.contracts.views?.read.getStakingInfo(),
         ]);
       }),
     );
 
     const stakingInfo = envsWithStaking.reduce((prev, curr, index) => {
-      const token = curr.tokens[curr.config.contracts.governanceToken!]!;
-      const stakingToken = curr.tokens[curr.config.contracts.stakingToken!]!;
+      const token = curr.config.tokens[curr.config.contracts.governanceToken as string]!;
+      const stakingToken = curr.config.tokens[curr.config.contracts.stakingToken as string]!;
 
       const { cooldown, pendingRewards, totalStaked } = envStakingInfo[index]![0]!;
 
@@ -46,7 +44,7 @@ export async function getUserStakingInfo(params: {
       const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
 
       const result: UserStakingInfo = {
-        chainId: curr.network.chain.id,
+        chainId: curr.chainId,
         cooldownActive: cooldown > 0n,
         cooldownStart: Number(cooldown),
         cooldownEnding: Number(cooldownEnding),
@@ -62,7 +60,7 @@ export async function getUserStakingInfo(params: {
 
       return {
         ...prev,
-        [curr.network.chain.id]: result,
+        [curr.chainId]: result,
       };
     }, {} as GetUserStakingInfoReturnType);
 

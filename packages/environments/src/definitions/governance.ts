@@ -1,6 +1,4 @@
-import { base } from "./base/network.js";
-import { moonbeam } from "./moonbeam/network.js";
-import { moonriver } from "./moonriver/network.js";
+import { base, moonbeam, moonriver } from "viem/chains";
 
 export interface GovernanceTokenInfo {
   id: string;
@@ -30,14 +28,14 @@ export const GovernanceTokensConfig = createGovernanceTokensConfig({
     id: "WELL",
     symbol: "WELL",
     name: "WELL",
-    chainIds: [moonbeam.chain.id, base.chain.id] as number[],
+    chainIds: [moonbeam.id, base.id] as number[],
     testnet: false,
   },
   MFAM: {
     id: "MFAM",
     symbol: "MFAM",
     name: "MFAM",
-    chainIds: [moonriver.chain.id] as number[],
+    chainIds: [moonriver.id] as number[],
     testnet: false,
   },
 });

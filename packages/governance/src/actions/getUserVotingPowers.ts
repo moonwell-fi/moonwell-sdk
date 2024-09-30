@@ -10,17 +10,17 @@ export async function getUserVotingPowers(params: {
   user: `0x${string}`;
   governanceToken: GovernanceToken;
 }): Promise<GetUserVotingPowersType | undefined> {
-  const tokenEnvironments = params.environments.filter((env) => env.config.settings?.governance?.token === params.governanceToken);
+  const tokenEnvironments = params.environments.filter((env) => env.custom?.governance?.token === params.governanceToken);
 
   const environmentsUserVotingPowers = await Promise.all(
-    tokenEnvironments.map((environment) => environment.contracts.core?.views?.read.getUserVotingPower([params.user])),
+    tokenEnvironments.map((environment) => environment.contracts.views?.read.getUserVotingPower([params.user])),
   );
 
   return tokenEnvironments.map((environment, index) => {
     const votingPowers = environmentsUserVotingPowers[index]!;
 
     return {
-      chainId: environment.network.chain.id,
+      chainId: environment.chainId,
 
       //Claims balances
       claimsDelegates: votingPowers.claimsVotes.delegates,

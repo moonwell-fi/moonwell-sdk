@@ -1,7 +1,7 @@
 import { zeroAddress } from "viem";
-import { createTokenList } from "../../types/environment.js";
+import { createTokenConfig } from "../../types/config.js";
 
-export const baseTokenList = createTokenList({
+export const tokens = createTokenConfig({
   ETH: {
     address: zeroAddress,
     decimals: 18,

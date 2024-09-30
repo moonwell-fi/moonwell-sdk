@@ -1,7 +1,7 @@
 import { zeroAddress } from "viem";
-import { createTokenList } from "../../types/environment.js";
+import { createTokenConfig } from "../../types/config.js";
 
-export const moonriverTokenList = createTokenList({
+export const tokens = createTokenConfig({
   MOVR: {
     address: zeroAddress,
     decimals: 18,

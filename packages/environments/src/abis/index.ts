@@ -1,5 +1,5 @@
 import ChainLinkOracleAbi from "./chainLinkOracleAbi.js";
-import ComptrollerTokenAbi from "./comptrollerTokenAbi.js";
+import ComptrollerTokenAbi from "./comptrollerAbi.js";
 import CoreRouterAbi from "./coreRouterAbi.js";
 import CoreViewsAbi from "./coreViewsAbi.js";
 import GovernanceTokenAbi from "./governanceTokenAbi.js";

@@ -1,5 +1,5 @@
 import type { SnapshotProposal } from "@/types/snapshotProposal.js";
-import { type Environment, base, optimism } from "@moonwell-sdk/environments";
+import { type Environment, base, optimism, supportedChains } from "@moonwell-sdk/environments";
 import axios from "axios";
 import type { GetSnapshotProposalsReturnType } from "./getSnapshotProposals.js";
 
@@ -17,7 +17,7 @@ export const getSnapshotProposalData = async (params: {
   const environments = params.environments;
 
   const snapshotApiUrl = "https://hub.snapshot.org/graphql";
-  const snapshotEnsNames = environments.map((env) => env.settings?.governance?.snapshotEnsName).filter((name) => !!name);
+  const snapshotEnsNames = environments.map((env) => env.custom?.governance?.snapshotEnsName).filter((name) => !!name);
 
   const pageSize = params.pagination?.size ? params.pagination.size : 10;
 
@@ -89,7 +89,7 @@ export const getSnapshotProposalData = async (params: {
     const result: SnapshotProposal[] = response.data.data.proposals.map((proposal) => {
       const networkId = Number.parseInt(proposal.network);
 
-      let chain = environments.find((env) => env.network.chain.id === networkId)!.network.chain;
+      let chain = Object.values(supportedChains).find((c) => c.id === networkId);
 
       if (proposal.title.toLowerCase().includes("base")) {
         chain = base as any;
@@ -111,8 +111,8 @@ export const getSnapshotProposalData = async (params: {
         created: proposal.created,
         discussion: proposal.discussion,
         network: {
-          id: chain?.id,
-          name: chain?.name,
+          id: chain?.id as number,
+          name: chain?.name as string,
         },
         end: proposal.end,
         scores,
