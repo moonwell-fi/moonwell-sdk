@@ -15,9 +15,10 @@ src/node/trustedSetups_esm.ts
 .idea
 
 # build
-src/_cjs
-src/_esm
-src/_types
+/src/_cjs
+/src/_esm
+/src/_types
+/src/*.tsbuildinfo
 
 # local env files
 .env
