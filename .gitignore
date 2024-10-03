@@ -1,6 +1,4 @@
-src/_cjs
-src/_esm
-src/_types
+
 *.local
 .DS_Store
 .attest
@@ -15,6 +13,11 @@ wagmi
 src/node/trustedSetups_esm.ts
 **/trusted-setups/**/*.txt
 .idea
+
+# build
+src/_cjs
+src/_esm
+src/_types
 
 # local env files
 .env

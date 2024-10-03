@@ -1,1 +1,0 @@
-{"version":3,"file":"discussion.d.ts","sourceRoot":"","sources":["../../../governance/types/discussion.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,UAAU,GAAG;IACvB,KAAK,EAAE,MAAM,CAAC;IACd,KAAK,EAAE,MAAM,CAAC;IACd,OAAO,EAAE,MAAM,CAAC;IAChB,SAAS,EAAE,MAAM,CAAC;IAClB,IAAI,EAAE,MAAM,CAAC;IACb,IAAI,EAAE,MAAM,EAAE,CAAC;CAChB,CAAC"}

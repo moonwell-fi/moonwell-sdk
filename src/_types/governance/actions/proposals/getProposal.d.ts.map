@@ -1,1 +1,0 @@
-{"version":3,"file":"getProposal.d.ts","sourceRoot":"","sources":["../../../../governance/actions/proposals/getProposal.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,gCAAgC,CAAC;AAClE,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,yBAAyB,CAAC;AAQxD,wBAAsB,WAAW,CAAC,MAAM,EAAE;IACxC,WAAW,EAAE,WAAW,CAAC;IACzB,EAAE,EAAE,MAAM,CAAC;CACZ,GAAG,OAAO,CAAC,QAAQ,GAAG,SAAS,CAAC,CAYhC"}
