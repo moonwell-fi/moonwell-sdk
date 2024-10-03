@@ -1,6 +1,6 @@
-_cjs
-_esm
-_types
+src/_cjs
+src/_esm
+src/_types
 *.local
 .DS_Store
 .attest
