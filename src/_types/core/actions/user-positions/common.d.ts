@@ -1,5 +1,5 @@
-import { type Address } from "viem";
-import { type Environment } from "../../../environments/index.js";
+import type { Address } from "viem";
+import type { Environment } from "../../../environments/index.js";
 import type { UserMarketPosition } from "../../types/userPosition.js";
 export declare const getUserPositionData: (params: {
     environment: Environment;

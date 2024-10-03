@@ -1,7 +1,7 @@
 export declare const custom: {
     governance: {
         token: "WELL";
-        chainIds: (8453 | 10)[];
+        chainIds: (10 | 8453)[];
         proposalIdOffset: number;
         snapshotEnsName: string;
     };

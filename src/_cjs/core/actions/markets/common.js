@@ -3,11 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getMarketsData = void 0;
 const viem_1 = require("viem");
 const index_js_1 = require("../../../common/index.js");
-const index_js_2 = require("../../../environments/index.js");
-const index_js_3 = require("../../../environments/utils/index.js");
-const index_js_4 = require("../../../common/index.js");
+const index_js_2 = require("../../../common/index.js");
+const index_js_3 = require("../../../environments/index.js");
+const index_js_4 = require("../../../environments/utils/index.js");
 const getMarketsData = async (environment) => {
-    const homeEnvironment = Object.values(index_js_2.publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
+    const homeEnvironment = Object.values(index_js_3.publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
     const viewsContract = environment.contracts.views;
     const homeViewsContract = homeEnvironment.contracts.views;
     const marketData = await Promise.all([
@@ -25,7 +25,7 @@ const getMarketsData = async (environment) => {
     const markets = [];
     const tokenPrices = allMarketsInfo
         .map((marketInfo) => {
-        const marketFound = (0, index_js_3.findMarketByAddress)(environment, marketInfo.market);
+        const marketFound = (0, index_js_4.findMarketByAddress)(environment, marketInfo.market);
         if (marketFound) {
             return {
                 token: marketFound.underlyingToken,
@@ -38,7 +38,7 @@ const getMarketsData = async (environment) => {
     })
         .filter((token) => !!token);
     for (const marketInfo of allMarketsInfo) {
-        const marketFound = (0, index_js_3.findMarketByAddress)(environment, marketInfo.market);
+        const marketFound = (0, index_js_4.findMarketByAddress)(environment, marketInfo.market);
         if (marketFound) {
             const { marketConfig, marketToken, underlyingToken } = marketFound;
             const supplyCaps = new index_js_1.Amount(marketInfo.supplyCap, underlyingToken.decimals);
@@ -60,8 +60,8 @@ const getMarketsData = async (environment) => {
             const totalReservesUsd = totalReserves.value * underlyingPrice;
             const supplyCapsUsd = supplyCaps.value * underlyingPrice;
             const borrowCapsUsd = borrowCaps.value * underlyingPrice;
-            const baseSupplyApy = (0, index_js_4.calculateApy)(supplyRate.value);
-            const baseBorrowApy = (0, index_js_4.calculateApy)(borrowRate.value);
+            const baseSupplyApy = (0, index_js_2.calculateApy)(supplyRate.value);
+            const baseBorrowApy = (0, index_js_2.calculateApy)(borrowRate.value);
             const market = {
                 chainId: environment.chainId,
                 seizePaused,
@@ -92,7 +92,7 @@ const getMarketsData = async (environment) => {
             };
             for (const incentive of marketInfo.incentives) {
                 let { borrowIncentivesPerSec, supplyIncentivesPerSec, token: tokenAddress, } = incentive;
-                const token = (0, index_js_3.findTokenByAddress)(environment, tokenAddress);
+                const token = (0, index_js_4.findTokenByAddress)(environment, tokenAddress);
                 if (token) {
                     const isGovernanceToken = token.symbol === environment.custom?.governance?.token;
                     const isNativeToken = token.address === viem_1.zeroAddress;
@@ -106,9 +106,9 @@ const getMarketsData = async (environment) => {
                         if (token.symbol === "USDC" && borrowIncentivesPerSec === 1n) {
                             borrowIncentivesPerSec = 0n;
                         }
-                        const supplyRewardsPerDayUsd = (0, index_js_4.perDay)(new index_js_1.Amount(supplyIncentivesPerSec, token.decimals).value) *
+                        const supplyRewardsPerDayUsd = (0, index_js_2.perDay)(new index_js_1.Amount(supplyIncentivesPerSec, token.decimals).value) *
                             price;
-                        const borrowRewardsPerDayUsd = (0, index_js_4.perDay)(new index_js_1.Amount(borrowIncentivesPerSec, token.decimals).value) *
+                        const borrowRewardsPerDayUsd = (0, index_js_2.perDay)(new index_js_1.Amount(borrowIncentivesPerSec, token.decimals).value) *
                             price;
                         const supplyApr = (supplyRewardsPerDayUsd / totalSupplyUsd) * index_js_1.DAYS_PER_YEAR * 100;
                         const borrowApr = (borrowRewardsPerDayUsd / totalBorrowsUsd) * index_js_1.DAYS_PER_YEAR * 100;

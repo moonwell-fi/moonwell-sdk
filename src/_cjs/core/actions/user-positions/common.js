@@ -11,7 +11,7 @@ const getUserPositionData = async (params) => {
         viewsContract?.read.getUserBorrowsBalances([params.account]),
         viewsContract?.read.getUserMarketsMemberships([params.account]),
     ]);
-    const [allMarkets, balances, borrows, memberships,] = userData;
+    const [allMarkets, balances, borrows, memberships] = userData;
     const markets = allMarkets
         ?.map((marketInfo) => {
         const market = (0, index_js_2.findMarketByAddress)(params.environment, marketInfo.market);

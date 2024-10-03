@@ -1,6 +1,4 @@
-import {} from "viem";
 import { Amount } from "../../../common/index.js";
-import {} from "../../../environments/index.js";
 import { findMarketByAddress } from "../../../environments/utils/index.js";
 export const getUserPositionData = async (params) => {
     const viewsContract = params.environment.contracts.views;
@@ -10,7 +8,7 @@ export const getUserPositionData = async (params) => {
         viewsContract?.read.getUserBorrowsBalances([params.account]),
         viewsContract?.read.getUserMarketsMemberships([params.account]),
     ]);
-    const [allMarkets, balances, borrows, memberships,] = userData;
+    const [allMarkets, balances, borrows, memberships] = userData;
     const markets = allMarkets
         ?.map((marketInfo) => {
         const market = findMarketByAddress(params.environment, marketInfo.market);

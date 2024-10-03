@@ -2,7 +2,7 @@ import type { Environment } from "../../../environments/index.js";
 import type { MorphoMarketUserPosition } from "../../types/userPosition.js";
 import { getMorphoMarketUserPositionsData } from "./common.js";
 
-export async function getMorphoVaultUserPosition(params: {
+export async function getMorphoMarketUserPosition(params: {
   environment: Environment;
   account: `0x${string}`;
   market: string;

@@ -1,8 +1,8 @@
 import { zeroAddress } from "viem";
 import { Amount, DAYS_PER_YEAR } from "../../../common/index.js";
+import { calculateApy, perDay } from "../../../common/index.js";
 import { publicEnvironments, } from "../../../environments/index.js";
 import { findMarketByAddress, findTokenByAddress, } from "../../../environments/utils/index.js";
-import { calculateApy, perDay, } from "../../../common/index.js";
 export const getMarketsData = async (environment) => {
     const homeEnvironment = Object.values(publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
     const viewsContract = environment.contracts.views;
