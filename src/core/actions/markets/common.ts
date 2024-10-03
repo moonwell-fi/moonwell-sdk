@@ -1,16 +1,15 @@
 import { zeroAddress } from "viem";
 import { Amount, DAYS_PER_YEAR } from "../../../common/index.js";
+import { calculateApy, perDay } from "../../../common/index.js";
 import {
   type Environment,
   publicEnvironments,
 } from "../../../environments/index.js";
-import type { CoreMarket, Market } from "../../types/market.js";
 import {
-  calculateApy,
   findMarketByAddress,
   findTokenByAddress,
-  perDay,
-} from "../../utils/index.js";
+} from "../../../environments/utils/index.js";
+import type { Market } from "../../types/market.js";
 
 export const getMarketsData = async (environment: Environment) => {
   const homeEnvironment =
@@ -111,6 +110,8 @@ export const getMarketsData = async (environment: Environment) => {
 
       const market: Market = {
         chainId: environment.chainId,
+        seizePaused,
+        transferPaused,
         deprecated: marketConfig.deprecated === true,
         borrowCaps,
         borrowCapsUsd,
@@ -196,24 +197,5 @@ export const getMarketsData = async (environment: Environment) => {
     }
   }
 
-  const totalSupplyUsd = markets.reduce(
-    (prev, curr) => prev + curr.totalSupplyUsd,
-    0,
-  );
-
-  const totalBorrowsUsd = markets.reduce(
-    (prev, curr) => prev + curr.totalBorrowsUsd,
-    0,
-  );
-
-  const result: CoreMarket = {
-    chainId: environment.chainId,
-    seizeGuardianPaused: seizePaused,
-    transferGuardianPaused: transferPaused,
-    markets,
-    totalSupplyUsd,
-    totalBorrowsUsd,
-  };
-
-  return result;
+  return markets;
 };

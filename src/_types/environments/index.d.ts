@@ -1107,7 +1107,7 @@ export declare const publicEnvironments: {
     }, {
         governance: {
             token: "WELL";
-            chainIds: (10 | 8453)[];
+            chainIds: (8453 | 10)[];
             proposalIdOffset: number;
             snapshotEnsName: string;
         };

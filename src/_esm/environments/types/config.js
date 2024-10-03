@@ -1,5 +1,5 @@
 import { createPublicClient, getContract, } from "viem";
-import { ChainLinkOracleAbi, ComptrollerTokenAbi, CoreRouterAbi, CoreViewsAbi, GovernanceTokenAbi, GovernorAbi, MarketTokenAbi, MorphoBlueAbi, MorphoBundlerAbi, MorphoPublicAllocatorAbi, MorphoViewsAbi, MultiRewardDistributorAbi, MultichainGovernorAbi, StakingTokenAbi, TemporalGovernorAbi, TokenAbi, VoteCollectorAbi, WrappedNativeTokenAbi, } from "../abis/index.js";
+import { ChainLinkOracleAbi, ComptrollerTokenAbi, CoreRouterAbi, CoreViewsAbi, GovernanceTokenAbi, GovernorAbi, MarketTokenAbi, MorphoBlueAbi, MorphoBundlerAbi, MorphoPublicAllocatorAbi, MorphoVaultAbi, MorphoViewsAbi, MultiRewardDistributorAbi, MultichainGovernorAbi, StakingTokenAbi, TemporalGovernorAbi, TokenAbi, VoteCollectorAbi, WrappedNativeTokenAbi, } from "../abis/index.js";
 export const createTokenConfig = (tokens) => tokens;
 export const createVaultConfig = (config) => config.vaults;
 export const createMarketConfig = (config) => config.markets;
@@ -57,7 +57,7 @@ export const createEnvironmentConfig = (config) => {
     const vaultsContracts = Object.keys(config.vaults || {}).reduce((prev, curr) => {
         return {
             ...prev,
-            [curr]: getTokenContract(curr, TokenAbi),
+            [curr]: getTokenContract(curr, MorphoVaultAbi),
         };
     }, {});
     const contracts = Object.keys(config.contracts).reduce((prev, curr) => {

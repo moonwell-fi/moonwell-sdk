@@ -1,31 +1,29 @@
 import { Amount, type MultichainReturnType } from "../../common/index.js";
 import type { Environment } from "../../environments/index.js";
+import { findTokenByAddress } from "../../environments/utils/index.js";
 import type { UserBalance } from "../types/userBalance.js";
-import { findTokenByAddress } from "../utils/index.js";
-
-export type GetUserBalancesReturnType = MultichainReturnType<UserBalance[]>;
 
 export async function getUserBalances(params: {
   environments: Environment[];
   account: `0x${string}`;
-}): Promise<GetUserBalancesReturnType | undefined> {
+}): Promise<MultichainReturnType<UserBalance[]>> {
   const { environments, account } = params;
 
-  try {
-    const environmentsTokensBalances = await Promise.all(
-      environments.map((environment) => {
-        return Promise.all([
-          environment.contracts.views?.read.getTokensBalances([
-            Object.values(environment.config.tokens).map(
-              (token) => token.address,
-            ),
-            params.account,
-          ]),
-        ]);
-      }),
-    );
+  const environmentsTokensBalances = await Promise.all(
+    environments.map((environment) => {
+      return Promise.all([
+        environment.contracts.views?.read.getTokensBalances([
+          Object.values(environment.config.tokens).map(
+            (token) => token.address,
+          ),
+          params.account,
+        ]),
+      ]);
+    }),
+  );
 
-    const tokensBalances = environments.reduce((prev, curr, index) => {
+  const tokensBalances = environments.reduce(
+    (prev, curr, index) => {
       const balances = environmentsTokensBalances[index]![0]!;
 
       const userBalances = balances
@@ -49,11 +47,9 @@ export async function getUserBalances(params: {
         ...prev,
         [curr.chainId]: userBalances,
       };
-    }, {} as GetUserBalancesReturnType);
+    },
+    {} as MultichainReturnType<UserBalance[]>,
+  );
 
-    return tokensBalances;
-  } catch (ex) {
-    console.error("[tokensBalances] An error occured...", ex);
-    return;
-  }
+  return tokensBalances;
 }

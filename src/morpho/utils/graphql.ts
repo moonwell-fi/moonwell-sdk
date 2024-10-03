@@ -1,0 +1,27 @@
+export async function getGraphQL<T>(
+  query: string,
+  operationName?: string,
+  variables?: any,
+) {
+  try {
+    const response = await fetch("https://blue-api.morpho.org/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: query, operationName, variables }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    const json = await response.json();
+    if (response.status !== 200 || json.errors) {
+      console.log(
+        `Non-200 (${response.statusText}
+        }) or other error from Morpho GraphQL! - ${JSON.stringify(response.statusText)}`,
+      );
+      return undefined;
+    }
+
+    return json.data as T;
+  } catch (error) {
+    return undefined;
+  }
+}

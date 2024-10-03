@@ -1,7 +1,8 @@
 import { zeroAddress } from "viem";
 import { Amount, DAYS_PER_YEAR } from "../../../common/index.js";
 import { publicEnvironments, } from "../../../environments/index.js";
-import { calculateApy, findMarketByAddress, findTokenByAddress, perDay, } from "../../utils/index.js";
+import { findMarketByAddress, findTokenByAddress, } from "../../../environments/utils/index.js";
+import { calculateApy, perDay, } from "../../../common/index.js";
 export const getMarketsData = async (environment) => {
     const homeEnvironment = Object.values(publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
     const viewsContract = environment.contracts.views;
@@ -60,6 +61,8 @@ export const getMarketsData = async (environment) => {
             const baseBorrowApy = calculateApy(borrowRate.value);
             const market = {
                 chainId: environment.chainId,
+                seizePaused,
+                transferPaused,
                 deprecated: marketConfig.deprecated === true,
                 borrowCaps,
                 borrowCapsUsd,
@@ -121,16 +124,6 @@ export const getMarketsData = async (environment) => {
             markets.push(market);
         }
     }
-    const totalSupplyUsd = markets.reduce((prev, curr) => prev + curr.totalSupplyUsd, 0);
-    const totalBorrowsUsd = markets.reduce((prev, curr) => prev + curr.totalBorrowsUsd, 0);
-    const result = {
-        chainId: environment.chainId,
-        seizeGuardianPaused: seizePaused,
-        transferGuardianPaused: transferPaused,
-        markets,
-        totalSupplyUsd,
-        totalBorrowsUsd,
-    };
-    return result;
+    return markets;
 };
 //# sourceMappingURL=common.js.map

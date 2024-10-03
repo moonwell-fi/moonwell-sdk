@@ -4,7 +4,8 @@ exports.getMarketsData = void 0;
 const viem_1 = require("viem");
 const index_js_1 = require("../../../common/index.js");
 const index_js_2 = require("../../../environments/index.js");
-const index_js_3 = require("../../utils/index.js");
+const index_js_3 = require("../../../environments/utils/index.js");
+const index_js_4 = require("../../../common/index.js");
 const getMarketsData = async (environment) => {
     const homeEnvironment = Object.values(index_js_2.publicEnvironments).find((e) => e.custom?.governance?.chainIds?.includes(environment.chainId)) || environment;
     const viewsContract = environment.contracts.views;
@@ -59,10 +60,12 @@ const getMarketsData = async (environment) => {
             const totalReservesUsd = totalReserves.value * underlyingPrice;
             const supplyCapsUsd = supplyCaps.value * underlyingPrice;
             const borrowCapsUsd = borrowCaps.value * underlyingPrice;
-            const baseSupplyApy = (0, index_js_3.calculateApy)(supplyRate.value);
-            const baseBorrowApy = (0, index_js_3.calculateApy)(borrowRate.value);
+            const baseSupplyApy = (0, index_js_4.calculateApy)(supplyRate.value);
+            const baseBorrowApy = (0, index_js_4.calculateApy)(borrowRate.value);
             const market = {
                 chainId: environment.chainId,
+                seizePaused,
+                transferPaused,
                 deprecated: marketConfig.deprecated === true,
                 borrowCaps,
                 borrowCapsUsd,
@@ -103,9 +106,9 @@ const getMarketsData = async (environment) => {
                         if (token.symbol === "USDC" && borrowIncentivesPerSec === 1n) {
                             borrowIncentivesPerSec = 0n;
                         }
-                        const supplyRewardsPerDayUsd = (0, index_js_3.perDay)(new index_js_1.Amount(supplyIncentivesPerSec, token.decimals).value) *
+                        const supplyRewardsPerDayUsd = (0, index_js_4.perDay)(new index_js_1.Amount(supplyIncentivesPerSec, token.decimals).value) *
                             price;
-                        const borrowRewardsPerDayUsd = (0, index_js_3.perDay)(new index_js_1.Amount(borrowIncentivesPerSec, token.decimals).value) *
+                        const borrowRewardsPerDayUsd = (0, index_js_4.perDay)(new index_js_1.Amount(borrowIncentivesPerSec, token.decimals).value) *
                             price;
                         const supplyApr = (supplyRewardsPerDayUsd / totalSupplyUsd) * index_js_1.DAYS_PER_YEAR * 100;
                         const borrowApr = (borrowRewardsPerDayUsd / totalBorrowsUsd) * index_js_1.DAYS_PER_YEAR * 100;
@@ -124,17 +127,7 @@ const getMarketsData = async (environment) => {
             markets.push(market);
         }
     }
-    const totalSupplyUsd = markets.reduce((prev, curr) => prev + curr.totalSupplyUsd, 0);
-    const totalBorrowsUsd = markets.reduce((prev, curr) => prev + curr.totalBorrowsUsd, 0);
-    const result = {
-        chainId: environment.chainId,
-        seizeGuardianPaused: seizePaused,
-        transferGuardianPaused: transferPaused,
-        markets,
-        totalSupplyUsd,
-        totalBorrowsUsd,
-    };
-    return result;
+    return markets;
 };
 exports.getMarketsData = getMarketsData;
 //# sourceMappingURL=common.js.map

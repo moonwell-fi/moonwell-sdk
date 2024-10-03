@@ -1,4 +1,4 @@
 import { type Environment } from "../../../environments/index.js";
-import type { CoreMarket } from "../../types/market.js";
-export declare const getMarketsData: (environment: Environment) => Promise<CoreMarket>;
+import type { Market } from "../../types/market.js";
+export declare const getMarketsData: (environment: Environment) => Promise<Market[]>;
 //# sourceMappingURL=common.d.ts.map

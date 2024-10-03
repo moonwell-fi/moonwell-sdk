@@ -21,6 +21,7 @@ import {
   MorphoBlueAbi,
   MorphoBundlerAbi,
   MorphoPublicAllocatorAbi,
+  MorphoVaultAbi,
   MorphoViewsAbi,
   MultiRewardDistributorAbi,
   MultichainGovernorAbi,
@@ -75,6 +76,7 @@ export type MorphoMarketConfig<tokens> = {
   collateralToken: keyof tokens;
   loanToken: keyof tokens;
   id: Hex;
+  deprecated?: boolean;
 };
 
 export type ContractConfig<tokens> = {
@@ -270,7 +272,7 @@ export const createEnvironmentConfig = <
     (prev, curr: string) => {
       return {
         ...prev,
-        [curr]: getTokenContract(curr as keyof tokens, TokenAbi),
+        [curr]: getTokenContract(curr as keyof tokens, MorphoVaultAbi),
       };
     },
     {},

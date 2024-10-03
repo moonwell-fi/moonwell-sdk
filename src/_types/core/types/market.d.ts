@@ -1,16 +1,10 @@
 import type { Amount } from "../../common/index.js";
 import type { TokenConfig } from "../../environments/index.js";
-export type CoreMarket = {
-    chainId: number;
-    seizeGuardianPaused: boolean;
-    transferGuardianPaused: boolean;
-    markets: Market[];
-    totalSupplyUsd: number;
-    totalBorrowsUsd: number;
-};
 export type Market = {
     chainId: number;
     deprecated: boolean;
+    seizePaused: boolean;
+    transferPaused: boolean;
     marketToken: TokenConfig;
     underlyingToken: TokenConfig;
     collateralFactor: number;

@@ -2,10 +2,10 @@ import { getMarketsData } from "./common.js";
 export async function getMarkets(params) {
     const { environments } = params;
     const environmentsMarkets = await Promise.all(environments.map((environment) => getMarketsData(environment)));
-    return environmentsMarkets.reduce((prev, curr) => {
+    return environments.reduce((prev, curr, currIndex) => {
         return {
             ...prev,
-            [curr.chainId]: curr,
+            [curr.chainId]: environmentsMarkets[currIndex],
         };
     }, {});
 }

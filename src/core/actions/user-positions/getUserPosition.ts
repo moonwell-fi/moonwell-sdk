@@ -1,17 +1,16 @@
+import type { UserMarketPosition } from "../../../core/types/userPosition.js";
 import type { Environment } from "../../../environments/index.js";
-import type { UserPosition } from "../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
-
-export type GetUserPositionReturnType = UserPosition;
 
 export async function getUserPosition(params: {
   environment: Environment;
   account: `0x${string}`;
-}): Promise<GetUserPositionReturnType | undefined> {
-  try {
-    return getUserPositionData(params.environment, params.account);
-  } catch (ex) {
-    console.error("[getUserPosition] An error occured...", ex);
-    return;
-  }
+  market: string;
+}): Promise<UserMarketPosition | undefined> {
+  const userPosition = await getUserPositionData({
+    environment: params.environment,
+    account: params.account,
+    markets: [params.market],
+  });
+  return userPosition?.length > 0 ? userPosition[0] : undefined;
 }

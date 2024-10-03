@@ -66,7 +66,7 @@ const createEnvironmentConfig = (config) => {
     const vaultsContracts = Object.keys(config.vaults || {}).reduce((prev, curr) => {
         return {
             ...prev,
-            [curr]: getTokenContract(curr, index_js_1.TokenAbi),
+            [curr]: getTokenContract(curr, index_js_1.MorphoVaultAbi),
         };
     }, {});
     const contracts = Object.keys(config.contracts).reduce((prev, curr) => {

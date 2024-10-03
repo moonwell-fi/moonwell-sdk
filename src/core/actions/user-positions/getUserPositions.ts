@@ -1,34 +1,35 @@
 import type { MultichainReturnType } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
-import type { UserPosition } from "../../types/userPosition.js";
+import type { UserMarketPosition } from "../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
-
-export type GetUserPositionsReturnType = MultichainReturnType<UserPosition>;
 
 export async function getUserPositions(params: {
   environments: Environment[];
   account: `0x${string}`;
-}): Promise<GetUserPositionsReturnType | undefined> {
+  markets?: string[] | undefined;
+}): Promise<MultichainReturnType<UserMarketPosition[]>> {
   const envs = params.environments;
 
-  try {
-    const environmentsUserPositions = await Promise.all(
-      envs.map((environment) => {
-        return getUserPositionData(environment, params.account);
-      }),
-    );
+  const environmentsUserPositions = await Promise.all(
+    envs.map((environment) => {
+      return getUserPositionData({
+        environment,
+        account: params.account,
+        markets: params.markets,
+      });
+    }),
+  );
 
-    const userPositions = envs.reduce((prev, curr, index) => {
+  const userPositions = envs.reduce(
+    (prev, curr, index) => {
       const position = environmentsUserPositions[index]!;
       return {
         ...prev,
         [curr.chainId]: position,
       };
-    }, {} as GetUserPositionsReturnType);
+    },
+    {} as MultichainReturnType<UserMarketPosition[]>,
+  );
 
-    return userPositions;
-  } catch (ex) {
-    console.error("[getUserPositions] An error occured...", ex);
-    return {};
-  }
+  return userPositions;
 }

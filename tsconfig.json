@@ -12,9 +12,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "~@moonwell-sdk/*": [
-        "./src/*"
-      ]
+      // "@moonwell-sdk/*": [
+      //   "./src/*"
+      // ]
     }
   }
 }

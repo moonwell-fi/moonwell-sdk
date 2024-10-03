@@ -20,6 +20,7 @@ export type MorphoMarketConfig<tokens> = {
     collateralToken: keyof tokens;
     loanToken: keyof tokens;
     id: Hex;
+    deprecated?: boolean;
 };
 export type ContractConfig<tokens> = {
     stakingToken: keyof tokens;

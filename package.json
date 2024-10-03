@@ -39,6 +39,7 @@
     "node": "22.x"
   },
   "dependencies": {
+    "@types/lodash": "^4.17.9",
     "axios": "^1.7.7",
     "lodash": "^4.17.21",
     "viem": "^2.21.16"

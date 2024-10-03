@@ -5,3 +5,8 @@ export type { MultichainReturnType } from "./types.js";
 
 export const SECONDS_PER_DAY = 86400;
 export const DAYS_PER_YEAR = 365;
+
+export const perDay = (value: number) => value * SECONDS_PER_DAY;
+
+export const calculateApy = (value: number) =>
+  ((value * SECONDS_PER_DAY + 1) ** DAYS_PER_YEAR - 1) * 100;
