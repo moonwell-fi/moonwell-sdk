@@ -7,6 +7,8 @@ export async function getMarkets(params: {
   environments: Environment[];
 }): Promise<MultichainReturnType<Market[]>> {
   const { environments } = params;
+  const environmentIds = environments.map((r) => r.chainId);
+  type environmentKeys = keyof typeof environmentIds;
 
   const environmentsMarkets = await Promise.all(
     environments.map((environment) => getMarketsData(environment)),
@@ -19,6 +21,6 @@ export async function getMarkets(params: {
         [curr.chainId]: environmentsMarkets[currIndex],
       };
     },
-    {} as MultichainReturnType<Market[]>,
+    {} as { [name in environmentKeys]: Market[] },
   );
 }
