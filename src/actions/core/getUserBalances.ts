@@ -1,7 +1,7 @@
 import { Amount, type MultichainReturnType } from "../../common/index.js";
 import type { Environment } from "../../environments/index.js";
 import { findTokenByAddress } from "../../environments/utils/index.js";
-import type { UserBalance } from "../types/userBalance.js";
+import type { UserBalance } from "../../types/userBalance.js";
 
 export async function getUserBalances(params: {
   environments: Environment[];

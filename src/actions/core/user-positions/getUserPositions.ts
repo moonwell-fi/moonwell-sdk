@@ -1,6 +1,6 @@
 import type { MultichainReturnType } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
-import type { UserMarketPosition } from "../../types/userPosition.js";
+import type { UserMarketPosition } from "../../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
 
 export async function getUserPositions(params: {

@@ -41,14 +41,11 @@ export type {
   GovernanceTokenInfo,
   GovernanceTokensType,
   Environment,
-  BaseEnvironment,
-  MoonbeamEnvironment,
-  MoonriverEnvironment,
-  OptimismEnvironment,
   Chain,
   Prettify,
   Transport,
   SupportedChains,
+  SupportedChainsIds,
   TokenConfig,
 };
 export {
@@ -61,12 +58,22 @@ export {
 };
 
 const supportedChains = { base, optimism, moonriver, moonbeam };
-type SupportedChains = Prettify<keyof typeof supportedChains>;
+const supportedChainsIds = {
+  [base.id]: base,
+  [optimism.id]: optimism,
+  [moonriver.id]: moonriver,
+  [moonbeam.id]: moonbeam,
+};
 
-type BaseEnvironment = ReturnType<typeof createBaseEnvironment>;
-type MoonbeamEnvironment = ReturnType<typeof createMoonbeamEnvironment>;
-type MoonriverEnvironment = ReturnType<typeof createMoonriverEnvironment>;
-type OptimismEnvironment = ReturnType<typeof createOptimismEnvironment>;
+type SupportedChains = Prettify<keyof typeof supportedChains>;
+type SupportedChainsIds = Prettify<keyof typeof supportedChainsIds>;
+
+export type BaseEnvironment = ReturnType<typeof createBaseEnvironment>;
+export type MoonbeamEnvironment = ReturnType<typeof createMoonbeamEnvironment>;
+export type MoonriverEnvironment = ReturnType<
+  typeof createMoonriverEnvironment
+>;
+export type OptimismEnvironment = ReturnType<typeof createOptimismEnvironment>;
 
 export type GetEnvironment<chain> = chain extends typeof base
   ? BaseEnvironment
@@ -80,7 +87,7 @@ export type GetEnvironment<chain> = chain extends typeof base
 
 export const createEnvironment = <const chain extends Chain>(config: {
   chain: chain;
-  rpcUrls?: string[];
+  rpcUrls?: string[] | undefined;
   indexerUrl?: string;
 }): GetEnvironment<chain> => {
   switch (config.chain.id) {

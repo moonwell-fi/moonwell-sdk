@@ -1,6 +1,6 @@
 import type { MultichainReturnType } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
-import type { UserMarketReward } from "../../types/userReward.js";
+import type { UserMarketReward } from "../../../types/userReward.js";
 import { getUserRewardsData } from "./common.js";
 
 export async function getUserRewards(params: {

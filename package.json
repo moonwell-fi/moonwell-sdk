@@ -9,15 +9,18 @@
     "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
     "format": "biome format --write",
     "lint": "biome check --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest -c ./test/vitest.config.ts dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.1",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
     "lint-staged": "^15.1.0",
+    "prool": "^0.0.16",
     "simple-git-hooks": "^2.9.0",
-    "typescript": "5.0.4"
+    "typescript": "5.0.4",
+    "vitest": "^2.1.2"
   },
   "lint-staged": {
     "*.ts": [

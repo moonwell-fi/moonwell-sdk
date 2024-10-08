@@ -9,7 +9,7 @@ import {
   findMarketByAddress,
   findTokenByAddress,
 } from "../../../environments/utils/index.js";
-import type { Market } from "../../types/market.js";
+import type { Market } from "../../../types/market.js";
 
 export const getMarketsData = async (environment: Environment) => {
   const homeEnvironment =

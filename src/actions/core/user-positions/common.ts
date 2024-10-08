@@ -2,7 +2,7 @@ import type { Address } from "viem";
 import { Amount } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
 import { findMarketByAddress } from "../../../environments/utils/index.js";
-import type { UserMarketPosition } from "../../types/userPosition.js";
+import type { UserMarketPosition } from "../../../types/userPosition.js";
 
 export const getUserPositionData = async (params: {
   environment: Environment;
