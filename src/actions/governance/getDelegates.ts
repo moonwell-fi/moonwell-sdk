@@ -1,19 +1,22 @@
 import axios from "axios";
 import { isAddress } from "viem";
+import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { HttpRequestError } from "../../common/index.js";
 import { publicEnvironments } from "../../environments/index.js";
-import type { Delegate } from "../types/delegate.js";
+import type { Delegate } from "../../types/delegate.js";
 
 export type GetDelegatesErrorType = HttpRequestError;
 
-export type GetDelegatesReturnType = Delegate[];
+export type GetDelegatesReturnType = Promise<Delegate[]>;
 
 /**
  * Returns a list of the delegates from the Moonwell Governance Forum
  *
  * https://forum.moonwell.fi/c/delegation-pitch/17
  */
-export async function getDelegates(): Promise<GetDelegatesReturnType> {
+export async function getDelegates(
+  client: MoonwellClient,
+): GetDelegatesReturnType {
   let users: Delegate[] = [];
 
   const getUsersPaginated = async (page = 0) => {
@@ -88,7 +91,7 @@ export async function getDelegates(): Promise<GetDelegatesReturnType> {
     users: users.map((r) => r.wallet),
   });
   //Get delegate voting powers
-  const envs = Object.values(publicEnvironments);
+  const envs = Object.values(client.environments);
 
   const votingPowers = await Promise.all(
     users.map(async (user) =>

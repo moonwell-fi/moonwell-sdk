@@ -5,19 +5,23 @@ import {
   optimism,
   supportedChains,
 } from "../../../environments/index.js";
-import type { SnapshotProposal } from "../../types/snapshotProposal.js";
+import type { SnapshotProposal } from "../../../types/snapshotProposal.js";
 import type { GetSnapshotProposalsReturnType } from "./getSnapshotProposals.js";
 
 export const getSnapshotProposalData = async (params: {
   environments: Environment[];
-  pagination?: {
-    size?: number;
-    page?: number;
-  };
-  filters?: {
-    onlyActive?: boolean;
-    id?: string;
-  };
+  pagination?:
+    | {
+        size?: number;
+        page?: number;
+      }
+    | undefined;
+  filters?:
+    | {
+        onlyActive?: boolean;
+        id?: string;
+      }
+    | undefined;
 }): Promise<GetSnapshotProposalsReturnType> => {
   const environments = params.environments;
 

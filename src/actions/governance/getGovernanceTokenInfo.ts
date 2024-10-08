@@ -1,17 +1,26 @@
+import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { Amount } from "../../common/index.js";
 import {
   type GovernanceToken,
   publicEnvironments,
 } from "../../environments/index.js";
 
-export type GetGovernanceTokenInfoType = {
-  totalSupply: Amount;
+export type GetGovernanceTokenInfoParameters = {
+  governanceToken: GovernanceToken;
 };
 
-export async function getGovernanceTokenInfo(params: {
-  governanceToken: GovernanceToken;
-}): Promise<GetGovernanceTokenInfoType | undefined> {
-  if (params.governanceToken === "WELL") {
+export type GetGovernanceTokenInfoReturnType = Promise<
+  | {
+      totalSupply: Amount;
+    }
+  | undefined
+>;
+
+export async function getGovernanceTokenInfo(
+  _client: MoonwellClient,
+  args: GetGovernanceTokenInfoParameters,
+): GetGovernanceTokenInfoReturnType {
+  if (args.governanceToken === "WELL") {
     const totalSupply =
       await publicEnvironments.moonbeam.contracts.governanceToken.read.totalSupply();
 

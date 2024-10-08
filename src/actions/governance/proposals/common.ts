@@ -12,7 +12,7 @@ import {
   MultichainProposalStateMapping,
   type Proposal,
   ProposalState,
-} from "../../types/proposal.js";
+} from "../../../types/proposal.js";
 
 axios.defaults.timeout = 5_000;
 

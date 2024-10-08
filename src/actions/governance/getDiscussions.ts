@@ -1,7 +1,8 @@
 import axios from "axios";
 import { isEqual, uniqWith } from "lodash";
+import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { HttpRequestError } from "../../common/index.js";
-import type { Discussion } from "../types/discussion.js";
+import type { Discussion } from "../../types/discussion.js";
 
 export type GetDiscussionsReturnType = Discussion[];
 
@@ -16,7 +17,9 @@ export type GetDiscussionsErrorType = HttpRequestError;
  * Moonwell Improvement Proposals
  * https://forum.moonwell.fi/c/proposals/moonwell-improvement-proposals/20
  */
-export async function getDiscussions(): Promise<GetDiscussionsReturnType> {
+export async function getDiscussions(
+  _client: MoonwellClient,
+): Promise<GetDiscussionsReturnType> {
   type ForumTopicRequestResponse = {
     topic_list: {
       topics: {

@@ -1,35 +1,39 @@
-import type { MultichainReturnType } from "../../../common/index.js";
-import type { Environment } from "../../../environments/index.js";
+import type { Address, Chain } from "viem";
+import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { getEnvironmentsFromArgs } from "../../../common/index.js";
+import type { NetworkParameterType } from "../../../common/types.js";
 import type { UserMarketPosition } from "../../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
 
-export async function getUserPositions(params: {
-  environments: Environment[];
-  account: `0x${string}`;
-  markets?: string[] | undefined;
-}): Promise<MultichainReturnType<UserMarketPosition[]>> {
-  const envs = params.environments;
+export type GetUserPositionsParameters<
+  environments,
+  network extends Chain | undefined,
+> = NetworkParameterType<environments, network> & {
+  /** User address*/
+  userAddress: Address;
+};
 
-  const environmentsUserPositions = await Promise.all(
-    envs.map((environment) => {
-      return getUserPositionData({
+export type GetUserPositionsReturnType = Promise<UserMarketPosition[]>;
+
+export async function getUserPositions<
+  environments,
+  Network extends Chain | undefined,
+>(
+  client: MoonwellClient,
+  args: GetUserPositionsParameters<environments, Network>,
+): GetUserPositionsReturnType {
+  const { userAddress } = args;
+
+  const environments = getEnvironmentsFromArgs(client, args);
+
+  const result = await Promise.all(
+    environments.map((environment) =>
+      getUserPositionData({
         environment,
-        account: params.account,
-        markets: params.markets,
-      });
-    }),
+        account: userAddress,
+      }),
+    ),
   );
 
-  const userPositions = envs.reduce(
-    (prev, curr, index) => {
-      const position = environmentsUserPositions[index]!;
-      return {
-        ...prev,
-        [curr.chainId]: position,
-      };
-    },
-    {} as MultichainReturnType<UserMarketPosition[]>,
-  );
-
-  return userPositions;
+  return result.flat();
 }

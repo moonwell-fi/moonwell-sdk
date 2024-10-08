@@ -1,5 +1,5 @@
 import type { Address } from "viem";
-import type { Amount } from "../../common/index.js";
+import type { Amount } from "../common/index.js";
 
 export type Proposal = {
   chainId: number;

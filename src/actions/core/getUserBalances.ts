@@ -1,13 +1,30 @@
-import { Amount, type MultichainReturnType } from "../../common/index.js";
-import type { Environment } from "../../environments/index.js";
+import type { Address, Chain } from "viem";
+import type { MoonwellClient } from "../../client/createMoonwellClient.js";
+import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
+import type { NetworkParameterType } from "../../common/types.js";
 import { findTokenByAddress } from "../../environments/utils/index.js";
 import type { UserBalance } from "../../types/userBalance.js";
 
-export async function getUserBalances(params: {
-  environments: Environment[];
-  account: `0x${string}`;
-}): Promise<MultichainReturnType<UserBalance[]>> {
-  const { environments, account } = params;
+export type GetUserBalancesParameters<
+  environments,
+  network extends Chain | undefined,
+> = NetworkParameterType<environments, network> & {
+  /** User address*/
+  userAddress: Address;
+};
+
+export type GetUserBalancesReturnType = Promise<UserBalance[]>;
+
+export async function getUserBalances<
+  environments,
+  Network extends Chain | undefined,
+>(
+  client: MoonwellClient,
+  args: GetUserBalancesParameters<environments, Network>,
+): GetUserBalancesReturnType {
+  const { userAddress } = args;
+
+  const environments = getEnvironmentsFromArgs(client, args);
 
   const environmentsTokensBalances = await Promise.all(
     environments.map((environment) => {
@@ -16,40 +33,34 @@ export async function getUserBalances(params: {
           Object.values(environment.config.tokens).map(
             (token) => token.address,
           ),
-          params.account,
+          userAddress,
         ]),
       ]);
     }),
   );
 
-  const tokensBalances = environments.reduce(
-    (prev, curr, index) => {
-      const balances = environmentsTokensBalances[index]![0]!;
+  const result = environments.flatMap((env, index) => {
+    const balances = environmentsTokensBalances[index]![0]!;
 
-      const userBalances = balances
-        .map((balance) => {
-          const token = findTokenByAddress(curr, balance.token);
-          if (token) {
-            const result: UserBalance = {
-              chainId: curr.chainId,
-              account,
-              token,
-              tokenBalance: new Amount(balance.amount, token.decimals),
-            };
-            return result;
-          } else {
-            return;
-          }
-        })
-        .filter((item) => item !== undefined) as UserBalance[];
+    const userBalances = balances
+      .map((balance) => {
+        const token = findTokenByAddress(env, balance.token);
+        if (token) {
+          const result: UserBalance = {
+            chainId: env.chainId,
+            account: userAddress,
+            token,
+            tokenBalance: new Amount(balance.amount, token.decimals),
+          };
+          return result;
+        } else {
+          return;
+        }
+      })
+      .filter((item) => item !== undefined) as UserBalance[];
 
-      return {
-        ...prev,
-        [curr.chainId]: userBalances,
-      };
-    },
-    {} as MultichainReturnType<UserBalance[]>,
-  );
+    return userBalances;
+  });
 
-  return tokensBalances;
+  return result;
 }

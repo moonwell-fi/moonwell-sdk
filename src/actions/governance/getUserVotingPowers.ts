@@ -1,22 +1,41 @@
-import { zeroAddress } from "viem";
-import { Amount } from "../../common/index.js";
-import type { Environment, GovernanceToken } from "../../environments/index.js";
-import type { UserVotingPowers } from "../types/userVotingPowers.js";
+import { type Address, zeroAddress } from "viem";
+import type { MoonwellClient } from "../../client/createMoonwellClient.js";
+import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
+import type { NetworkParameterType } from "../../common/types.js";
+import type { Chain, GovernanceToken } from "../../environments/index.js";
+import type { UserVotingPowers } from "../../types/userVotingPowers.js";
 
-export type GetUserVotingPowersType = UserVotingPowers[];
-
-export async function getUserVotingPowers(params: {
-  environments: Environment[];
-  user: `0x${string}`;
+export type GetUserVotingPowersParameters<
+  environments,
+  network extends Chain | undefined,
+> = NetworkParameterType<environments, network> & {
+  /** Governance token */
   governanceToken: GovernanceToken;
-}): Promise<GetUserVotingPowersType | undefined> {
-  const tokenEnvironments = params.environments.filter(
-    (env) => env.custom?.governance?.token === params.governanceToken,
+
+  /** User address*/
+  userAddress: Address;
+};
+
+export type GetUserVotingPowersReturnType = Promise<UserVotingPowers[]>;
+
+export async function getUserVotingPowers<
+  environments,
+  Network extends Chain | undefined,
+>(
+  client: MoonwellClient,
+  args: GetUserVotingPowersParameters<environments, Network>,
+): GetUserVotingPowersReturnType {
+  const { governanceToken, userAddress } = args;
+
+  const environments = getEnvironmentsFromArgs(client, args);
+
+  const tokenEnvironments = environments.filter(
+    (env) => env.custom?.governance?.token === governanceToken,
   );
 
   const environmentsUserVotingPowers = await Promise.all(
     tokenEnvironments.map((environment) =>
-      environment.contracts.views?.read.getUserVotingPower([params.user]),
+      environment.contracts.views?.read.getUserVotingPower([userAddress]),
     ),
   );
 
@@ -35,13 +54,13 @@ export async function getUserVotingPowers(params: {
       ),
       claimsDelegatedOthers: new Amount(
         votingPowers.claimsVotes.delegatedVotingPower -
-          (votingPowers.claimsVotes.delegates === params.user
+          (votingPowers.claimsVotes.delegates === userAddress
             ? votingPowers.claimsVotes.votingPower
             : 0n),
         18,
       ),
       claimsDelegatedSelf: new Amount(
-        votingPowers.claimsVotes.delegates === params.user
+        votingPowers.claimsVotes.delegates === userAddress
           ? votingPowers.claimsVotes.votingPower
           : 0n,
         18,
@@ -63,13 +82,13 @@ export async function getUserVotingPowers(params: {
       ),
       tokenDelegatedOthers: new Amount(
         votingPowers.tokenVotes.delegatedVotingPower -
-          (votingPowers.tokenVotes.delegates === params.user
+          (votingPowers.tokenVotes.delegates === userAddress
             ? votingPowers.tokenVotes.votingPower
             : 0n),
         18,
       ),
       tokenDelegatedSelf: new Amount(
-        votingPowers.tokenVotes.delegates === params.user
+        votingPowers.tokenVotes.delegates === userAddress
           ? votingPowers.tokenVotes.votingPower
           : 0n,
         18,
@@ -95,21 +114,21 @@ export async function getUserVotingPowers(params: {
 
       totalDelegatedOthers: new Amount(
         votingPowers.claimsVotes.delegatedVotingPower -
-          (votingPowers.claimsVotes.delegates === params.user
+          (votingPowers.claimsVotes.delegates === userAddress
             ? votingPowers.claimsVotes.votingPower
             : 0n) +
           (votingPowers.tokenVotes.delegatedVotingPower -
-            (votingPowers.tokenVotes.delegates === params.user
+            (votingPowers.tokenVotes.delegates === userAddress
               ? votingPowers.tokenVotes.votingPower
               : 0n)),
         18,
       ),
 
       totalDelegatedSelf: new Amount(
-        (votingPowers.claimsVotes.delegates === params.user
+        (votingPowers.claimsVotes.delegates === userAddress
           ? votingPowers.claimsVotes.votingPower
           : 0n) +
-          (votingPowers.tokenVotes.delegates === params.user
+          (votingPowers.tokenVotes.delegates === userAddress
             ? votingPowers.tokenVotes.votingPower
             : 0n) +
           votingPowers.stakingVotes.delegatedVotingPower,

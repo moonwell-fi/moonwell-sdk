@@ -1,4 +1,4 @@
-import type { Amount } from "../../common/index.js";
+import type { Amount } from "../common/index.js";
 
 export type UserVotingPowers = {
   chainId: number;

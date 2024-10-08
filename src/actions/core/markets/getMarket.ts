@@ -1,7 +1,11 @@
 import type { Address, Chain } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { getEnvironmentFromArgs } from "../../../common/index.js";
 import type {
-  Environment,
+  MarketParameterType,
+  NetworkParameterType,
+} from "../../../common/types.js";
+import type {
   GetEnvironment,
   MarketsType,
 } from "../../../environments/index.js";
@@ -10,21 +14,8 @@ import { getMarketsData } from "./common.js";
 
 export type GetMarketParameters<
   environments,
-  Network extends Chain | undefined,
-> = undefined extends Network
-  ? {
-      /** Chain ID */
-      chainId: number;
-
-      /** Address of the market token */
-      marketAddress: Address;
-    }
-  : {
-      /** Network key */
-      network: keyof environments;
-      /** Market key */
-      market: keyof MarketsType<GetEnvironment<Network>>;
-    };
+  network extends Chain | undefined,
+> = NetworkParameterType<environments, network> & MarketParameterType<network>;
 
 export type GetMarketReturnType = Promise<Market | undefined>;
 
@@ -33,23 +24,20 @@ export async function getMarket<
   Network extends Chain | undefined,
 >(
   client: MoonwellClient,
-  args: undefined extends Network
-    ? GetMarketParameters<environments, undefined>
-    : GetMarketParameters<environments, Network>,
+  args: GetMarketParameters<environments, Network>,
 ): GetMarketReturnType {
-  let { chainId, network, marketAddress } = args as {
-    chainId: number;
-    network: keyof typeof client.environments;
+  let { marketAddress, market } = args as unknown as {
     marketAddress: Address;
+    market: keyof MarketsType<GetEnvironment<Network>>;
   };
-  const environment = chainId
-    ? (Object.values(client.environments).find(
-        (env) => env.chainId === chainId,
-      ) as Environment)
-    : (client.environments[network] as Environment);
+
+  const environment = getEnvironmentFromArgs(client, args);
+
+  if (!environment) {
+    return undefined;
+  }
 
   if (!marketAddress) {
-    const { market } = args as unknown as { market: string };
     marketAddress = environment.markets[market].address;
   }
 

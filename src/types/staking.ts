@@ -1,5 +1,5 @@
-import type { Amount } from "../../common/index.js";
-import type { TokenConfig } from "../../environments/index.js";
+import type { Amount } from "../common/index.js";
+import type { TokenConfig } from "../environments/index.js";
 
 export type StakingInfo = {
   chainId: number;
