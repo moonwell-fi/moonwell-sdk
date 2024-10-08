@@ -4,7 +4,7 @@ import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { HttpRequestError } from "../../common/index.js";
 import type { Discussion } from "../../types/discussion.js";
 
-export type GetDiscussionsReturnType = Discussion[];
+export type GetDiscussionsReturnType = Promise<Discussion[]>;
 
 export type GetDiscussionsErrorType = HttpRequestError;
 
@@ -19,7 +19,7 @@ export type GetDiscussionsErrorType = HttpRequestError;
  */
 export async function getDiscussions(
   _client: MoonwellClient,
-): Promise<GetDiscussionsReturnType> {
+): GetDiscussionsReturnType {
   type ForumTopicRequestResponse = {
     topic_list: {
       topics: {

@@ -1,38 +1,52 @@
 import type { Chain } from "viem";
 import {
   type GetMarketParameters,
+  type GetMarketReturnType,
   getMarket,
 } from "../actions/core/markets/getMarket.js";
 import {
   type GetMarketsParameters,
+  type GetMarketsReturnType,
   getMarkets,
 } from "../actions/core/markets/getMarkets.js";
 import type { MoonwellClient } from "./createMoonwellClient.js";
 
 import {
   type GetUserBalancesParameters,
+  type GetUserBalancesReturnType,
   getUserBalances,
 } from "../actions/core/getUserBalances.js";
 import {
   type GetUserPositionParameters,
+  type GetUserPositionReturnType,
   getUserPosition,
 } from "../actions/core/user-positions/getUserPosition.js";
 import {
   type GetUserPositionsParameters,
+  type GetUserPositionsReturnType,
   getUserPositions,
 } from "../actions/core/user-positions/getUserPositions.js";
 import {
   type GetUserRewardParameters,
+  type GetUserRewardReturnType,
   getUserReward,
 } from "../actions/core/user-rewards/getUserReward.js";
 import {
   type GetUserRewardsParameters,
+  type GetUserRewardsReturnType,
   getUserRewards,
 } from "../actions/core/user-rewards/getUserRewards.js";
-import { getDelegates } from "../actions/governance/getDelegates.js";
-import { getDiscussions } from "../actions/governance/getDiscussions.js";
+import {
+  type GetDelegatesReturnType,
+  getDelegates,
+} from "../actions/governance/getDelegates.js";
+import {
+  type GetDiscussionsReturnType,
+  getDiscussions,
+} from "../actions/governance/getDiscussions.js";
 import {
   type GetGovernanceTokenInfoParameters,
+  type GetGovernanceTokenInfoReturnType,
   getGovernanceTokenInfo,
 } from "../actions/governance/getGovernanceTokenInfo.js";
 import {
@@ -42,34 +56,42 @@ import {
 } from "../actions/governance/getStakingInfo.js";
 import {
   type GetStakingSnapshotsParameters,
+  type GetStakingSnapshotsReturnType,
   getStakingSnapshots,
 } from "../actions/governance/getStakingSnapshots.js";
 import {
   type GetUserStakingInfoParameters,
+  type GetUserStakingInfoReturnType,
   getUserStakingInfo,
 } from "../actions/governance/getUserStakingInfo.js";
 import {
   type GetUserVoteReceiptParameters,
+  type GetUserVoteReceiptReturnType,
   getUserVoteReceipt,
 } from "../actions/governance/getUserVoteReceipt.js";
 import {
   type GetUserVotingPowersParameters,
+  type GetUserVotingPowersReturnType,
   getUserVotingPowers,
 } from "../actions/governance/getUserVotingPowers.js";
 import {
   type GetProposalParameters,
+  type GetProposalReturnType,
   getProposal,
 } from "../actions/governance/proposals/getProposal.js";
 import {
   type GetProposalsParameters,
+  type GetProposalsReturnType,
   getProposals,
 } from "../actions/governance/proposals/getProposals.js";
 import {
   type GetSnapshotProposalParameters,
+  type GetSnapshotProposalReturnType,
   getSnapshotProposal,
 } from "../actions/governance/snapshot/getSnapshotProposal.js";
 import {
   type GetSnapshotProposalsParameters,
+  type GetSnapshotProposalsReturnType,
   getSnapshotProposals,
 } from "../actions/governance/snapshot/getSnapshotProposals.js";
 
@@ -79,49 +101,63 @@ export const createActions = <environments>(
   return {
     getMarket: <chain extends Chain | undefined>(
       args: GetMarketParameters<environments, chain>,
-    ) => getMarket<environments, chain>(client, args),
+    ): GetMarketReturnType => getMarket<environments, chain>(client, args),
+
     getMarkets: <chain extends Chain | undefined>(
       args?: GetMarketsParameters<environments, chain>,
-    ) => getMarkets<environments, chain>(client, args),
+    ): GetMarketsReturnType => getMarkets<environments, chain>(client, args),
 
     getUserPosition: <chain extends Chain | undefined>(
       args: GetUserPositionParameters<environments, chain>,
-    ) => getUserPosition<environments, chain>(client, args),
+    ): GetUserPositionReturnType =>
+      getUserPosition<environments, chain>(client, args),
+
     getUserPositions: <chain extends Chain | undefined>(
       args: GetUserPositionsParameters<environments, chain>,
-    ) => getUserPositions<environments, chain>(client, args),
+    ): GetUserPositionsReturnType =>
+      getUserPositions<environments, chain>(client, args),
 
     getUserReward: <chain extends Chain | undefined>(
       args: GetUserRewardParameters<environments, chain>,
-    ) => getUserReward<environments, chain>(client, args),
+    ): GetUserRewardReturnType =>
+      getUserReward<environments, chain>(client, args),
+
     getUserRewards: <chain extends Chain | undefined>(
       args: GetUserRewardsParameters<environments, chain>,
-    ) => getUserRewards<environments, chain>(client, args),
+    ): GetUserRewardsReturnType =>
+      getUserRewards<environments, chain>(client, args),
 
     getUserBalances: <chain extends Chain | undefined>(
       args: GetUserBalancesParameters<environments, chain>,
-    ) => getUserBalances<environments, chain>(client, args),
+    ): GetUserBalancesReturnType =>
+      getUserBalances<environments, chain>(client, args),
 
     getProposal: <chain extends Chain | undefined>(
       args: GetProposalParameters<environments, chain>,
-    ) => getProposal<environments, chain>(client, args),
+    ): GetProposalReturnType => getProposal<environments, chain>(client, args),
+
     getProposals: <chain extends Chain | undefined>(
       args: GetProposalsParameters<environments, chain>,
-    ) => getProposals<environments, chain>(client, args),
+    ): GetProposalsReturnType =>
+      getProposals<environments, chain>(client, args),
 
     getSnapshotProposal: <chain extends Chain | undefined>(
       args: GetSnapshotProposalParameters<environments, chain>,
-    ) => getSnapshotProposal<environments, chain>(client, args),
+    ): GetSnapshotProposalReturnType =>
+      getSnapshotProposal<environments, chain>(client, args),
+
     getSnapshotProposals: <chain extends Chain | undefined>(
       args: GetSnapshotProposalsParameters<environments, chain>,
-    ) => getSnapshotProposals<environments, chain>(client, args),
+    ): GetSnapshotProposalsReturnType =>
+      getSnapshotProposals<environments, chain>(client, args),
 
-    getDelegates: () => getDelegates(client),
+    getDelegates: (): GetDelegatesReturnType => getDelegates(client),
 
-    getDiscussions: () => getDiscussions(client),
+    getDiscussions: (): GetDiscussionsReturnType => getDiscussions(client),
 
-    getGovernanceTokenInfo: (args: GetGovernanceTokenInfoParameters) =>
-      getGovernanceTokenInfo(client, args),
+    getGovernanceTokenInfo: (
+      args: GetGovernanceTokenInfoParameters,
+    ): GetGovernanceTokenInfoReturnType => getGovernanceTokenInfo(client, args),
 
     getStakingInfo: <chain extends Chain | undefined>(
       args?: GetStakingInfoParameters<environments, chain>,
@@ -130,17 +166,22 @@ export const createActions = <environments>(
 
     getStakingSnapshots: <chain extends Chain | undefined>(
       args?: GetStakingSnapshotsParameters<environments, chain>,
-    ) => getStakingSnapshots<environments, chain>(client, args),
+    ): GetStakingSnapshotsReturnType =>
+      getStakingSnapshots<environments, chain>(client, args),
+
     getUserStakingInfo: <chain extends Chain | undefined>(
       args: GetUserStakingInfoParameters<environments, chain>,
-    ) => getUserStakingInfo<environments, chain>(client, args),
+    ): GetUserStakingInfoReturnType =>
+      getUserStakingInfo<environments, chain>(client, args),
 
     getUserVoteReceipt: <chain extends Chain | undefined>(
       args: GetUserVoteReceiptParameters<environments, chain>,
-    ) => getUserVoteReceipt<environments, chain>(client, args),
+    ): GetUserVoteReceiptReturnType =>
+      getUserVoteReceipt<environments, chain>(client, args),
 
     getUserVotingPowers: <chain extends Chain | undefined>(
       args: GetUserVotingPowersParameters<environments, chain>,
-    ) => getUserVotingPowers<environments, chain>(client, args),
+    ): GetUserVotingPowersReturnType =>
+      getUserVotingPowers<environments, chain>(client, args),
   };
 };

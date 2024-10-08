@@ -17,7 +17,7 @@ export type GetUserStakingInfoParameters<
   userAddress: Address;
 };
 
-export type GetUserPositionReturnType = Promise<UserStakingInfo[]>;
+export type GetUserStakingInfoReturnType = Promise<UserStakingInfo[]>;
 
 export async function getUserStakingInfo<
   environments,
@@ -25,7 +25,7 @@ export async function getUserStakingInfo<
 >(
   client: MoonwellClient,
   args: GetUserStakingInfoParameters<environments, Network>,
-): GetUserPositionReturnType {
+): GetUserStakingInfoReturnType {
   const { userAddress } = args;
 
   const environments = getEnvironmentsFromArgs(client, args);

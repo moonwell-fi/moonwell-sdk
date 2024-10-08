@@ -24,7 +24,7 @@ export async function getSnapshotProposal<
 >(
   client: MoonwellClient,
   args: GetSnapshotProposalParameters<environments, Network>,
-): Promise<GetSnapshotProposalReturnType> {
+): GetSnapshotProposalReturnType {
   const { proposalId } = args;
 
   const environment = getEnvironmentFromArgs(client, args);
