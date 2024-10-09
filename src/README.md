@@ -78,7 +78,7 @@ const markets = await moonwellClient.getMarkets();
 
 ## Documentation
 
-[Head to the documentation](https://moonwell.fi/docs/getting-started) to read and learn more about Moonwell SDK.
+[Head to the documentation](https://sdk.moonwell.fi/docs/getting-started) to read and learn more about Moonwell SDK.
 
 ## Community
 
