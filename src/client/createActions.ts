@@ -94,6 +94,56 @@ import {
   type GetSnapshotProposalsReturnType,
   getSnapshotProposals,
 } from "../actions/governance/snapshot/getSnapshotProposals.js";
+import {
+  type GetMorphoUserBalancesParameters,
+  type GetMorphoUserBalancesReturnType,
+  getMorphoUserBalances,
+} from "../actions/morpho/getMorphoUserBalances.js";
+import {
+  type GetMorphoMarketParameters,
+  type GetMorphoMarketReturnType,
+  getMorphoMarket,
+} from "../actions/morpho/markets/getMorphoMarket.js";
+import {
+  type GetMorphoMarketsParameters,
+  type GetMorphoMarketsReturnType,
+  getMorphoMarkets,
+} from "../actions/morpho/markets/getMorphoMarkets.js";
+import {
+  type GetMorphoMarketUserPositionParameters,
+  type GetMorphoMarketUserPositionReturnType,
+  getMorphoMarketUserPosition,
+} from "../actions/morpho/user-positions/getMorphoMarketUserPosition.js";
+import {
+  type GetMorphoMarketUserPositionsParameters,
+  type GetMorphoMarketUserPositionsReturnType,
+  getMorphoMarketUserPositions,
+} from "../actions/morpho/user-positions/getMorphoMarketUserPositions.js";
+import {
+  type GetMorphoVaultUserPositionParameters,
+  type GetMorphoVaultUserPositionReturnType,
+  getMorphoVaultUserPosition,
+} from "../actions/morpho/user-positions/getMorphoVaultUserPosition.js";
+import {
+  type GetMorphoVaultUserPositionsParameters,
+  type GetMorphoVaultUserPositionsReturnType,
+  getMorphoVaultUserPositions,
+} from "../actions/morpho/user-positions/getMorphoVaultUserPositions.js";
+import {
+  type GetMorphoUserRewardsParameters,
+  type GetMorphoUserRewardsReturnType,
+  getMorphoUserRewards,
+} from "../actions/morpho/user-rewards/getMorphoUserRewards.js";
+import {
+  type GetMorphoVaultParameters,
+  type GetMorphoVaultReturnType,
+  getMorphoVault,
+} from "../actions/morpho/vaults/getMorphoVault.js";
+import {
+  type GetMorphoVaultsParameters,
+  type GetMorphoVaultsReturnType,
+  getMorphoVaults,
+} from "../actions/morpho/vaults/getMorphoVaults.js";
 
 export const createActions = <environments>(
   client: MoonwellClient<environments>,
@@ -183,5 +233,55 @@ export const createActions = <environments>(
       args: GetUserVotingPowersParameters<environments, chain>,
     ): GetUserVotingPowersReturnType =>
       getUserVotingPowers<environments, chain>(client, args),
+
+    getMorphoMarket: <chain extends Chain | undefined>(
+      args: GetMorphoMarketParameters<environments, chain>,
+    ): GetMorphoMarketReturnType =>
+      getMorphoMarket<environments, chain>(client, args),
+
+    getMorphoMarkets: <chain extends Chain | undefined>(
+      args?: GetMorphoMarketsParameters<environments, chain>,
+    ): GetMorphoMarketsReturnType =>
+      getMorphoMarkets<environments, chain>(client, args),
+
+    getMorphoMarketUserPosition: <chain extends Chain | undefined>(
+      args: GetMorphoMarketUserPositionParameters<environments, chain>,
+    ): GetMorphoMarketUserPositionReturnType =>
+      getMorphoMarketUserPosition<environments, chain>(client, args),
+
+    getMorphoMarketUserPositions: <chain extends Chain | undefined>(
+      args: GetMorphoMarketUserPositionsParameters<environments, chain>,
+    ): GetMorphoMarketUserPositionsReturnType =>
+      getMorphoMarketUserPositions<environments, chain>(client, args),
+
+    getMorphoVaultUserPosition: <chain extends Chain | undefined>(
+      args: GetMorphoVaultUserPositionParameters<environments, chain>,
+    ): GetMorphoVaultUserPositionReturnType =>
+      getMorphoVaultUserPosition<environments, chain>(client, args),
+
+    getMorphoVaultUserPositions: <chain extends Chain | undefined>(
+      args: GetMorphoVaultUserPositionsParameters<environments, chain>,
+    ): GetMorphoVaultUserPositionsReturnType =>
+      getMorphoVaultUserPositions<environments, chain>(client, args),
+
+    getMorphoUserRewards: <chain extends Chain | undefined>(
+      args: GetMorphoUserRewardsParameters<environments, chain>,
+    ): GetMorphoUserRewardsReturnType =>
+      getMorphoUserRewards<environments, chain>(client, args),
+
+    getMorphoVault: <chain extends Chain | undefined>(
+      args: GetMorphoVaultParameters<environments, chain>,
+    ): GetMorphoVaultReturnType =>
+      getMorphoVault<environments, chain>(client, args),
+
+    getMorphoVaults: <chain extends Chain | undefined>(
+      args: GetMorphoVaultsParameters<environments, chain>,
+    ): GetMorphoVaultsReturnType =>
+      getMorphoVaults<environments, chain>(client, args),
+
+    getMorphoUserBalances: <chain extends Chain | undefined>(
+      args: GetMorphoUserBalancesParameters<environments, chain>,
+    ): GetMorphoUserBalancesReturnType =>
+      getMorphoUserBalances<environments, chain>(client, args),
   };
 };

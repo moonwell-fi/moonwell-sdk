@@ -2,18 +2,19 @@ import { type Address, zeroAddress } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";
-import type { MorphoReward } from "../../types/reward.js";
-import type { MorphoVault, MorphoVaultMarkets } from "../../types/vault.js";
-import { getGraphQL } from "../../utils/graphql.js";
-import { WAD, mulDivDown, wMulDown } from "../../utils/math.js";
-
-type GetMorphoVaultsReturnType = MultichainReturnType<MorphoVault[]>;
+import type { MorphoReward } from "../../../types/morphoReward.js";
+import type {
+  MorphoVault,
+  MorphoVaultMarkets,
+} from "../../../types/morphoVault.js";
+import { getGraphQL } from "../utils/graphql.js";
+import { WAD, mulDivDown, wMulDown } from "../utils/math.js";
 
 export async function getMorphoVaultsData(params: {
   environments: Environment[];
   vaults?: string[];
   includeRewards?: boolean;
-}): Promise<GetMorphoVaultsReturnType> {
+}): Promise<MorphoVault[]> {
   const { environments } = params;
 
   const environmentsWithVaults = environments.filter(
@@ -168,7 +169,7 @@ export async function getMorphoVaultsData(params: {
         [environment.chainId]: vaults,
       };
     },
-    {} as GetMorphoVaultsReturnType,
+    {} as MultichainReturnType<MorphoVault[]>,
   );
 
   // Add rewards to vaults
@@ -234,12 +235,9 @@ export async function getMorphoVaultsData(params: {
     });
   }
 
-  return environments.reduce((aggregator, environment) => {
-    return {
-      ...aggregator,
-      [environment.chainId]: result[environment.chainId] || [],
-    };
-  }, {} as GetMorphoVaultsReturnType);
+  return environments.flatMap((environment) => {
+    return result[environment.chainId] || [];
+  });
 }
 
 type GetMorphoVaultsRewardsResult = {

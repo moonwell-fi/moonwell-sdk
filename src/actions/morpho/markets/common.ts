@@ -5,16 +5,15 @@ import type { Environment } from "../../../environments/index.js";
 import type {
   MorphoMarket,
   PublicAllocatorSharedLiquidityType,
-} from "../../types/market.js";
-import type { MorphoReward } from "../../types/reward.js";
-import { getGraphQL } from "../../utils/graphql.js";
-0;
+} from "../../../types/morphoMarket.js";
+import type { MorphoReward } from "../../../types/morphoReward.js";
+import { getGraphQL } from "../utils/graphql.js";
 
 export async function getMorphoMarketsData(params: {
   environments: Environment[];
   markets?: string[] | undefined;
   includeRewards?: boolean | undefined;
-}): Promise<MultichainReturnType<MorphoMarket[]>> {
+}): Promise<MorphoMarket[]> {
   const { environments } = params;
 
   const environmentsWithMarkets = environments.filter(
@@ -81,7 +80,7 @@ export async function getMorphoMarketsData(params: {
           loanToken.decimals,
         );
 
-        //Supply APR is used only for vaults, zeroing it for now to avoid confusion
+        // Supply APR is used only for vaults, zeroing it for now to avoid confusion
         // const supplyApy = new Amount(marketInfo.supplyApy, 18).value * 100;
         const borrowApy = new Amount(marketInfo.borrowApy, 18).value * 100;
 
@@ -157,15 +156,9 @@ export async function getMorphoMarketsData(params: {
     });
   }
 
-  return environments.reduce(
-    (aggregator, environment) => {
-      return {
-        ...aggregator,
-        [environment.chainId]: result[environment.chainId] || [],
-      };
-    },
-    {} as MultichainReturnType<MorphoMarket[]>,
-  );
+  return environments.flatMap((environment) => {
+    return result[environment.chainId] || [];
+  });
 }
 
 type GetMorphoMarketsRewardsReturnType = {

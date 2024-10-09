@@ -1,4 +1,4 @@
-import type { TokenConfig } from "../../environments/index.js";
+import type { TokenConfig } from "../environments/index.js";
 
 export type MorphoReward = {
   marketId: string | undefined;

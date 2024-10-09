@@ -1,8 +1,8 @@
 import type { Address } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";
-import type { UserMorphoReward } from "../../types/userReward.js";
-import { getGraphQL } from "../../utils/graphql.js";
+import type { UserMorphoReward } from "../../../types/morphoUserReward.js";
+import { getGraphQL } from "../utils/graphql.js";
 
 export async function getUserMorphoRewardsData(params: {
   environment: Environment;

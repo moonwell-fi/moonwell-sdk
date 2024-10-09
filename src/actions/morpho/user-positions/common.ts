@@ -5,7 +5,7 @@ import { findTokenByAddress } from "../../../environments/utils/index.js";
 import type {
   MorphoMarketUserPosition,
   MorphoVaultUserPosition,
-} from "../../types/userPosition.js";
+} from "../../../types/morphoUserPosition.js";
 
 export async function getMorphoVaultUserPositionsData(params: {
   environment: Environment;

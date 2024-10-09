@@ -1,6 +1,6 @@
 import type { Address } from "viem";
-import type { Amount } from "../../common/index.js";
-import type { TokenConfig } from "../../environments/index.js";
+import type { Amount } from "../common/index.js";
+import type { TokenConfig } from "../environments/index.js";
 
 export type UserMorphoReward =
   | {

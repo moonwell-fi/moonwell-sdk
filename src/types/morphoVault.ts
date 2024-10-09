@@ -1,6 +1,6 @@
-import type { Amount } from "../../common/amount.js";
-import type { TokenConfig } from "../../environments/index.js";
-import type { MorphoReward } from "./reward.js";
+import type { Amount } from "../common/amount.js";
+import type { TokenConfig } from "../environments/index.js";
+import type { MorphoReward } from "./morphoReward.js";
 
 export type MorphoVault = {
   chainId: number;
