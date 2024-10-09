@@ -62,11 +62,9 @@ import { createMoonwellClient, base, optimism } from '@moonwell-fi/moonwell-sdk'
 const moonwellClient = createMoonwellClient({
   networks: {
     base: {
-      chain: base,
       rpcUrls: ["https://base.llamarpc.com"],
     },
     optimism: {
-      chain: optimism,
       rpcUrls: ["https://optimism.llamarpc.com"],
     },
   },

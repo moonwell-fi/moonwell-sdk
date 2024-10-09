@@ -1,4 +1,4 @@
-import type { Chain, Narrow, Prettify } from "viem";
+import type { Narrow, Prettify } from "viem";
 import {
   type BaseEnvironment,
   type Environment,
@@ -6,7 +6,11 @@ import {
   type MoonriverEnvironment,
   type OptimismEnvironment,
   type SupportedChains,
+  base,
   createEnvironment,
+  moonbeam,
+  moonriver,
+  optimism,
 } from "../environments/index.js";
 import { createActions } from "./createActions.js";
 
@@ -36,8 +40,7 @@ export type MoonwellClient<
 };
 
 export type NetworkConfig = {
-  chain: Chain;
-  rpcUrls?: string[];
+  rpcUrls: string[];
 };
 
 export type NetworksConfig<networks> = {} extends networks
@@ -55,7 +58,16 @@ export const createMoonwellClient = <const networks>(config: {
     return {
       ...prev,
       [curr]: createEnvironment({
-        chain: networkConfig.chain,
+        chain:
+          curr === "base"
+            ? base
+            : curr === "optimism"
+              ? optimism
+              : curr === "moonbeam"
+                ? moonbeam
+                : curr === "moonriver"
+                  ? moonriver
+                  : base,
         rpcUrls: networkConfig.rpcUrls,
       }),
     };
