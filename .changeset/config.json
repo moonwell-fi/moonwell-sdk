@@ -1,14 +1,17 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@2.3.0/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@2.1.0/schema.json",
   "changelog": [
     "@changesets/changelog-github",
-    { "repo": "moonwell-fi/moonwell-sdk" }
+    {
+      "repo": "moonwell-fi/moonwell-sdk"
+    }
   ],
   "commit": false,
-  "fixed": [["@moonwell-sdk/core"]],
-  "ignore": ["@moonwell-sdk/common"],
-  "linked": [],
-  "access": "public",
-  "baseBranch": "main",
-  "updateInternalDependencies": "patch"
+  "access": "restricted",
+  "baseBranch": "master",
+  "updateInternalDependencies": "patch",
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  },
+  "ignore": ["test"]
 }

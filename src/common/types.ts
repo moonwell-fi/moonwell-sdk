@@ -7,6 +7,7 @@ import type {
 } from "../environments/index.js";
 
 export type MultichainReturnType<T> = { [chainId: number]: T };
+
 export type NetworkParameterType<environments, network> =
   undefined extends network
     ? {

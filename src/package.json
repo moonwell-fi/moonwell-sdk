@@ -1,5 +1,5 @@
 {
-  "name": "moonwell-sdk",
+  "name": "@moonwell-fi/moonwell-sdk",
   "description": "TypeScript Interface for Moonwell",
   "version": "1.0.0",
   "type": "module",
@@ -25,40 +25,31 @@
       "import": "./_esm/index.js",
       "default": "./_cjs/index.js"
     },
+    "./actions": {
+      "types": "./_types/actions/index.d.ts",
+      "import": "./_esm/actions/index.js",
+      "default": "./_cjs/actions/index.js"
+    },
+    "./client": {
+      "types": "./_types/client/index.d.ts",
+      "import": "./_esm/client/index.js",
+      "default": "./_cjs/client/index.js"
+    },
     "./common": {
       "types": "./_types/common/index.d.ts",
       "import": "./_esm/common/index.js",
       "default": "./_cjs/common/index.js"
-    },
-    "./core": {
-      "types": "./_types/core/index.d.ts",
-      "import": "./_esm/core/index.js",
-      "default": "./_cjs/core/index.js"
     },
     "./environments": {
       "types": "./_types/environments/index.d.ts",
       "import": "./_esm/environments/index.js",
       "default": "./_cjs/environments/index.js"
     },
-    "./governance": {
-      "types": "./_types/governance/index.d.ts",
-      "import": "./_esm/governance/index.js",
-      "default": "./_cjs/governance/index.js"
-    },
-    "./morpho": {
-      "types": "./_types/morpho/index.d.ts",
-      "import": "./_esm/morpho/index.js",
-      "default": "./_cjs/morpho/index.js"
-    },
     "./package.json": "./package.json"
   },
   "typesVersions": {
     "*": {
-      "common": ["./_types/common/index.d.ts"],
-      "core": ["./_types/core/index.d.ts"],
-      "environment": ["./_types/environment/index.d.ts"],
-      "governance": ["./_types/governance/index.d.ts"],
-      "morpho": ["./_types/morpho/index.d.ts"]
+      "actions": ["./_types/actions/index.d.ts"]
     }
   },
   "peerDependencies": {
