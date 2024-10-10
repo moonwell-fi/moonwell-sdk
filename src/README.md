@@ -15,14 +15,14 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@moonwell-fi/moonwell-sdk">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/v/moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
+      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/v/@moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
       <img src="https://img.shields.io/npm/v/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="Version">
     </picture>
   </a>
   <a href="https://github.com/moonwell-fi/moonwell-sdk/blob/main/LICENSE">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/l/moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
-      <img src="https://img.shields.io/npm/l/moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="MIT License">
+      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/l/@moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
+      <img src="https://img.shields.io/npm/l/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="MIT License">
     </picture>
   </a>
   <a href="https://www.npmjs.com/package/@moonwell-fi/moonwell-sdk">
