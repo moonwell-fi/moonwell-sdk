@@ -23,11 +23,11 @@
     "version:update": "bun scripts/updateVersion.ts"
   },
   "devDependencies": {
-    "bun": "^1.1.12",
     "@arethetypeswrong/cli": "^0.16.4",
     "@biomejs/biome": "^1.8.1",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.27.9",
+    "bun": "^1.1.12",
     "knip": "^5.33.3",
     "lint-staged": "^15.1.0",
     "prool": "^0.0.16",
