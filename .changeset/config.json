@@ -6,7 +6,12 @@
       "repo": "moonwell-fi/moonwell-sdk"
     }
   ],
-  "commit": false,
+  "commit": [
+    "@changesets/cli/commit",
+    {
+      "skipCI": "version"
+    }
+  ],
   "access": "restricted",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
