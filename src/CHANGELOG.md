@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.2.1
+
+### Patch Changes
+
+- [`e4ee9380da244b11e966e2614392f0285dc45cfb`](https://github.com/moonwell-fi/moonwell-sdk/commit/e4ee9380da244b11e966e2614392f0285dc45cfb) Thanks [@x0s0l](https://github.com/x0s0l)! - Add environment key prop
+
 ## 0.2.0
 
 ### Minor Changes
