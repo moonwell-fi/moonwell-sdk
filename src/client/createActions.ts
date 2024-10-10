@@ -187,7 +187,7 @@ export const createActions = <environments>(
     ): GetProposalReturnType => getProposal<environments, chain>(client, args),
 
     getProposals: <chain extends Chain | undefined>(
-      args: GetProposalsParameters<environments, chain>,
+      args?: GetProposalsParameters<environments, chain>,
     ): GetProposalsReturnType =>
       getProposals<environments, chain>(client, args),
 
@@ -197,7 +197,7 @@ export const createActions = <environments>(
       getSnapshotProposal<environments, chain>(client, args),
 
     getSnapshotProposals: <chain extends Chain | undefined>(
-      args: GetSnapshotProposalsParameters<environments, chain>,
+      args?: GetSnapshotProposalsParameters<environments, chain>,
     ): GetSnapshotProposalsReturnType =>
       getSnapshotProposals<environments, chain>(client, args),
 

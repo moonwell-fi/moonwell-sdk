@@ -68,7 +68,7 @@
   },
   "license": "MIT",
   "homepage": "https://moonwell.fi",
-  "repository": "https://github.com/moonwell-fi/moonwell-sdk.git",
+  "repository": "moonwell-fi/moonwell-sdk",
   "authors": ["x0s0l.eth"],
   "keywords": [
     "eth",
