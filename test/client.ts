@@ -5,5 +5,14 @@ export const baseClient = createMoonwellClient({
     base: {
       rpcUrls: ["https://base.llamarpc.com"],
     },
+    // moonbeam: {
+    //   rpcUrls: ["https://moonbeam-rpc.publicnode.com"]
+    // },
+    // moonriver: {
+    //   rpcUrls: ["https://moonriver-rpc.publicnode.com"]
+    // },
+    // optimism: {
+    //   rpcUrls: ["https://optimism-rpc.publicnode.com"]
+    // }
   },
 });
