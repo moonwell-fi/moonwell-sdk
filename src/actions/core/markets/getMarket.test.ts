@@ -13,50 +13,57 @@ const verifyMarketProperties = (market: Market | undefined) => {
   expect(market).toHaveProperty("totalReserves");
 };
 
-Object.entries(testClient.environments).forEach(([networkKey, environment]) => {
-  const { chain, markets, tokens } = environment;
+describe("Testing markets", () => {
+  Object.entries(testClient.environments).forEach(
+    ([networkKey, environment]) => {
+      const { chain, markets, tokens } = environment;
 
-  describe(`Testing markets on ${chain.name}`, () => {
-    test.each(Object.keys(markets))("Get market: %s", async (marketKey) => {
-      const marketData = await testClient.getMarket<typeof chain>({
-        market: marketKey as keyof MarketsType<GetEnvironment<typeof chain>>,
-        network: networkKey as keyof typeof testClient.environments,
-      });
-      expect(marketData).toBeDefined();
-      verifyMarketProperties(marketData);
-    });
+      test.each(Object.keys(markets))(
+        `Get market on ${chain.name}: %s`,
+        async (marketKey) => {
+          const marketData = await testClient.getMarket<typeof chain>({
+            market: marketKey as keyof MarketsType<
+              GetEnvironment<typeof chain>
+            >,
+            network: networkKey as keyof typeof testClient.environments,
+          });
+          expect(marketData).toBeDefined();
+          verifyMarketProperties(marketData);
+        },
+      );
 
-    test.each(Object.entries(markets))(
-      "Get market by address: %s",
-      async (_, market) => {
+      test.each(Object.entries(markets))(
+        `Get market by address on ${chain.name}: %s`,
+        async (_, market) => {
+          const marketData = await testClient.getMarket({
+            chainId: chain.id,
+            marketAddress: market.address,
+          });
+          expect(marketData).toBeDefined();
+          verifyMarketProperties(marketData);
+        },
+      );
+
+      test(`Get market with invalid market address on ${chain.name}`, async () => {
         const marketData = await testClient.getMarket({
           chainId: chain.id,
-          marketAddress: market.address,
+          marketAddress: "0x0invalidAddress",
         });
-        expect(marketData).toBeDefined();
-        verifyMarketProperties(marketData);
-      },
-    );
-
-    test("Get market with invalid market address", async () => {
-      const marketData = await testClient.getMarket({
-        chainId: chain.id,
-        marketAddress: "0x0invalidAddress",
+        expect(marketData).toBeUndefined();
       });
-      expect(marketData).toBeUndefined();
-    });
 
-    test("Get market with invalid chain id", async () => {
-      const marketData = await testClient.getMarket({
-        chainId: 999999999,
-        marketAddress: tokens.MOONWELL_ETH.address,
+      test(`Get market with invalid chain id on ${chain.name}`, async () => {
+        const marketData = await testClient.getMarket({
+          chainId: 999999999,
+          marketAddress: tokens.MOONWELL_ETH.address,
+        });
+        expect(marketData).toBeUndefined();
       });
-      expect(marketData).toBeUndefined();
-    });
 
-    // test('Get market with null arg', async () => {
-    //   const marketData = await baseClient.getMarket(undefined as any);
-    //   expect(marketData).toBeUndefined();
-    // });
-  });
+      // test('Get market with null arg', async () => {
+      //   const marketData = await baseClient.getMarket(undefined as any);
+      //   expect(marketData).toBeUndefined();
+      // });
+    },
+  );
 });
