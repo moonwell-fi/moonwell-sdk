@@ -19,6 +19,17 @@ export type NetworkParameterType<environments, network> =
         network: keyof environments;
       };
 
+export type OptionalNetworkParameterType<environments, network> =
+  undefined extends network
+    ? {
+        /** Chain ID */
+        chainId?: number;
+      }
+    : {
+        /** Network key */
+        network?: keyof environments;
+      };
+
 export type MarketParameterType<network> = undefined extends network
   ? {
       /** Address of the market token */

@@ -57,7 +57,13 @@ export {
   supportedChains,
 };
 
-const supportedChains = { base, optimism, moonriver, moonbeam };
+const supportedChains = {
+  base,
+  optimism,
+  moonriver,
+  moonbeam,
+};
+
 const supportedChainsIds = {
   [base.id]: base,
   [optimism.id]: optimism,

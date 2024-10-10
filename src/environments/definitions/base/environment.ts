@@ -24,6 +24,7 @@ const createEnvironment = (
   typeof custom
 > =>
   createEnvironmentConfig({
+    key: "base",
     name: "Base",
     chain: base,
     transport: rpcUrls

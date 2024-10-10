@@ -8,6 +8,7 @@ import { tokens } from "./tokens.js";
 
 const createEnvironment = (rpcUrls?: string[], indexerUrl?: string) =>
   createEnvironmentConfig({
+    key: "moonbeam",
     name: "Moonbeam",
     chain: moonbeam,
     transport: rpcUrls

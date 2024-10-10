@@ -8,6 +8,7 @@ import { tokens } from "./tokens.js";
 
 const createEnvironment = (rpcUrls?: string[], indexerUrl?: string) =>
   createEnvironmentConfig({
+    key: "optimism",
     name: "Optimism",
     chain: optimism,
     transport: rpcUrls

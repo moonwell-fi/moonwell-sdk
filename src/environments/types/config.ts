@@ -197,6 +197,7 @@ export const createEnvironmentConfig = <
   contracts,
   custom,
 >(config: {
+  key: string;
   name: string;
   chain: Chain;
   transport: Transport;
@@ -432,6 +433,7 @@ export const createEnvironmentConfig = <
   >;
 
   return {
+    key: config.key,
     name: config.name,
     chainId: config.chain.id,
     chain: config.chain,
@@ -466,6 +468,7 @@ export type Environment<
   contracts = Partial<ContractsConfigReturnType>,
   custom = CustomConfigType,
 > = {
+  key: string;
   name: string;
   chainId: number;
   chain: Chain;
