@@ -61,9 +61,10 @@
     }
   },
   "dependencies": {
-    "viem": "^2.21.16",
+    "@types/lodash": "^4.17.9",
     "axios": "^1.7.7",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "viem": "^2.21.16"
   },
   "license": "MIT",
   "homepage": "https://moonwell.fi",
