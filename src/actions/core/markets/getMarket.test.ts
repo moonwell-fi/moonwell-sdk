@@ -1,7 +1,7 @@
 import type { GetEnvironment, MarketsType } from "src/environments/index.js";
 import type { Market } from "src/types/market.js";
 import { describe, expect, test } from "vitest";
-import { baseClient } from "../../../../test/client.js";
+import { testClient } from "../../../../test/client.js";
 
 const verifyMarketProperties = (market: Market | undefined) => {
   expect(market).toBeDefined();
@@ -13,14 +13,14 @@ const verifyMarketProperties = (market: Market | undefined) => {
   expect(market).toHaveProperty("totalReserves");
 };
 
-Object.entries(baseClient.environments).forEach(([networkKey, environment]) => {
+Object.entries(testClient.environments).forEach(([networkKey, environment]) => {
   const { chain, markets, tokens } = environment;
 
   describe(`Testing markets on ${chain.name}`, () => {
     test.each(Object.keys(markets))("Get market: %s", async (marketKey) => {
-      const marketData = await baseClient.getMarket<typeof chain>({
+      const marketData = await testClient.getMarket<typeof chain>({
         market: marketKey as keyof MarketsType<GetEnvironment<typeof chain>>,
-        network: networkKey as keyof typeof baseClient.environments,
+        network: networkKey as keyof typeof testClient.environments,
       });
       expect(marketData).toBeDefined();
       verifyMarketProperties(marketData);
@@ -29,7 +29,7 @@ Object.entries(baseClient.environments).forEach(([networkKey, environment]) => {
     test.each(Object.entries(markets))(
       "Get market by address: %s",
       async (_, market) => {
-        const marketData = await baseClient.getMarket({
+        const marketData = await testClient.getMarket({
           chainId: chain.id,
           marketAddress: market.address,
         });
@@ -39,7 +39,7 @@ Object.entries(baseClient.environments).forEach(([networkKey, environment]) => {
     );
 
     test("Get market with invalid market address", async () => {
-      const marketData = await baseClient.getMarket({
+      const marketData = await testClient.getMarket({
         chainId: chain.id,
         marketAddress: "0x0invalidAddress",
       });
@@ -47,7 +47,7 @@ Object.entries(baseClient.environments).forEach(([networkKey, environment]) => {
     });
 
     test("Get market with invalid chain id", async () => {
-      const marketData = await baseClient.getMarket({
+      const marketData = await testClient.getMarket({
         chainId: 999999999,
         marketAddress: tokens.MOONWELL_ETH.address,
       });

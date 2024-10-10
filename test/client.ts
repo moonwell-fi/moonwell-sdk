@@ -1,6 +1,6 @@
 import { createMoonwellClient } from "../src/client/createMoonwellClient.js";
 
-export const baseClient = createMoonwellClient({
+export const testClient = createMoonwellClient({
   networks: {
     base: {
       rpcUrls: ["https://base.llamarpc.com"],
