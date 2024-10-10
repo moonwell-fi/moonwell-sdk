@@ -7,17 +7,26 @@
     "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
     "build:esm": "tsc --project ./tsconfig.build.json --module es2020 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
     "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
+    "test:build": "publint --strict ./src && attw --pack ./src --ignore-rules false-esm",
     "format": "biome format --write",
+    "lint:repo": "sherif",
     "lint": "biome check --fix",
     "typecheck": "tsc --noEmit",
-    "test": "vitest -c ./test/vitest.config.ts dev"
+    "test": "vitest -c ./test/vitest.config.ts dev",
+    "preinstall": "pnpx only-allow pnpm",
+    "postinstall": "git submodule update --init --recursive",
+    "deps": "pnpx taze -r",
+    "preconstruct": "bun scripts/preconstruct.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.1",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.27.9",
+    "knip": "^5.33.3",
     "lint-staged": "^15.1.0",
     "prool": "^0.0.16",
+    "publint": "^0.2.11",
+    "sherif": "^1.0.0",
     "simple-git-hooks": "^2.9.0",
     "typescript": "5.0.4",
     "vitest": "^2.1.2"
@@ -40,11 +49,5 @@
   },
   "engines": {
     "node": "22.x"
-  },
-  "dependencies": {
-    "@types/lodash": "^4.17.9",
-    "axios": "^1.7.7",
-    "lodash": "^4.17.21",
-    "viem": "^2.21.16"
   }
 }
