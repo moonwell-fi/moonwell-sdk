@@ -19,12 +19,6 @@
       <img src="https://img.shields.io/npm/v/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="Version">
     </picture>
   </a>
-  <a href="https://app.codecov.io/gh/moonwell-fi/moonwell-sdk">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/codecov/c/github/moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
-      <img src="https://img.shields.io/codecov/c/github/moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="Code coverage">
-    </picture>
-  </a>
   <a href="https://github.com/moonwell-fi/moonwell-sdk/blob/main/LICENSE">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/l/moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
@@ -33,14 +27,8 @@
   </a>
   <a href="https://www.npmjs.com/package/@moonwell-fi/moonwell-sdk">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/dm/moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
-      <img src="https://img.shields.io/npm/dm/moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="Downloads per month">
-    </picture>
-  </a>
-  <a href="https://bestofjs.org/projects/viem">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/endpoint?colorA=21262d&colorB=21262d&style=flat&url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=moonwell-fi%2Fmoonwell-sdk%26since=daily">
-      <img src="https://img.shields.io/endpoint?colorA=f6f8fa&colorB=f6f8fa&style=flat&url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=moonwell-fi%2Fmoonwell-sdk%26since=daily" alt="Best of JS">
+      <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/npm/dm/@moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat">
+      <img src="https://img.shields.io/npm/dm/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="Downloads per month">
     </picture>
   </a>
 </p>
@@ -90,6 +78,7 @@ If you're interested in contributing, please read the [contributing docs](/.gith
 
 ## Authors
 
+- [@LukeYoungblood](https://github.com/lyoungblood) (LukeYoungblood, [X](https://x.com/LukeYoungblood))
 - [@x0s0l](https://github.com/x0s0l) (x0s0l.eth, [X](https://x.com/x0s0l))
 
 ## License
