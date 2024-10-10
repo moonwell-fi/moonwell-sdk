@@ -6,7 +6,7 @@ import type {
   NetworkParameterType,
 } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
-import type { UserMarketReward } from "../../../types/userReward.js";
+import type { UserReward } from "../../../types/userReward.js";
 import { getUserRewardsData } from "./common.js";
 
 export type GetUserRewardParameters<
@@ -17,7 +17,7 @@ export type GetUserRewardParameters<
     /** User address*/
     userAddress: Address;
   };
-export type GetUserRewardReturnType = Promise<UserMarketReward | undefined>;
+export type GetUserRewardReturnType = Promise<UserReward | undefined>;
 
 export async function getUserReward<
   environments,

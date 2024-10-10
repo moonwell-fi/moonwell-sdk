@@ -6,7 +6,7 @@ import type {
   NetworkParameterType,
 } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
-import type { UserMarketPosition } from "../../../types/userPosition.js";
+import type { UserPosition } from "../../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
 
 export type GetUserPositionParameters<
@@ -18,7 +18,7 @@ export type GetUserPositionParameters<
     userAddress: Address;
   };
 
-export type GetUserPositionReturnType = Promise<UserMarketPosition | undefined>;
+export type GetUserPositionReturnType = Promise<UserPosition | undefined>;
 
 export async function getUserPosition<
   environments,

@@ -27,10 +27,10 @@ export type Market = {
   baseBorrowApy: number;
   totalSupplyApr: number;
   totalBorrowApr: number;
-  rewards: MarketRewards[];
+  rewards: MarketReward[];
 };
 
-export type MarketRewards = {
+export type MarketReward = {
   token: TokenConfig;
   supplyApr: number;
   borrowApr: number;

@@ -1,13 +1,13 @@
 import type { Address } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";
-import type { UserMorphoReward } from "../../../types/morphoUserReward.js";
+import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
 import { getGraphQL } from "../utils/graphql.js";
 
 export async function getUserMorphoRewardsData(params: {
   environment: Environment;
   account: `0x${string}`;
-}): Promise<UserMorphoReward[]> {
+}): Promise<MorphoUserReward[]> {
   const rewards = await getMorphoRewardsData(
     params.environment.chainId,
     params.account,
@@ -17,7 +17,7 @@ export async function getUserMorphoRewardsData(params: {
     rewards.map((r) => r.asset.address),
   );
 
-  const result: UserMorphoReward[] = rewards.map((r) => {
+  const result: MorphoUserReward[] = rewards.map((r) => {
     const asset = assets.find(
       (a) => a.address.toLowerCase() === r.asset.address.toLowerCase(),
     )!;
@@ -44,7 +44,7 @@ export async function getUserMorphoRewardsData(params: {
         const claimableFutureUsd =
           claimableFuture.value * (asset.priceUsd || 0);
 
-        const uniformReward: UserMorphoReward = {
+        const uniformReward: MorphoUserReward = {
           type: "uniform-reward",
           chainId: r.program.chain_id,
           account: r.accountId,
@@ -84,7 +84,7 @@ export async function getUserMorphoRewardsData(params: {
         const borrowClaimableFutureUsd =
           borrowClaimableFuture.value * (asset.priceUsd || 0);
 
-        const marketReward: UserMorphoReward = {
+        const marketReward: MorphoUserReward = {
           type: "market-reward",
           chainId: r.program.chain_id,
           account: r.accountId,
@@ -118,7 +118,7 @@ export async function getUserMorphoRewardsData(params: {
         const claimableFutureUsd =
           claimableFuture.value * (asset.priceUsd || 0);
 
-        const vaultReward: UserMorphoReward = {
+        const vaultReward: MorphoUserReward = {
           type: "vault-reward",
           chainId: r.program.chain_id,
           account: r.accountId,

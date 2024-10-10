@@ -2,7 +2,7 @@ import type { Address, Chain } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
-import type { UserMarketPosition } from "../../../types/userPosition.js";
+import type { UserPosition } from "../../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
 
 export type GetUserPositionsParameters<
@@ -13,7 +13,7 @@ export type GetUserPositionsParameters<
   userAddress: Address;
 };
 
-export type GetUserPositionsReturnType = Promise<UserMarketPosition[]>;
+export type GetUserPositionsReturnType = Promise<UserPosition[]>;
 
 export async function getUserPositions<
   environments,

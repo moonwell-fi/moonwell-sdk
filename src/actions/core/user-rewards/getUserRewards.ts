@@ -3,7 +3,7 @@ import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
-import type { UserMarketReward } from "../../../types/userReward.js";
+import type { UserReward } from "../../../types/userReward.js";
 import { getUserRewardsData } from "./common.js";
 
 export type GetUserRewardsParameters<
@@ -14,7 +14,7 @@ export type GetUserRewardsParameters<
   userAddress: Address;
 };
 
-export type GetUserRewardsReturnType = Promise<UserMarketReward[]>;
+export type GetUserRewardsReturnType = Promise<UserReward[]>;
 
 export async function getUserRewards<
   environments,

@@ -2,7 +2,7 @@ import type { Address } from "viem";
 import { Amount } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
 import { findMarketByAddress } from "../../../environments/utils/index.js";
-import type { UserMarketPosition } from "../../../types/userPosition.js";
+import type { UserPosition } from "../../../types/userPosition.js";
 
 export const getUserPositionData = async (params: {
   environment: Environment;
@@ -69,7 +69,7 @@ export const getUserPositionData = async (params: {
           : new Amount(0n, underlyingToken.decimals);
         const collateralUsd = collateral.value * underlyingPrice;
 
-        const result: UserMarketPosition = {
+        const result: UserPosition = {
           chainId: params.environment.chainId,
           account: params.account,
           market: market.marketToken,
@@ -90,7 +90,7 @@ export const getUserPositionData = async (params: {
     .filter((r) => r !== undefined)
     .filter((r) =>
       params.markets ? params.markets.includes(r!.market.address) : true,
-    ) as UserMarketPosition[];
+    ) as UserPosition[];
 
   return markets;
 };

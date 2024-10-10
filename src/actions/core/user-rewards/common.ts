@@ -8,7 +8,7 @@ import {
   findMarketByAddress,
   findTokenByAddress,
 } from "../../../environments/utils/index.js";
-import type { UserMarketReward } from "../../../types/userReward.js";
+import type { UserReward } from "../../../types/userReward.js";
 
 export const getUserRewardsData = async (params: {
   environment: Environment;
@@ -133,7 +133,7 @@ export const getUserRewardsData = async (params: {
             token.decimals,
           );
 
-          const result: UserMarketReward = {
+          const result: UserReward = {
             chainId: params.environment.chainId,
             account: params.account,
             market: market.marketToken,

@@ -2,7 +2,7 @@ import type { Address } from "viem";
 import type { Amount } from "../common/index.js";
 import type { TokenConfig } from "../environments/index.js";
 
-export type UserMorphoReward =
+export type MorphoUserReward =
   | {
       type: "vault-reward";
       chainId: number;
