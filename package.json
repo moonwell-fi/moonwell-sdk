@@ -16,7 +16,11 @@
     "preinstall": "pnpx only-allow pnpm",
     "postinstall": "git submodule update --init --recursive",
     "deps": "pnpx taze -r",
-    "preconstruct": "bun scripts/preconstruct.ts"
+    "preconstruct": "bun scripts/preconstruct.ts",
+    "changeset:prepublish": "pnpm version:update && bun scripts/prepublishOnly.ts && pnpm build",
+    "changeset:publish": "pnpm changeset:prepublish && changeset publish",
+    "changeset:version": "changeset version && pnpm install --lockfile-only && pnpm version:update && pnpm format",
+    "version:update": "bun scripts/updateVersion.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.1",
