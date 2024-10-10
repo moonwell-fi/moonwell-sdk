@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.2.0
+
+### Minor Changes
+
+- [`b199e6cf81432bee0bd1681a079a41054a7a4645`](https://github.com/moonwell-fi/moonwell-sdk/commit/b199e6cf81432bee0bd1681a079a41054a7a4645) Thanks [@x0s0l](https://github.com/x0s0l)! - Drop args requirement for getProposals and getSnapshotProposals methods
+
 ## 0.1.0
 
 ### Minor Changes
