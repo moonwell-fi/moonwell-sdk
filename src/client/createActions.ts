@@ -275,7 +275,7 @@ export const createActions = <environments>(
       getMorphoVault<environments, chain>(client, args),
 
     getMorphoVaults: <chain extends Chain | undefined>(
-      args: GetMorphoVaultsParameters<environments, chain>,
+      args?: GetMorphoVaultsParameters<environments, chain>,
     ): GetMorphoVaultsReturnType =>
       getMorphoVaults<environments, chain>(client, args),
 

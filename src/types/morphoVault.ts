@@ -4,6 +4,7 @@ import type { MorphoReward } from "./morphoReward.js";
 
 export type MorphoVault = {
   chainId: number;
+  vaultKey: string;
   vaultToken: TokenConfig;
   underlyingToken: TokenConfig;
   vaultSupply: Amount;
@@ -13,15 +14,16 @@ export type MorphoVault = {
   totalLiquidityUsd: number;
   underlyingPrice: number;
   baseApy: number;
+  rewardsApy: number;
   totalApy: number;
   performanceFee: number;
   curators: string[];
   timelock: number;
-  markets: MorphoVaultMarkets[];
+  markets: MorphoVaultMarket[];
   rewards: Omit<MorphoReward, "marketId">[];
 };
 
-export type MorphoVaultMarkets = {
+export type MorphoVaultMarket = {
   allocation: number;
   marketId: string;
   marketCollateral: TokenConfig;

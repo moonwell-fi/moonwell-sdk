@@ -5,7 +5,7 @@ import type { Environment, TokenConfig } from "../../../environments/index.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
 import type {
   MorphoVault,
-  MorphoVaultMarkets,
+  MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
 import { getGraphQL } from "../utils/graphql.js";
 import { WAD, mulDivDown, wMulDown } from "../utils/math.js";
@@ -97,7 +97,7 @@ export async function getMorphoVaultsData(params: {
             marketLiquidityUsd = totalSuppliedUsd;
           }
 
-          const mapping: MorphoVaultMarkets = {
+          const mapping: MorphoVaultMarket = {
             marketId: vaultMarket.marketId,
             allocation,
             marketApy,
@@ -144,11 +144,13 @@ export async function getMorphoVaultsData(params: {
 
         const mapping: MorphoVault = {
           chainId: environment.chainId,
+          vaultKey: vaultKey!,
           vaultToken,
           underlyingToken,
           underlyingPrice: underlyingPrice.value,
           baseApy,
           totalApy: baseApy,
+          rewardsApy: 0,
           curators: [],
           performanceFee,
           timelock,
@@ -229,9 +231,12 @@ export async function getMorphoVaultsData(params: {
         });
       });
 
-      vault.totalApy =
-        vault.rewards.reduce((acc, curr) => acc + curr.supplyApr, 0) +
-        vault.baseApy;
+      vault.rewardsApy = vault.rewards.reduce(
+        (acc, curr) => acc + curr.supplyApr,
+        0,
+      );
+
+      vault.totalApy = vault.rewardsApy + vault.baseApy;
     });
   }
 
@@ -383,7 +388,7 @@ export async function getMorphoVaultsRewards(
             vaultId: item.user.address,
             marketId: item.market.uniqueKey,
             asset: reward.asset,
-            supplyApr: reward.supplyApr || 0 * 100,
+            supplyApr: (reward.supplyApr || 0) * 100,
             supplyAmount: amount,
             borrowApr: 0,
             borrowAmount: 0,

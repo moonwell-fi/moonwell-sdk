@@ -1,7 +1,7 @@
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
-import type { NetworkParameterType } from "../../../common/types.js";
+import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
 import type { MorphoMarketUserPosition } from "../../../types/morphoUserPosition.js";
 import { getMorphoMarketUserPositionsData } from "./common.js";
@@ -9,7 +9,7 @@ import { getMorphoMarketUserPositionsData } from "./common.js";
 export type GetMorphoMarketUserPositionsParameters<
   environments,
   network extends Chain | undefined,
-> = NetworkParameterType<environments, network> & {
+> = OptionalNetworkParameterType<environments, network> & {
   userAddress: Address;
 };
 

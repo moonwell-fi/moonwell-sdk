@@ -1,14 +1,14 @@
 import { type Address, zeroAddress } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
-import type { NetworkParameterType } from "../../common/types.js";
+import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain, GovernanceToken } from "../../environments/index.js";
 import type { UserVotingPowers } from "../../types/userVotingPowers.js";
 
 export type GetUserVotingPowersParameters<
   environments,
   network extends Chain | undefined,
-> = NetworkParameterType<environments, network> & {
+> = OptionalNetworkParameterType<environments, network> & {
   /** Governance token */
   governanceToken: GovernanceToken;
 

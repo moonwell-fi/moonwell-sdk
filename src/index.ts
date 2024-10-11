@@ -17,9 +17,9 @@ export type {
   MorphoMarketUserPosition,
 } from "./types/morphoUserPosition.js";
 export type { MorphoUserReward } from "./types/morphoUserReward.js";
-export type { MorphoVault } from "./types/morphoVault.js";
-export type {
-  Proposal,
+export type { MorphoVault, MorphoVaultMarket } from "./types/morphoVault.js";
+export {
+  type Proposal,
   ProposalState,
   MultichainProposalState,
 } from "./types/proposal.js";
@@ -34,3 +34,9 @@ export type { UserPosition } from "./types/userPosition.js";
 export type { UserReward } from "./types/userReward.js";
 export type { UserVotingPowers } from "./types/userVotingPowers.js";
 export type { VoteReceipt } from "./types/voteReceipt.js";
+export type {
+  TokenConfig,
+  VaultConfig,
+  MarketConfig,
+  MorphoMarketConfig,
+} from "./environments/types/config.js";

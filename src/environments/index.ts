@@ -55,20 +55,21 @@ export {
   moonriver,
   optimism,
   supportedChains,
+  supportedChainsIds,
 };
 
 const supportedChains = {
-  base,
-  optimism,
-  moonriver,
-  moonbeam,
+  base: base,
+  optimism: optimism,
+  moonriver: moonriver,
+  moonbeam: moonbeam,
 };
 
-const supportedChainsIds = {
-  [base.id]: base,
-  [optimism.id]: optimism,
-  [moonriver.id]: moonriver,
-  [moonbeam.id]: moonbeam,
+const supportedChainsIds: { [id: number]: keyof typeof supportedChains } = {
+  [base.id]: "base",
+  [optimism.id]: "optimism",
+  [moonriver.id]: "moonriver",
+  [moonbeam.id]: "moonbeam",
 };
 
 type SupportedChains = Prettify<keyof typeof supportedChains>;
