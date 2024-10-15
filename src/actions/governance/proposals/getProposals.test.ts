@@ -5,7 +5,7 @@ describe("Testing proposals", () => {
   Object.entries(testClient.environments).forEach(
     ([networkKey, environment]) => {
       const { chain, contracts } = environment;
-      test(`Get proposals on ${chain.name}: %s`, async () => {
+      test(`Get proposals on ${chain.name}`, async () => {
         const proposalData = await testClient.getProposals<typeof chain>({
           network: networkKey as keyof typeof testClient.environments,
         });

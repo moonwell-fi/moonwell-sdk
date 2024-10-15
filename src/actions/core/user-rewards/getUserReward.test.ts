@@ -16,7 +16,13 @@ describe("Testing user reward", () => {
             >,
             userAddress: "0xD90AF108299c5F14418a69D074D0717b612BC016",
           });
-          expect(userRewardData).toBeDefined();
+
+          if (userRewardData) {
+            expect(userRewardData).toHaveProperty("chainId");
+            expect(userRewardData).toHaveProperty("account");
+            expect(userRewardData).toHaveProperty("supplyRewards");
+            expect(userRewardData).toHaveProperty("rewardToken");
+          }
         },
       );
 
@@ -28,7 +34,13 @@ describe("Testing user reward", () => {
             marketAddress: market.address,
             userAddress: "0xD90AF108299c5F14418a69D074D0717b612BC016",
           });
-          expect(userRewardData).toBeDefined();
+
+          if (userRewardData) {
+            expect(userRewardData).toHaveProperty("chainId");
+            expect(userRewardData).toHaveProperty("account");
+            expect(userRewardData).toHaveProperty("supplyRewards");
+            expect(userRewardData).toHaveProperty("rewardToken");
+          }
         },
       );
     },
