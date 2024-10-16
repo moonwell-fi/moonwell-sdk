@@ -173,6 +173,10 @@ type GetMorphoMarketsRewardsReturnType = {
 async function getMorphoMarketRewards(
   markets: MorphoMarket[],
 ): Promise<GetMorphoMarketsRewardsReturnType[]> {
+  if (markets.length === 0) {
+    return [];
+  }
+
   const query = `
   {
     markets(where: { uniqueKey_in: [${markets.map((market) => `"${market.marketId.toLowerCase()}"`).join(",")}], chainId_in: [${markets.map((market) => market.chainId).join(",")}] }) 
