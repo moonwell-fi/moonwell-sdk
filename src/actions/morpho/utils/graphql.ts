@@ -8,7 +8,7 @@ export async function getGraphQL<T>(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: query, operationName, variables }),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(10000),
     });
 
     const json = await response.json();

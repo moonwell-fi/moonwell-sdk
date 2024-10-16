@@ -58,7 +58,8 @@ export const getMarketsData = async (environment: Environment) => {
     const marketFound = findMarketByAddress(environment, marketInfo.market);
 
     if (marketFound) {
-      const { marketConfig, marketToken, underlyingToken } = marketFound;
+      const { marketConfig, marketToken, underlyingToken, marketKey } =
+        marketFound;
 
       const supplyCaps = new Amount(
         marketInfo.supplyCap,
@@ -109,6 +110,7 @@ export const getMarketsData = async (environment: Environment) => {
       const baseBorrowApy = calculateApy(borrowRate.value);
 
       const market: Market = {
+        marketKey,
         chainId: environment.chainId,
         seizePaused,
         transferPaused,

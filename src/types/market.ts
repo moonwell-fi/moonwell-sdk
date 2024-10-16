@@ -2,6 +2,7 @@ import type { Amount } from "../common/index.js";
 import type { TokenConfig } from "../environments/index.js";
 
 export type Market = {
+  marketKey: string;
   chainId: number;
   deprecated: boolean;
   seizePaused: boolean;

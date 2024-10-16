@@ -178,6 +178,7 @@ export async function getMorphoVaultsData(params: {
   if (params.includeRewards === true) {
     const vaults = Object.values(result).flat();
     const rewards = await getMorphoVaultsRewards(vaults);
+
     vaults.forEach((vault) => {
       const vaultRewards = rewards.find(
         (reward) =>
@@ -210,8 +211,8 @@ export async function getMorphoVaultsData(params: {
 
         market.rewards = marketRewards;
         market.rewards.forEach((reward) => {
-          const supplyApr = reward.supplyApr * (market.allocation / 100);
-          const supplyAmount = reward.supplyAmount * (market.allocation / 100);
+          const supplyApr = reward.supplyApr * market.allocation;
+          const supplyAmount = reward.supplyAmount * market.allocation;
 
           const vaultReward = vault.rewards.find(
             (r) => r.asset.address === reward.asset.address,
@@ -380,9 +381,10 @@ export async function getMorphoVaultsRewards(
           const tokenAmountPer1000 =
             (Number.parseFloat(reward.amountPerSuppliedToken) /
               item.market.loanAsset.priceUsd) *
-              1000 || "0";
+            1000;
           const tokenDecimals = 10 ** reward.asset.decimals;
           const amount = Number(tokenAmountPer1000) / tokenDecimals;
+
           return {
             chainId: item.market.morphoBlue.chain.id,
             vaultId: item.user.address,
@@ -402,9 +404,10 @@ export async function getMorphoVaultsRewards(
           const tokenAmountPer1000 =
             (Number.parseFloat(reward.amountPerSuppliedToken) /
               item.asset.priceUsd) *
-              1000 || "0";
+            1000;
           const tokenDecimals = 10 ** reward.asset.decimals;
           const amount = Number(tokenAmountPer1000) / tokenDecimals;
+
           return {
             chainId: item.chain.id,
             vaultId: item.address,

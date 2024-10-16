@@ -128,6 +128,12 @@ export const tokens = createTokenConfig({
     name: "Moonwell USDbC",
     symbol: "USDbC",
   },
+  EURC: {
+    address: "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+    decimals: 6,
+    name: "Euro Coin",
+    symbol: "EURC",
+  },
   mwETH: {
     address: "0xa0E430870c4604CcfC7B38Ca7845B1FF653D0ff1",
     decimals: 18,
@@ -139,6 +145,12 @@ export const tokens = createTokenConfig({
     decimals: 18,
     name: "Moonwell Flagship USDC",
     symbol: "mwUSDC",
+  },
+  mwEURC: {
+    address: "0xf24608E0CCb972b0b0f4A6446a0BBf58c701a026",
+    decimals: 18,
+    name: "Moonwell Flagship EURC",
+    symbol: "mwEURC",
   },
   WELL: {
     address: "0xA88594D404727625A9437C3f886C7643872296AE",

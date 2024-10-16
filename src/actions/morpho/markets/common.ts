@@ -333,7 +333,8 @@ async function getMorphoMarketRewards(
           const borrowTokenAmountPer1000 =
             (Number.parseFloat(reward.amountPerBorrowedToken) /
               item.loanAsset.priceUsd) *
-              1000 || 0;
+            1000;
+
           const borrowAmount = borrowTokenAmountPer1000 / tokenDecimals;
           return {
             marketId: item.uniqueKey,

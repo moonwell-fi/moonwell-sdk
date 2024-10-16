@@ -1,7 +1,11 @@
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
-import type { Chain } from "../../../environments/index.js";
+import {
+  type Chain,
+  moonbeam,
+  moonriver,
+} from "../../../environments/index.js";
 import type { Proposal } from "../../../types/proposal.js";
 import {
   appendProposalExtendedData,
@@ -27,13 +31,19 @@ export async function getProposals<
   const environments = getEnvironmentsFromArgs(client, args);
 
   const environmentProposals = await Promise.all(
-    environments.map((environment) =>
-      Promise.all([
-        getProposalData({ environment }),
-        getCrossChainProposalData({ environment }),
-        getExtendedProposalData({ environment }),
-      ]),
-    ),
+    environments
+      .filter(
+        (environment) =>
+          environment.chainId === moonriver.id ||
+          environment.chainId === moonbeam.id,
+      )
+      .map((environment) =>
+        Promise.all([
+          getProposalData({ environment }),
+          getCrossChainProposalData({ environment }),
+          getExtendedProposalData({ environment }),
+        ]),
+      ),
   );
 
   const proposals = environments.flatMap((_item, index: number) => {

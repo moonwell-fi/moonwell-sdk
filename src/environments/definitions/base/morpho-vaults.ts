@@ -12,5 +12,9 @@ export const vaults = createVaultConfig({
       underlyingToken: "USDC",
       vaultToken: "mwUSDC",
     },
+    mwEURC: {
+      underlyingToken: "EURC",
+      vaultToken: "mwEURC",
+    },
   },
 });
