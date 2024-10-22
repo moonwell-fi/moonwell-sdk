@@ -1,6 +1,7 @@
+# Moonwell SDK
 
 <p align="center">
-  <a href="https://viem.sh">
+  <a href="https://moonwell.fi">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="https://avatars.githubusercontent.com/u/96106926?s=200&v=4">
         <img alt="Moonwell Logo" src="https://avatars.githubusercontent.com/u/96106926?s=200&v=4" width="auto" height="60">
@@ -39,10 +40,20 @@
 
 - Up-to-date repository of Moonwell deployed contracts
 - First-class APIs for interacting with [Moonwell Smart Contracts](https://github.com/moonwell-fi/moonwell-contracts-v2)
+- Support for multiple networks: Base, Optimism, Moonbeam, and Moonriver
+- Comprehensive market data retrieval
+- User position and reward tracking
+- Governance functionality
+- Morpho integration
 
-## Overview
-
-```ts
+## Installation
+```bash
+npm install @moonwell-fi/moonwell-sdk
+# or
+yarn add @moonwell-fi/moonwell-sdk
+```
+## Quick Start
+```typescript
 // 1. Import modules.
 import { createMoonwellClient, base, optimism } from '@moonwell-fi/moonwell-sdk';
 
@@ -61,26 +72,36 @@ const moonwellClient = createMoonwellClient({
 // 3. Consume an action!
 const markets = await moonwellClient.getMarkets();
 ```
-
 ## Documentation
 
-[Head to the documentation](https://sdk.moonwell.fi/docs/getting-started) to read and learn more about Moonwell SDK.
+For detailed documentation and API reference, visit our [SDK Documentation](https://sdk.moonwell.fi/docs/getting-started).
 
-## Community
+## Supported Networks
 
-Check out the following places for more Moonwell content:
+- Base
+- Optimism
+- Moonbeam
+- Moonriver
 
-- Follow [@MoonwellDeFi](https://x.com/MoonwellDeFi), [@LukeYoungblood](https://x.com/LukeYoungblood), and [@x0s0l](https://x.com/x0s0l) on Twitter for project updates
+## Key Features
+
+- Market Data: Retrieve comprehensive information about Moonwell markets
+- User Positions: Get user positions across all markets or for specific markets
+- Rewards: Track user rewards across markets
+- Governance: Access proposal data and voting information
+- Morpho Integration: Interact with Morpho markets and vaults
 
 ## Contributing
 
-If you're interested in contributing, please read the [contributing docs](/.github/CONTRIBUTING.md) **before submitting a pull request**.
+We welcome contributions! Please read our [contributing guidelines](/.github/CONTRIBUTING.md) before submitting pull requests.
 
-## Authors
+## Community
 
-- [@LukeYoungblood](https://github.com/lyoungblood) (LukeYoungblood, [X](https://x.com/LukeYoungblood))
-- [@x0s0l](https://github.com/x0s0l) (x0s0l.eth, [X](https://x.com/x0s0l))
+Join our community and stay updated:
+
+- Follow [@MoonwellDeFi](https://x.com/MoonwellDeFi) on Twitter
+- Join our [Discord](https://discord.gg/moonwellfi)
 
 ## License
 
-[MIT](/LICENSE) License
+This project is licensed under the [MIT License](/LICENSE).
