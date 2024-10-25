@@ -1,5 +1,15 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.3.0
+
+### Minor Changes
+
+- [`cf80623bdd5940efe186d4e2bc65d73d7375aeb7`](https://github.com/moonwell-fi/moonwell-sdk/commit/cf80623bdd5940efe186d4e2bc65d73d7375aeb7) Thanks [@x0s0l](https://github.com/x0s0l)! - add usdc anywhere definitions
+
+### Patch Changes
+
+- [`0c627ca3d56940244bc483d1e97791c8b8537a66`](https://github.com/moonwell-fi/moonwell-sdk/commit/0c627ca3d56940244bc483d1e97791c8b8537a66) Thanks [@x0s0l](https://github.com/x0s0l)! - Adding missing types and properties
+
 ## 0.2.1
 
 ### Patch Changes
