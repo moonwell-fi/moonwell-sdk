@@ -55,7 +55,7 @@ describe("Testing markets", () => {
       test(`Get market with invalid chain id on ${chain.name}`, async () => {
         const marketData = await testClient.getMarket({
           chainId: 999999999,
-          marketAddress: tokens.MOONWELL_ETH.address,
+          marketAddress: Object.values(tokens)[0].address,
         });
         expect(marketData).toBeUndefined();
       });

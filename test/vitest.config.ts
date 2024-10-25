@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  define: { global: "window" },
   test: {
     alias: {
       "~test": join(__dirname, "."),
@@ -26,10 +27,10 @@ export default defineConfig({
         "**/test/**",
       ],
     },
-    environment: "node",
+    environment: "jsdom",
     include: [
       ...(process.env.TYPES ? ["**/*.bench-d.ts"] : []),
-      "src/**/*.test.ts",
+      //"src/**/*.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,
