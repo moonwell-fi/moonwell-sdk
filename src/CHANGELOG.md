@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.3.2
+
+### Patch Changes
+
+- [`6a3fe3f5100332623672e8713eda1c26c1714e46`](https://github.com/moonwell-fi/moonwell-sdk/commit/6a3fe3f5100332623672e8713eda1c26c1714e46) Thanks [@x0s0l](https://github.com/x0s0l)! - Remove tests
+
 ## 0.3.1
 
 ### Patch Changes
