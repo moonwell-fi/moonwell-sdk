@@ -43,6 +43,7 @@ export const morphoMarkets = createMorphoMarketConfig({
       collateralToken: "wstETH",
       loanToken: "USDC",
       id: "0xa066f3893b780833699043f824e5bb88b8df039886f524f62b9a1ac83cb7f1f0",
+      deprecated: true,
     },
     "rETH-USDC": {
       collateralToken: "rETH",

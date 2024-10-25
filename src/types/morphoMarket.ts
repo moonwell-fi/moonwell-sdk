@@ -6,6 +6,7 @@ import type { MorphoReward } from "./morphoReward.js";
 export type MorphoMarket = {
   chainId: number;
   marketId: string;
+  marketKey: string;
   deprecated: boolean;
   loanToValue: number;
   performanceFee: number;
@@ -22,7 +23,9 @@ export type MorphoMarket = {
   availableLiquidityUsd: number;
   marketParams: MorphoMarketParamsType;
   baseSupplyApy: number;
+  rewardsSupplyApy: number;
   baseBorrowApy: number;
+  rewardsBorrowApy: number;
   totalSupplyApr: number;
   totalBorrowApr: number;
   rewards: Required<MorphoReward>[];

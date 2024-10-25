@@ -1,10 +1,12 @@
-import { http, fallback } from "viem";
-import { optimism } from "viem/chains";
+import { http, defineChain, fallback } from "viem";
+import { optimism as optimismChain } from "viem/chains";
 import { createEnvironmentConfig } from "../../types/config.js";
 import { contracts } from "./contracts.js";
 import { markets } from "./core-markets.js";
 import { custom } from "./custom.js";
 import { tokens } from "./tokens.js";
+
+const optimism = defineChain({ ...optimismChain, testnet: false });
 
 const createEnvironment = (rpcUrls?: string[], indexerUrl?: string) =>
   createEnvironmentConfig({

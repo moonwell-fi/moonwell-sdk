@@ -72,6 +72,7 @@ export async function getMorphoMarketUserPositionsData(params: {
     const position = userMarketPositions[index];
 
     const loanToken = params.environment.config.tokens[market.loanToken];
+
     const collateralToken =
       params.environment.config.tokens[market.collateralToken];
 
@@ -79,7 +80,9 @@ export async function getMorphoMarketUserPositionsData(params: {
       position.collateralAssets,
       collateralToken.decimals,
     );
+
     const borrowed = new Amount(position.loanAssets, loanToken.decimals);
+
     const borrowedShares = new Amount(
       position.loanShares,
       loanToken.decimals + 6,

@@ -26,12 +26,14 @@ export async function getMorphoVaultUserPositions<
   const environments = getEnvironmentsFromArgs(client, args);
 
   const environmentsUserPositions = await Promise.all(
-    environments.map((environment) => {
-      return getMorphoVaultUserPositionsData({
-        environment,
-        account: args.userAddress,
-      });
-    }),
+    environments
+      .filter((environment) => environment.contracts.morphoViews !== undefined)
+      .map((environment) => {
+        return getMorphoVaultUserPositionsData({
+          environment,
+          account: args.userAddress,
+        });
+      }),
   );
 
   return environmentsUserPositions.flat();

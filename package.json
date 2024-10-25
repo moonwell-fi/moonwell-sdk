@@ -35,7 +35,8 @@
     "sherif": "^1.0.0",
     "simple-git-hooks": "^2.9.0",
     "typescript": "5.0.4",
-    "vitest": "^2.1.2"
+    "vitest": "^2.1.2",
+    "dayjs": "^1.11.11"
   },
   "lint-staged": {
     "*.ts": [

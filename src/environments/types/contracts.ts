@@ -17,6 +17,7 @@ import type {
   StakingTokenAbi,
   TemporalGovernorAbi,
   TokenAbi,
+  TokenSaleAbi,
   VoteCollectorAbi,
   WrappedNativeTokenAbi,
 } from "../abis/index.js";
@@ -69,6 +70,11 @@ export type CoreViewsContractReturnType = GetContractReturnType<
   Address
 >;
 
+export type TokenSaleContractReturnType = GetContractReturnType<
+  typeof TokenSaleAbi,
+  PublicClient,
+  Address
+>;
 export type TemporalGovernorContractReturnType = GetContractReturnType<
   typeof TemporalGovernorAbi,
   PublicClient,

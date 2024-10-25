@@ -1,3 +1,4 @@
+import { uniq } from "lodash";
 import type { Address } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";
@@ -12,16 +13,20 @@ export async function getUserMorphoRewardsData(params: {
     params.environment.chainId,
     params.account,
   );
+
   const assets = await getMorphoAssetsData(
     params.environment.chainId,
     rewards.map((r) => r.asset.address),
   );
 
-  const result: MorphoUserReward[] = rewards.map((r) => {
+  const result: (MorphoUserReward | undefined)[] = rewards.map((r) => {
     const asset = assets.find(
       (a) => a.address.toLowerCase() === r.asset.address.toLowerCase(),
-    )!;
-    // TODO: handle undefined
+    );
+
+    if (!asset) {
+      return undefined;
+    }
 
     const rewardToken: TokenConfig = {
       address: asset.address,
@@ -135,7 +140,7 @@ export async function getUserMorphoRewardsData(params: {
     }
   });
 
-  return result;
+  return result.filter((r) => r !== undefined) as MorphoUserReward[];
 }
 
 type MorphoRewardsResponse = {
@@ -199,7 +204,9 @@ async function getMorphoAssetsData(
     };
   }>(`
     query {
-      assets(where: {address_in: [${addresses.map((a: string) => `"${a}"`).join(",")}], chain_id: ${chainId}}) {
+      assets(where: {address_in: [${uniq(addresses)
+        .map((a: string) => `"${a}"`)
+        .join(",")}], chainId_in: ${chainId}}) {
         items {
           address     
           symbol

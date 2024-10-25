@@ -134,6 +134,12 @@ export const tokens = createTokenConfig({
     name: "Euro Coin",
     symbol: "EURC",
   },
+  MOONWELL_EURC: {
+    address: "0xb682c840B5F4FC58B20769E691A6fa1305A501a2",
+    decimals: 8,
+    name: "Moonwell EURC",
+    symbol: "EURC",
+  },
   mwETH: {
     address: "0xa0E430870c4604CcfC7B38Ca7845B1FF653D0ff1",
     decimals: 18,
@@ -158,10 +164,28 @@ export const tokens = createTokenConfig({
     name: "WELL",
     symbol: "WELL",
   },
+  WORMHOLE_WELL: {
+    address: "0xFF8adeC2221f9f4D8dfbAFa6B9a297d17603493D",
+    decimals: 18,
+    name: "WELL (Wormhole)",
+    symbol: "WELL",
+  },
   stkWELL: {
     address: "0xe66E3A37C3274Ac24FE8590f7D84A2427194DC17",
     decimals: 18,
     name: "stkWELL",
     symbol: "stkWELL",
+  },
+  wrsETH: {
+    address: "0xEDfa23602D0EC14714057867A78d01e94176BEA0",
+    decimals: 18,
+    name: "Kelp DAO Restaked Ethereum",
+    symbol: "wrsETH",
+  },
+  MOONWELL_wrsETH: {
+    address: "0xfC41B49d064Ac646015b459C522820DB9472F4B5",
+    decimals: 8,
+    name: "Moonwell wrsETH",
+    symbol: "wrsETH",
   },
 });

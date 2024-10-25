@@ -2,6 +2,7 @@ import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
+import * as logger from "../../../logger/console.js";
 import type { SnapshotProposal } from "../../../types/snapshotProposal.js";
 import { getSnapshotProposalData } from "./common.js";
 
@@ -35,9 +36,18 @@ export async function getSnapshotProposals<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  return getSnapshotProposalData({
+  const logId = logger.start(
+    "getSnapshotProposals",
+    "Starting to get snapshot proposals...",
+  );
+
+  const proposals = await getSnapshotProposalData({
     environments,
     filters,
     pagination,
   });
+
+  logger.end(logId);
+
+  return proposals;
 }

@@ -67,6 +67,7 @@ export const getUserPositionData = async (params: {
               underlyingToken.decimals,
             )
           : new Amount(0n, underlyingToken.decimals);
+
         const collateralUsd = collateral.value * underlyingPrice;
 
         const result: UserPosition = {

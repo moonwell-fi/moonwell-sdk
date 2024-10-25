@@ -12,6 +12,7 @@
     "test/**/*.ts"
   ],
   "compilerOptions": {
+    "declaration": false,
     "moduleResolution": "node",
     "sourceMap": true,
     "rootDir": "./src"

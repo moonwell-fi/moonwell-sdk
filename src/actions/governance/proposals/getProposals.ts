@@ -6,6 +6,7 @@ import {
   moonbeam,
   moonriver,
 } from "../../../environments/index.js";
+import * as logger from "../../../logger/console.js";
 import type { Proposal } from "../../../types/proposal.js";
 import {
   appendProposalExtendedData,
@@ -30,8 +31,16 @@ export async function getProposals<
 ): GetProposalsReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
 
+  const governanceEnvironments = environments.filter(
+    (environment) =>
+      environment.chainId === moonriver.id ||
+      environment.chainId === moonbeam.id,
+  );
+
+  const logId = logger.start("getProposals", "Starting to get proposals...");
+
   const environmentProposals = await Promise.all(
-    environments
+    governanceEnvironments
       .filter(
         (environment) =>
           environment.chainId === moonriver.id ||
@@ -46,7 +55,9 @@ export async function getProposals<
       ),
   );
 
-  const proposals = environments.flatMap((_item, index: number) => {
+  logger.end(logId);
+
+  const proposals = governanceEnvironments.flatMap((_item, index: number) => {
     const [_proposals, _xcProposals, _extendedDatas] =
       environmentProposals[index]!;
 

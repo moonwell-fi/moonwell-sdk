@@ -27,12 +27,14 @@ export async function getMorphoMarketUserPositions<
   const environments = getEnvironmentsFromArgs(client, args);
 
   const environmentsUserPositions = await Promise.all(
-    environments.map((environment) => {
-      return getMorphoMarketUserPositionsData({
-        environment,
-        account: args.userAddress,
-      });
-    }),
+    environments
+      .filter((environment) => environment.contracts.morphoViews !== undefined)
+      .map((environment) => {
+        return getMorphoMarketUserPositionsData({
+          environment,
+          account: args.userAddress,
+        });
+      }),
   );
 
   return environmentsUserPositions.flat();

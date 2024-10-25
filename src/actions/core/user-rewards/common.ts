@@ -128,6 +128,7 @@ export const getUserRewardsData = async (params: {
             reward.supplyRewardsAmount,
             token.decimals,
           );
+
           const borrowRewards = new Amount(
             reward.borrowRewardsAmount,
             token.decimals,

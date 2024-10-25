@@ -2,6 +2,7 @@ import axios from "axios";
 import { isEqual, uniqWith } from "lodash";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { HttpRequestError } from "../../common/index.js";
+import * as logger from "../../logger/console.js";
 import type { Discussion } from "../../types/discussion.js";
 
 export type GetDiscussionsReturnType = Promise<Discussion[]>;
@@ -35,6 +36,11 @@ export async function getDiscussions(
     };
   };
 
+  const logId = logger.start(
+    "getDiscussions",
+    "Starting to get discussions...",
+  );
+
   const moonwellProposalsResult = await axios.get<ForumTopicRequestResponse>(
     "https://forum.moonwell.fi/c/proposals/moonwell-improvement-proposals/9/l/latest.json",
   );
@@ -53,6 +59,8 @@ export async function getDiscussions(
   ) {
     throw new HttpRequestError(communityProposalsResult.statusText);
   }
+
+  logger.end(logId);
 
   const toType = (item: ForumTopicRequestResponse) => {
     return item.topic_list.topics.map((topic) => {

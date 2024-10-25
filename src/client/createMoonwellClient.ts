@@ -1,18 +1,26 @@
 import type { Narrow, Prettify } from "viem";
 import {
+  type ArbitrumEnvironment,
+  type AvalancheEnvironment,
   type BaseEnvironment,
   type Environment,
+  type EthereumEnvironment,
   type MoonbeamEnvironment,
   type MoonriverEnvironment,
   type OptimismEnvironment,
+  type PolygonEnvironment,
   type SupportedChains,
+  arbitrum,
+  avalanche,
   base,
   createEnvironment,
+  ethereum,
   moonbeam,
   moonriver,
   optimism,
+  polygon,
 } from "../environments/index.js";
-import { createActions } from "./createActions.js";
+import { actions } from "./createActions.js";
 
 export type MoonwellClient<
   environments = { [name in SupportedChains]?: Environment },
@@ -35,6 +43,26 @@ export type MoonwellClient<
         name,
         "moonriver"
       >]: MoonriverEnvironment;
+    } & {
+      [name in keyof environments as Extract<
+        name,
+        "ethereum"
+      >]: EthereumEnvironment;
+    } & {
+      [name in keyof environments as Extract<
+        name,
+        "avalanche"
+      >]: AvalancheEnvironment;
+    } & {
+      [name in keyof environments as Extract<
+        name,
+        "arbitrum"
+      >]: ArbitrumEnvironment;
+    } & {
+      [name in keyof environments as Extract<
+        name,
+        "polygon"
+      >]: PolygonEnvironment;
     }
   >;
 };
@@ -67,7 +95,13 @@ export const createMoonwellClient = <const networks>(config: {
                 ? moonbeam
                 : curr === "moonriver"
                   ? moonriver
-                  : base,
+                  : curr === "ethereum"
+                    ? ethereum
+                    : curr === "avalanche"
+                      ? avalanche
+                      : curr === "arbitrum"
+                        ? arbitrum
+                        : polygon,
         rpcUrls: networkConfig.rpcUrls,
       }),
     };
@@ -89,6 +123,23 @@ export const createMoonwellClient = <const networks>(config: {
         name,
         "moonriver"
       >]: MoonriverEnvironment;
+    } & {
+      [name in keyof networks as Extract<
+        name,
+        "ethereum"
+      >]: EthereumEnvironment;
+    } & {
+      [name in keyof networks as Extract<
+        name,
+        "avalanche"
+      >]: AvalancheEnvironment;
+    } & {
+      [name in keyof networks as Extract<
+        name,
+        "arbitrum"
+      >]: ArbitrumEnvironment;
+    } & {
+      [name in keyof networks as Extract<name, "polygon">]: PolygonEnvironment;
     }
   >;
 
@@ -96,8 +147,5 @@ export const createMoonwellClient = <const networks>(config: {
     environments,
   };
 
-  return Object.assign(
-    client,
-    createActions<typeof environments>(client as any),
-  );
+  return Object.assign(client, actions<typeof environments>(client as any));
 };

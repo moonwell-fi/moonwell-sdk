@@ -7,6 +7,7 @@ export const contracts = createContractsConfig({
     governanceToken: "WELL",
     stakingToken: "stkWELL",
     wrappedNativeToken: "WGLMR",
+    tokenSale: "0x933fCDf708481c57E9FD82f6BAA084f42e98B60e",
     comptroller: "0x8E00D5e02E65A19337Cdba98bbA9F84d4186a180",
     views: "0xe76C8B8706faC85a8Fbdcac3C42e3E7823c73994",
     oracle: "0xED301cd3EB27217BDB05C4E9B820a8A3c8B665f9",

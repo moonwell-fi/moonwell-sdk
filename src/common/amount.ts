@@ -22,4 +22,12 @@ export class Amount {
       this.exponential = BigInt(Math.floor(value * 10 ** this.base));
     }
   }
+
+  public toString() {
+    return this.value.toFixed(this.base);
+  }
+
+  public toBigString() {
+    return this.exponential.toString();
+  }
 }

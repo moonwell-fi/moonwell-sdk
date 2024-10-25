@@ -33,29 +33,57 @@ import {
   type tokens as optimismTokens,
 } from "./definitions/optimism/environment.js";
 
+import {
+  createEnvironment as createEthereumEnvironment,
+  ethereum,
+  type tokens as ethereumTokens,
+} from "./definitions/ethereum/environment.js";
+
+import {
+  avalanche,
+  type tokens as avalancheTokens,
+  createEnvironment as createAvalancheEnvironment,
+} from "./definitions/avalanche/environment.js";
+
+import {
+  arbitrum,
+  type tokens as arbitrumTokens,
+  createEnvironment as createArbitrumEnvironment,
+} from "./definitions/arbitrum/environment.js";
+
+import {
+  createEnvironment as createPolygonEnvironment,
+  polygon,
+  type tokens as polygonTokens,
+} from "./definitions/polygon/environment.js";
+
 import { moonbeam, moonriver, optimism } from "viem/chains";
 import type { Environment, TokenConfig } from "./types/config.js";
 
-export type {
-  GovernanceToken,
-  GovernanceTokenInfo,
-  GovernanceTokensType,
-  Environment,
-  Chain,
-  Prettify,
-  Transport,
-  SupportedChains,
-  SupportedChainsIds,
-  TokenConfig,
-};
 export {
+  arbitrum,
+  avalanche,
   base,
+  ethereum,
   GovernanceTokensConfig,
   moonbeam,
   moonriver,
   optimism,
+  polygon,
   supportedChains,
   supportedChainsIds,
+};
+export type {
+  Chain,
+  Environment,
+  GovernanceToken,
+  GovernanceTokenInfo,
+  GovernanceTokensType,
+  Prettify,
+  SupportedChains,
+  SupportedChainsIds,
+  TokenConfig,
+  Transport,
 };
 
 const supportedChains = {
@@ -63,6 +91,10 @@ const supportedChains = {
   optimism: optimism,
   moonriver: moonriver,
   moonbeam: moonbeam,
+  ethereum: ethereum,
+  avalanche: avalanche,
+  arbitrum: arbitrum,
+  polygon: polygon,
 };
 
 const supportedChainsIds: { [id: number]: keyof typeof supportedChains } = {
@@ -70,6 +102,10 @@ const supportedChainsIds: { [id: number]: keyof typeof supportedChains } = {
   [optimism.id]: "optimism",
   [moonriver.id]: "moonriver",
   [moonbeam.id]: "moonbeam",
+  [ethereum.id]: "ethereum",
+  [avalanche.id]: "avalanche",
+  [arbitrum.id]: "arbitrum",
+  [polygon.id]: "polygon",
 };
 
 type SupportedChains = Prettify<keyof typeof supportedChains>;
@@ -81,6 +117,12 @@ export type MoonriverEnvironment = ReturnType<
   typeof createMoonriverEnvironment
 >;
 export type OptimismEnvironment = ReturnType<typeof createOptimismEnvironment>;
+export type EthereumEnvironment = ReturnType<typeof createEthereumEnvironment>;
+export type AvalancheEnvironment = ReturnType<
+  typeof createAvalancheEnvironment
+>;
+export type ArbitrumEnvironment = ReturnType<typeof createArbitrumEnvironment>;
+export type PolygonEnvironment = ReturnType<typeof createPolygonEnvironment>;
 
 export type GetEnvironment<chain> = chain extends typeof base
   ? BaseEnvironment
@@ -90,7 +132,15 @@ export type GetEnvironment<chain> = chain extends typeof base
       ? MoonriverEnvironment
       : chain extends typeof optimism
         ? OptimismEnvironment
-        : undefined;
+        : chain extends typeof ethereum
+          ? EthereumEnvironment
+          : chain extends typeof avalanche
+            ? AvalancheEnvironment
+            : chain extends typeof arbitrum
+              ? ArbitrumEnvironment
+              : chain extends typeof polygon
+                ? PolygonEnvironment
+                : undefined;
 
 export const createEnvironment = <const chain extends Chain>(config: {
   chain: chain;
@@ -118,6 +168,26 @@ export const createEnvironment = <const chain extends Chain>(config: {
         config.rpcUrls,
         config.indexerUrl,
       ) as GetEnvironment<chain>;
+    case ethereum.id:
+      return createEthereumEnvironment(
+        config.rpcUrls,
+        config.indexerUrl,
+      ) as GetEnvironment<chain>;
+    case avalanche.id:
+      return createAvalancheEnvironment(
+        config.rpcUrls,
+        config.indexerUrl,
+      ) as GetEnvironment<chain>;
+    case arbitrum.id:
+      return createArbitrumEnvironment(
+        config.rpcUrls,
+        config.indexerUrl,
+      ) as GetEnvironment<chain>;
+    case polygon.id:
+      return createPolygonEnvironment(
+        config.rpcUrls,
+        config.indexerUrl,
+      ) as GetEnvironment<chain>;
     default:
       throw new Error("Unsupported chainId");
   }
@@ -128,6 +198,10 @@ export const publicEnvironments = {
   moonbeam: createMoonbeamEnvironment(),
   moonriver: createMoonriverEnvironment(),
   optimism: createOptimismEnvironment(),
+  ethereum: createEthereumEnvironment(),
+  avalanche: createAvalancheEnvironment(),
+  arbitrum: createArbitrumEnvironment(),
+  polygon: createPolygonEnvironment(),
 };
 
 export type TokensType<environment> = environment extends BaseEnvironment
@@ -138,7 +212,15 @@ export type TokensType<environment> = environment extends BaseEnvironment
       ? typeof moonriverTokens
       : environment extends OptimismEnvironment
         ? typeof optimismTokens
-        : undefined;
+        : environment extends EthereumEnvironment
+          ? typeof ethereumTokens
+          : environment extends AvalancheEnvironment
+            ? typeof avalancheTokens
+            : environment extends ArbitrumEnvironment
+              ? typeof arbitrumTokens
+              : environment extends PolygonEnvironment
+                ? typeof polygonTokens
+                : undefined;
 
 export type MarketsType<environment> = environment extends BaseEnvironment
   ? typeof baseMarkets

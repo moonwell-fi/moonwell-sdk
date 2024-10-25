@@ -1,6 +1,10 @@
 import { zeroAddress } from "viem";
-import { Amount, DAYS_PER_YEAR } from "../../../common/index.js";
-import { calculateApy, perDay } from "../../../common/index.js";
+import {
+  Amount,
+  DAYS_PER_YEAR,
+  calculateApy,
+  perDay,
+} from "../../../common/index.js";
 import {
   type Environment,
   publicEnvironments,
@@ -114,6 +118,8 @@ export const getMarketsData = async (environment: Environment) => {
         chainId: environment.chainId,
         seizePaused,
         transferPaused,
+        mintPaused: marketInfo.mintPaused,
+        borrowPaused: marketInfo.borrowPaused,
         deprecated: marketConfig.deprecated === true,
         borrowCaps,
         borrowCapsUsd,
@@ -176,7 +182,10 @@ export const getMarketsData = async (environment: Environment) => {
             const supplyApr =
               (supplyRewardsPerDayUsd / totalSupplyUsd) * DAYS_PER_YEAR * 100;
             const borrowApr =
-              (borrowRewardsPerDayUsd / totalBorrowsUsd) * DAYS_PER_YEAR * 100;
+              (borrowRewardsPerDayUsd / totalBorrowsUsd) *
+              DAYS_PER_YEAR *
+              100 *
+              -1;
 
             market.rewards.push({
               borrowApr,
@@ -191,9 +200,10 @@ export const getMarketsData = async (environment: Environment) => {
         (prev, curr) => prev + curr.supplyApr,
         market.baseSupplyApy,
       );
-      market.totalBorrowApr =
-        market.baseBorrowApy -
-        market.rewards.reduce((prev, curr) => prev + curr.borrowApr, 0);
+      market.totalBorrowApr = market.rewards.reduce(
+        (prev, curr) => prev + curr.borrowApr,
+        market.baseBorrowApy,
+      );
 
       markets.push(market);
     }

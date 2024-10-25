@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { first, last } from "lodash";
+import { last } from "lodash";
 import { moonriver } from "viem/chains";
 import { Amount } from "../../../common/index.js";
 import {
@@ -11,7 +11,7 @@ import {
   type ExtendedProposalData,
   MultichainProposalStateMapping,
   type Proposal,
-  ProposalState,
+  type ProposalState,
 } from "../../../types/proposal.js";
 
 axios.defaults.timeout = 5_000;
@@ -24,19 +24,19 @@ export const appendProposalExtendedData = (
     const extendedData = extendedDatas.find((item) => item.id === proposal.id);
 
     if (extendedData) {
-      const lastProposalUpdate = first(
-        last(extendedData.stateChanges)?.messages,
-      );
+      // const lastProposalUpdate = first(
+      //   last(extendedData.stateChanges)?.messages,
+      // );
 
-      // If the xChain timestamp is in the future, but less than 24 hours from now, it is queued
-      if (lastProposalUpdate && lastProposalUpdate.timestamp > 0) {
-        const now = Math.floor(Date.now() / 1000);
-        if (lastProposalUpdate.timestamp + 60 * 60 * 24 > now) {
-          proposal.state = ProposalState.MultichainQueued;
-        } else {
-          proposal.state = ProposalState.MultichainExecuted;
-        }
-      }
+      // // If the xChain timestamp is in the future, but less than 24 hours from now, it is queued
+      // if (lastProposalUpdate && lastProposalUpdate.timestamp > 0) {
+      //   const now = Math.floor(Date.now() / 1000);
+      //   if (lastProposalUpdate.timestamp + 60 * 60 * 24 > now) {
+      //     proposal.state = ProposalState.MultichainQueued;
+      //   } else {
+      //     proposal.state = ProposalState.MultichainExecuted;
+      //   }
+      // }
 
       proposal.title = extendedData.title;
       proposal.calldatas = extendedData.calldatas;
@@ -407,12 +407,6 @@ export const getExtendedProposalData = async (params: {
                 txnHash: string;
                 blockNumber: number;
                 newState: string;
-                messages: {
-                  items: {
-                    timestamp: number;
-                    sequence: number;
-                  }[];
-                };
               }[];
             };
           }[];
@@ -442,12 +436,6 @@ export const getExtendedProposalData = async (params: {
                     txnHash
                     blockNumber
                     newState
-                    messages {
-                      items {
-                        timestamp
-                        sequence
-                      }
-                    }
                   }
                 }
               }
@@ -468,7 +456,6 @@ export const getExtendedProposalData = async (params: {
           stateChanges: item.stateChanges.items.map((change) => {
             return {
               blockNumber: change.blockNumber,
-              messages: change.messages.items.map((message) => message),
               state: change.newState,
               transactionHash: change.txnHash,
             };

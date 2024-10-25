@@ -6,6 +6,7 @@ import {
   type Hex,
   type Narrow,
   type Prettify,
+  type PublicClient,
   type Transport,
   createPublicClient,
   getContract,
@@ -50,6 +51,7 @@ import type {
   StakingTokenContractReturnType,
   TemporalGovernorContractReturnType,
   TokenContractReturnType,
+  TokenSaleContractReturnType,
   VoteCollectorContractReturnType,
   WrappedNativeTokenContractReturnType,
 } from "./contracts.js";
@@ -80,11 +82,12 @@ export type MorphoMarketConfig<tokens> = {
 };
 
 export type ContractConfig<tokens> = {
-  stakingToken: keyof tokens;
-  governanceToken: keyof tokens;
-  wrappedNativeToken: keyof tokens;
-  comptroller: Address;
-  views: Address;
+  stakingToken?: keyof tokens;
+  governanceToken?: keyof tokens;
+  wrappedNativeToken?: keyof tokens;
+  comptroller?: Address;
+  views?: Address;
+  tokenSale?: Address;
   morphoViews?: Address;
   multiRewardDistributor?: Address;
   temporalGovernor?: Address;
@@ -104,6 +107,7 @@ export type ContractsConfigReturnType = {
   wrappedNativeToken: TokenContractReturnType;
   comptroller: ComptrollerContractReturnType;
   views: CoreViewsContractReturnType;
+  tokenSale: TokenSaleContractReturnType;
   morphoViews: MorphoViewsContractReturnType;
   multiRewardDistributor: MultiRewardDistributorContractReturnType;
   temporalGovernor: TemporalGovernorContractReturnType;
@@ -377,6 +381,11 @@ export const createEnvironmentConfig = <
     } & {
       [name in keyof contracts as Extract<
         name,
+        "tokenSale"
+      >]: TokenSaleContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
         "morphoViews"
       >]: MorphoViewsContractReturnType;
     } & {
@@ -458,6 +467,7 @@ export const createEnvironmentConfig = <
       },
       contracts: config.contracts,
     },
+    publicClient,
   } as Environment<tokens, markets, vaults, contracts, custom>;
 };
 
@@ -508,6 +518,11 @@ export type Environment<
         name,
         "views"
       >]: CoreViewsContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
+        "tokenSale"
+      >]: TokenSaleContractReturnType;
     } & {
       [name in keyof contracts as Extract<
         name,
@@ -581,4 +596,5 @@ export type Environment<
     };
     contracts: ContractConfig<Record<string, any>>;
   };
+  publicClient: PublicClient;
 };

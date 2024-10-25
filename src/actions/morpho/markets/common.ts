@@ -45,6 +45,12 @@ export async function getMorphoMarketsData(params: {
       const environmentMarketsInfo = environmentsMarketsInfo[environmentIndex]!;
 
       const markets = environmentMarketsInfo.map((marketInfo) => {
+        const marketKey = Object.keys(environment.config.morphoMarkets).find(
+          (item) =>
+            environment.config.morphoMarkets[item].id.toLowerCase() ===
+            marketInfo.marketId.toLowerCase(),
+        )!;
+
         const marketConfig = Object.values(
           environment.config.morphoMarkets,
         ).find(
@@ -55,7 +61,7 @@ export async function getMorphoMarketsData(params: {
           environment.config.tokens[marketConfig.collateralToken];
 
         const oraclePrice = new Amount(
-          marketInfo.oraclePrice,
+          BigInt(marketInfo.oraclePrice),
           36 + loanToken.decimals - collateralToken.decimals,
         ).value;
 
@@ -67,12 +73,12 @@ export async function getMorphoMarketsData(params: {
         const loanToValue = new Amount(marketInfo.lltv, 18).value;
 
         const totalSupplyInLoanToken = new Amount(
-          marketInfo.totalSupplyAssets,
+          BigInt(marketInfo.totalSupplyAssets),
           loanToken.decimals,
         );
 
         const totalSupply = new Amount(
-          totalSupplyInLoanToken.value / oraclePrice,
+          Number(totalSupplyInLoanToken.value / oraclePrice),
           collateralToken.decimals,
         );
         const totalBorrows = new Amount(
@@ -87,6 +93,7 @@ export async function getMorphoMarketsData(params: {
         const mapping: MorphoMarket = {
           chainId: environment.chainId,
           marketId: marketInfo.marketId,
+          marketKey,
           deprecated: marketConfig.deprecated === true,
           loanToValue,
           performanceFee,
@@ -103,11 +110,13 @@ export async function getMorphoMarketsData(params: {
           totalBorrowApr: borrowApy,
           baseSupplyApy: 0, //supplyApy,
           totalSupplyApr: 0, //supplyApy,
+          rewardsSupplyApy: 0,
+          rewardsBorrowApy: 0,
           availableLiquidity: new Amount(0, collateralToken.decimals),
           availableLiquidityUsd: 0,
           marketParams: {
-            loanToken: loanToken.address,
-            collateralToken: collateralToken.address,
+            loanToken: marketInfo.loanToken,
+            collateralToken: marketInfo.collateralToken,
             irm: marketInfo.irm,
             lltv: marketInfo.lltv,
             oracle: marketInfo.oracle,
@@ -147,12 +156,19 @@ export async function getMorphoMarketsData(params: {
           market.loanTokenPrice;
       }
 
-      market.totalSupplyApr =
-        market.rewards.reduce((acc, curr) => acc + curr.supplyApr, 0) +
-        market.baseSupplyApy;
-      market.totalBorrowApr =
-        market.rewards.reduce((acc, curr) => acc + curr.borrowApr, 0) +
-        market.baseBorrowApy;
+      market.rewardsSupplyApy = market.rewards.reduce(
+        (acc, curr) => acc + curr.supplyApr,
+        0,
+      );
+
+      market.rewardsBorrowApy = market.rewards.reduce(
+        (acc, curr) => acc + curr.borrowApr,
+        0,
+      );
+
+      market.totalSupplyApr = market.rewardsSupplyApy + market.baseSupplyApy;
+
+      market.totalBorrowApr = market.rewardsBorrowApy + market.baseBorrowApy;
     });
   }
 
@@ -341,7 +357,7 @@ async function getMorphoMarketRewards(
             asset: reward.asset,
             supplyApr: 0, //(reward.supplyApr || 0) * 100,
             supplyAmount: 0, //amount,
-            borrowApr: (reward.borrowApr || 0) * 100,
+            borrowApr: (reward.borrowApr || 0) * 100 * -1,
             borrowAmount: borrowAmount,
           };
         }),

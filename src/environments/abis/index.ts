@@ -15,27 +15,29 @@ import MultichainGovernorAbi from "./multichainGovernorAbi.js";
 import StakingTokenAbi from "./stakingTokenAbi.js";
 import TemporalGovernorAbi from "./temporalGovernorAbi.js";
 import TokenAbi from "./tokenAbi.js";
+import TokenSaleAbi from "./tokenSaleAbi.js";
 import VoteCollectorAbi from "./voteCollectorAbi.js";
 import WrappedNativeTokenAbi from "./wrappedNativeTokenAbi.js";
 
 export {
-  GovernanceTokenAbi,
-  MarketTokenAbi,
-  StakingTokenAbi,
-  WrappedNativeTokenAbi,
-  TokenAbi,
-  ComptrollerTokenAbi,
-  MultiRewardDistributorAbi,
-  CoreViewsAbi,
-  TemporalGovernorAbi,
-  VoteCollectorAbi,
   ChainLinkOracleAbi,
+  ComptrollerTokenAbi,
   CoreRouterAbi,
+  CoreViewsAbi,
+  GovernanceTokenAbi,
+  GovernorAbi,
+  MarketTokenAbi,
   MorphoBlueAbi,
   MorphoBundlerAbi,
-  MorphoViewsAbi,
-  MorphoVaultAbi,
   MorphoPublicAllocatorAbi,
-  GovernorAbi,
+  MorphoVaultAbi,
+  MorphoViewsAbi,
+  MultiRewardDistributorAbi,
   MultichainGovernorAbi,
+  StakingTokenAbi,
+  TemporalGovernorAbi,
+  TokenAbi,
+  TokenSaleAbi,
+  VoteCollectorAbi,
+  WrappedNativeTokenAbi,
 };

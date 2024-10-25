@@ -20,8 +20,8 @@
     "allowJs": false,
     "checkJs": false,
     // Interop constraints
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "verbatimModuleSyntax": true,
     // Language and environment

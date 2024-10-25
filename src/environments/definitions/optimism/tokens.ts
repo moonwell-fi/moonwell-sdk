@@ -140,6 +140,18 @@ export const tokens = createTokenConfig({
     name: "Moonwell OP",
     symbol: "OP",
   },
+  wrsETH: {
+    address: "0x87eEE96D50Fb761AD85B1c982d28A042169d61b1",
+    decimals: 18,
+    name: "Kelp DAO Restaked Ethereum",
+    symbol: "wrsETH",
+  },
+  MOONWELL_wrsETH: {
+    address: "0x181bA797ccF779D8aB339721ED6ee827E758668e",
+    decimals: 8,
+    name: "Moonwell wrsETH",
+    symbol: "wrsETH",
+  },
   WELL: {
     address: "0xA88594D404727625A9437C3f886C7643872296AE",
     decimals: 18,

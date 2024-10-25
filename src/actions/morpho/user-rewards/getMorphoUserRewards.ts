@@ -1,7 +1,7 @@
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
-import type { NetworkParameterType } from "../../../common/types.js";
+import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
 import { getUserMorphoRewardsData } from "./common.js";
@@ -9,7 +9,7 @@ import { getUserMorphoRewardsData } from "./common.js";
 export type GetMorphoUserRewardsParameters<
   environments,
   network extends Chain | undefined,
-> = NetworkParameterType<environments, network> & {
+> = OptionalNetworkParameterType<environments, network> & {
   userAddress: Address;
 };
 
@@ -25,12 +25,14 @@ export async function getMorphoUserRewards<
   const environments = getEnvironmentsFromArgs(client, args);
 
   const environmentsUserRewards = await Promise.all(
-    environments.map((environment) => {
-      return getUserMorphoRewardsData({
-        environment,
-        account: args.userAddress,
-      });
-    }),
+    environments
+      .filter((environment) => environment.contracts.morphoViews !== undefined)
+      .map((environment) => {
+        return getUserMorphoRewardsData({
+          environment,
+          account: args.userAddress,
+        });
+      }),
   );
 
   return environmentsUserRewards.flat();

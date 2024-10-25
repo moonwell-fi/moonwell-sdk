@@ -2,6 +2,7 @@ import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
+import * as logger from "../../../logger/console.js";
 import type { MorphoVault } from "../../../types/morphoVault.js";
 import { getMorphoVaultsData } from "./common.js";
 
@@ -23,8 +24,14 @@ export async function getMorphoVaults<
 ): GetMorphoVaultsReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
 
-  return getMorphoVaultsData({
+  const logId = logger.start("getMorphoVaults", "Starting to get vaults...");
+
+  const result = await getMorphoVaultsData({
     environments: environments,
     includeRewards: args?.includeRewards ?? false,
   });
+
+  logger.end(logId);
+
+  return result;
 }

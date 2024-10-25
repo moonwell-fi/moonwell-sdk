@@ -24,21 +24,37 @@ export const markets = createMarketConfig({
       marketToken: "MOONWELL_xcUSDT",
       underlyingToken: "xcUSDT",
     },
-    MOONWELL_ETH: {
-      marketToken: "MOONWELL_ETH",
-      underlyingToken: "ETH",
+    MOONWELL_ETH_NOMAD: {
+      marketToken: "MOONWELL_ETH_NOMAD",
+      underlyingToken: "ETH_NOMAD",
+      deprecated: true,
     },
-    MOONWELL_BTC: {
-      marketToken: "MOONWELL_BTC",
-      underlyingToken: "BTC",
+    MOONWELL_BTC_NOMAD: {
+      marketToken: "MOONWELL_BTC_NOMAD",
+      underlyingToken: "BTC_NOMAD",
+      deprecated: true,
     },
-    MOONWELL_USDC: {
-      marketToken: "MOONWELL_USDC",
-      underlyingToken: "USDC",
+    MOONWELL_USDC_NOMAD: {
+      marketToken: "MOONWELL_USDC_NOMAD",
+      underlyingToken: "USDC_NOMAD",
+      deprecated: true,
     },
-    MOONWELL_BUSD: {
-      marketToken: "MOONWELL_BUSD",
-      underlyingToken: "BUSD",
+    MOONWELL_ETH_WORMHOLE: {
+      marketToken: "MOONWELL_ETH_WORMHOLE",
+      underlyingToken: "ETH_WORMHOLE",
+    },
+    MOONWELL_BTC_WORMHOLE: {
+      marketToken: "MOONWELL_BTC_WORMHOLE",
+      underlyingToken: "BTC_WORMHOLE",
+    },
+    MOONWELL_USDC_WORMHOLE: {
+      marketToken: "MOONWELL_USDC_WORMHOLE",
+      underlyingToken: "USDC_WORMHOLE",
+    },
+    MOONWELL_BUSD_WORMHOLE: {
+      marketToken: "MOONWELL_BUSD_WORMHOLE",
+      underlyingToken: "BUSD_WORMHOLE",
+      deprecated: true,
     },
   },
 });

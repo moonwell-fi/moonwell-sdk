@@ -1,14 +1,14 @@
 import type { Address, Chain } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
-import type { NetworkParameterType } from "../../../common/types.js";
+import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { UserPosition } from "../../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
 
 export type GetUserPositionsParameters<
   environments,
   network extends Chain | undefined,
-> = NetworkParameterType<environments, network> & {
+> = OptionalNetworkParameterType<environments, network> & {
   /** User address*/
   userAddress: Address;
 };

@@ -1,11 +1,18 @@
 export {
-  type MoonwellClient,
   createMoonwellClient,
+  type MoonwellClient,
 } from "./client/createMoonwellClient.js";
 
+export type {
+  MarketConfig,
+  MorphoMarketConfig,
+  TokenConfig,
+  VaultConfig,
+} from "./environments/types/config.js";
+export type { CirculatingSupplySnapshot } from "./types/circulatingSupply.js";
 export type { Delegate } from "./types/delegate.js";
 export type { Discussion } from "./types/discussion.js";
-export type { Market, MarketReward } from "./types/market.js";
+export type { Market, MarketReward, MarketSnapshot } from "./types/market.js";
 export type {
   MorphoMarket,
   MorphoMarketParamsType,
@@ -13,15 +20,15 @@ export type {
 } from "./types/morphoMarket.js";
 export type { MorphoReward } from "./types/morphoReward.js";
 export type {
-  MorphoVaultUserPosition,
   MorphoMarketUserPosition,
+  MorphoVaultUserPosition,
 } from "./types/morphoUserPosition.js";
 export type { MorphoUserReward } from "./types/morphoUserReward.js";
 export type { MorphoVault, MorphoVaultMarket } from "./types/morphoVault.js";
 export {
-  type Proposal,
-  ProposalState,
   MultichainProposalState,
+  ProposalState,
+  type Proposal,
 } from "./types/proposal.js";
 export type { SnapshotProposal } from "./types/snapshotProposal.js";
 export type {
@@ -34,9 +41,3 @@ export type { UserPosition } from "./types/userPosition.js";
 export type { UserReward } from "./types/userReward.js";
 export type { UserVotingPowers } from "./types/userVotingPowers.js";
 export type { VoteReceipt } from "./types/voteReceipt.js";
-export type {
-  TokenConfig,
-  VaultConfig,
-  MarketConfig,
-  MorphoMarketConfig,
-} from "./environments/types/config.js";

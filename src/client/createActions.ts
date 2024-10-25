@@ -37,6 +37,11 @@ import {
   getUserRewards,
 } from "../actions/core/user-rewards/getUserRewards.js";
 import {
+  type GetCirculatingSupplySnapshotsParameters,
+  type GetCirculatingSupplySnapshotsReturnType,
+  getCirculatingSupplySnapshots,
+} from "../actions/governance/getCirculatingSupplySnapshots.js";
+import {
   type GetDelegatesReturnType,
   getDelegates,
 } from "../actions/governance/getDelegates.js";
@@ -95,6 +100,11 @@ import {
   getSnapshotProposals,
 } from "../actions/governance/snapshot/getSnapshotProposals.js";
 import {
+  type GetMarketSnapshotsParameters,
+  type GetMarketSnapshotsReturnType,
+  getMarketSnapshots,
+} from "../actions/index.js";
+import {
   type GetMorphoUserBalancesParameters,
   type GetMorphoUserBalancesReturnType,
   getMorphoUserBalances,
@@ -144,144 +154,183 @@ import {
   type GetMorphoVaultsReturnType,
   getMorphoVaults,
 } from "../actions/morpho/vaults/getMorphoVaults.js";
+import type { Environment, SupportedChains } from "../environments/index.js";
 
-export const createActions = <environments>(
+export type Actions<
+  environments extends { [name in SupportedChains]?: Environment },
+> = {
+  getMarket: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetMarketParameters<environments, chain>,
+  ) => GetMarketReturnType;
+
+  getMarkets: <chain extends Chain | undefined = Chain | undefined>(
+    args?: GetMarketsParameters<environments, chain>,
+  ) => GetMarketsReturnType;
+
+  getUserPosition: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserPositionParameters<environments, chain>,
+  ) => GetUserPositionReturnType;
+
+  getUserPositions: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserPositionsParameters<environments, chain>,
+  ) => GetUserPositionsReturnType;
+
+  getUserReward: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserRewardParameters<environments, chain>,
+  ) => GetUserRewardReturnType;
+
+  getUserRewards: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserRewardsParameters<environments, chain>,
+  ) => GetUserRewardsReturnType;
+
+  getUserBalances: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserBalancesParameters<environments, chain>,
+  ) => GetUserBalancesReturnType;
+
+  getProposal: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetProposalParameters<environments, chain>,
+  ) => GetProposalReturnType;
+
+  getProposals: <chain extends Chain | undefined = Chain | undefined>(
+    args?: GetProposalsParameters<environments, chain>,
+  ) => GetProposalsReturnType;
+
+  getSnapshotProposal: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetSnapshotProposalParameters<environments, chain>,
+  ) => GetSnapshotProposalReturnType;
+
+  getSnapshotProposals: <chain extends Chain | undefined = Chain | undefined>(
+    args?: GetSnapshotProposalsParameters<environments, chain>,
+  ) => GetSnapshotProposalsReturnType;
+
+  getDelegates: () => GetDelegatesReturnType;
+
+  getDiscussions: () => GetDiscussionsReturnType;
+
+  getGovernanceTokenInfo: (
+    args: GetGovernanceTokenInfoParameters,
+  ) => GetGovernanceTokenInfoReturnType;
+
+  getStakingInfo: <chain extends Chain | undefined = Chain | undefined>(
+    args?: GetStakingInfoParameters<environments, chain>,
+  ) => GetStakingInfoReturnType;
+
+  getStakingSnapshots: <chain extends Chain | undefined = Chain | undefined>(
+    args?: GetStakingSnapshotsParameters<environments, chain>,
+  ) => GetStakingSnapshotsReturnType;
+
+  getUserStakingInfo: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserStakingInfoParameters<environments, chain>,
+  ) => GetUserStakingInfoReturnType;
+
+  getUserVoteReceipt: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserVoteReceiptParameters<environments, chain>,
+  ) => GetUserVoteReceiptReturnType;
+
+  getUserVotingPowers: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetUserVotingPowersParameters<environments, chain>,
+  ) => GetUserVotingPowersReturnType;
+
+  getMorphoMarket: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetMorphoMarketParameters<environments, chain>,
+  ) => GetMorphoMarketReturnType;
+
+  getMorphoMarkets: <chain extends Chain | undefined = Chain | undefined>(
+    args?: GetMorphoMarketsParameters<environments, chain>,
+  ) => GetMorphoMarketsReturnType;
+
+  getMorphoMarketUserPosition: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoMarketUserPositionParameters<environments, chain>,
+  ) => GetMorphoMarketUserPositionReturnType;
+
+  getMorphoMarketUserPositions: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoMarketUserPositionsParameters<environments, chain>,
+  ) => GetMorphoMarketUserPositionsReturnType;
+
+  getMorphoVaultUserPosition: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoVaultUserPositionParameters<environments, chain>,
+  ) => GetMorphoVaultUserPositionReturnType;
+
+  getMorphoVaultUserPositions: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoVaultUserPositionsParameters<environments, chain>,
+  ) => GetMorphoVaultUserPositionsReturnType;
+
+  getMorphoUserRewards: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetMorphoUserRewardsParameters<environments, chain>,
+  ) => GetMorphoUserRewardsReturnType;
+
+  getMorphoVault: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetMorphoVaultParameters<environments, chain>,
+  ) => GetMorphoVaultReturnType;
+
+  getMorphoVaults: <chain extends Chain | undefined = Chain | undefined>(
+    args?: GetMorphoVaultsParameters<environments, chain>,
+  ) => GetMorphoVaultsReturnType;
+
+  getMorphoUserBalances: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetMorphoUserBalancesParameters<environments, chain>,
+  ) => GetMorphoUserBalancesReturnType;
+
+  getCirculatingSupplySnapshots: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetCirculatingSupplySnapshotsParameters<environments, chain>,
+  ) => GetCirculatingSupplySnapshotsReturnType;
+
+  getMarketSnapshots: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetMarketSnapshotsParameters<environments, chain>,
+  ) => GetMarketSnapshotsReturnType;
+};
+
+export const actions = <
+  environments extends { [name in SupportedChains]?: Environment },
+>(
   client: MoonwellClient<environments>,
-) => {
+): Actions<environments> => {
   return {
-    getMarket: <chain extends Chain | undefined>(
-      args: GetMarketParameters<environments, chain>,
-    ): GetMarketReturnType => getMarket<environments, chain>(client, args),
-
-    getMarkets: <chain extends Chain | undefined>(
-      args?: GetMarketsParameters<environments, chain>,
-    ): GetMarketsReturnType => getMarkets<environments, chain>(client, args),
-
-    getUserPosition: <chain extends Chain | undefined>(
-      args: GetUserPositionParameters<environments, chain>,
-    ): GetUserPositionReturnType =>
-      getUserPosition<environments, chain>(client, args),
-
-    getUserPositions: <chain extends Chain | undefined>(
-      args: GetUserPositionsParameters<environments, chain>,
-    ): GetUserPositionsReturnType =>
-      getUserPositions<environments, chain>(client, args),
-
-    getUserReward: <chain extends Chain | undefined>(
-      args: GetUserRewardParameters<environments, chain>,
-    ): GetUserRewardReturnType =>
-      getUserReward<environments, chain>(client, args),
-
-    getUserRewards: <chain extends Chain | undefined>(
-      args: GetUserRewardsParameters<environments, chain>,
-    ): GetUserRewardsReturnType =>
-      getUserRewards<environments, chain>(client, args),
-
-    getUserBalances: <chain extends Chain | undefined>(
-      args: GetUserBalancesParameters<environments, chain>,
-    ): GetUserBalancesReturnType =>
-      getUserBalances<environments, chain>(client, args),
-
-    getProposal: <chain extends Chain | undefined>(
-      args: GetProposalParameters<environments, chain>,
-    ): GetProposalReturnType => getProposal<environments, chain>(client, args),
-
-    getProposals: <chain extends Chain | undefined>(
-      args?: GetProposalsParameters<environments, chain>,
-    ): GetProposalsReturnType =>
-      getProposals<environments, chain>(client, args),
-
-    getSnapshotProposal: <chain extends Chain | undefined>(
-      args: GetSnapshotProposalParameters<environments, chain>,
-    ): GetSnapshotProposalReturnType =>
-      getSnapshotProposal<environments, chain>(client, args),
-
-    getSnapshotProposals: <chain extends Chain | undefined>(
-      args?: GetSnapshotProposalsParameters<environments, chain>,
-    ): GetSnapshotProposalsReturnType =>
-      getSnapshotProposals<environments, chain>(client, args),
-
-    getDelegates: (): GetDelegatesReturnType => getDelegates(client),
-
-    getDiscussions: (): GetDiscussionsReturnType => getDiscussions(client),
-
-    getGovernanceTokenInfo: (
-      args: GetGovernanceTokenInfoParameters,
-    ): GetGovernanceTokenInfoReturnType => getGovernanceTokenInfo(client, args),
-
-    getStakingInfo: <chain extends Chain | undefined>(
-      args?: GetStakingInfoParameters<environments, chain>,
-    ): GetStakingInfoReturnType =>
-      getStakingInfo<environments, chain>(client, args),
-
-    getStakingSnapshots: <chain extends Chain | undefined>(
-      args?: GetStakingSnapshotsParameters<environments, chain>,
-    ): GetStakingSnapshotsReturnType =>
-      getStakingSnapshots<environments, chain>(client, args),
-
-    getUserStakingInfo: <chain extends Chain | undefined>(
-      args: GetUserStakingInfoParameters<environments, chain>,
-    ): GetUserStakingInfoReturnType =>
-      getUserStakingInfo<environments, chain>(client, args),
-
-    getUserVoteReceipt: <chain extends Chain | undefined>(
-      args: GetUserVoteReceiptParameters<environments, chain>,
-    ): GetUserVoteReceiptReturnType =>
-      getUserVoteReceipt<environments, chain>(client, args),
-
-    getUserVotingPowers: <chain extends Chain | undefined>(
-      args: GetUserVotingPowersParameters<environments, chain>,
-    ): GetUserVotingPowersReturnType =>
-      getUserVotingPowers<environments, chain>(client, args),
-
-    getMorphoMarket: <chain extends Chain | undefined>(
-      args: GetMorphoMarketParameters<environments, chain>,
-    ): GetMorphoMarketReturnType =>
-      getMorphoMarket<environments, chain>(client, args),
-
-    getMorphoMarkets: <chain extends Chain | undefined>(
-      args?: GetMorphoMarketsParameters<environments, chain>,
-    ): GetMorphoMarketsReturnType =>
-      getMorphoMarkets<environments, chain>(client, args),
-
-    getMorphoMarketUserPosition: <chain extends Chain | undefined>(
-      args: GetMorphoMarketUserPositionParameters<environments, chain>,
-    ): GetMorphoMarketUserPositionReturnType =>
-      getMorphoMarketUserPosition<environments, chain>(client, args),
-
-    getMorphoMarketUserPositions: <chain extends Chain | undefined>(
-      args: GetMorphoMarketUserPositionsParameters<environments, chain>,
-    ): GetMorphoMarketUserPositionsReturnType =>
-      getMorphoMarketUserPositions<environments, chain>(client, args),
-
-    getMorphoVaultUserPosition: <chain extends Chain | undefined>(
-      args: GetMorphoVaultUserPositionParameters<environments, chain>,
-    ): GetMorphoVaultUserPositionReturnType =>
-      getMorphoVaultUserPosition<environments, chain>(client, args),
-
-    getMorphoVaultUserPositions: <chain extends Chain | undefined>(
-      args: GetMorphoVaultUserPositionsParameters<environments, chain>,
-    ): GetMorphoVaultUserPositionsReturnType =>
-      getMorphoVaultUserPositions<environments, chain>(client, args),
-
-    getMorphoUserRewards: <chain extends Chain | undefined>(
-      args: GetMorphoUserRewardsParameters<environments, chain>,
-    ): GetMorphoUserRewardsReturnType =>
-      getMorphoUserRewards<environments, chain>(client, args),
-
-    getMorphoVault: <chain extends Chain | undefined>(
-      args: GetMorphoVaultParameters<environments, chain>,
-    ): GetMorphoVaultReturnType =>
-      getMorphoVault<environments, chain>(client, args),
-
-    getMorphoVaults: <chain extends Chain | undefined>(
-      args?: GetMorphoVaultsParameters<environments, chain>,
-    ): GetMorphoVaultsReturnType =>
-      getMorphoVaults<environments, chain>(client, args),
-
-    getMorphoUserBalances: <chain extends Chain | undefined>(
-      args: GetMorphoUserBalancesParameters<environments, chain>,
-    ): GetMorphoUserBalancesReturnType =>
-      getMorphoUserBalances<environments, chain>(client, args),
+    getMarket: (args) => getMarket(client, args),
+    getMarkets: (args) => getMarkets(client, args),
+    getUserPosition: (args) => getUserPosition(client, args),
+    getUserPositions: (args) => getUserPositions(client, args),
+    getUserReward: (args) => getUserReward(client, args),
+    getUserRewards: (args) => getUserRewards(client, args),
+    getUserBalances: (args) => getUserBalances(client, args),
+    getProposal: (args) => getProposal(client, args),
+    getProposals: (args) => getProposals(client, args),
+    getSnapshotProposal: (args) => getSnapshotProposal(client, args),
+    getSnapshotProposals: (args) => getSnapshotProposals(client, args),
+    getDelegates: () => getDelegates(client),
+    getDiscussions: () => getDiscussions(client),
+    getGovernanceTokenInfo: (args) => getGovernanceTokenInfo(client, args),
+    getStakingInfo: (args) => getStakingInfo(client, args),
+    getStakingSnapshots: (args) => getStakingSnapshots(client, args),
+    getUserStakingInfo: (args) => getUserStakingInfo(client, args),
+    getUserVoteReceipt: (args) => getUserVoteReceipt(client, args),
+    getUserVotingPowers: (args) => getUserVotingPowers(client, args),
+    getMorphoMarket: (args) => getMorphoMarket(client, args),
+    getMorphoMarkets: (args) => getMorphoMarkets(client, args),
+    getMorphoMarketUserPosition: (args) =>
+      getMorphoMarketUserPosition(client, args),
+    getMorphoMarketUserPositions: (args) =>
+      getMorphoMarketUserPositions(client, args),
+    getMorphoVaultUserPosition: (args) =>
+      getMorphoVaultUserPosition(client, args),
+    getMorphoVaultUserPositions: (args) =>
+      getMorphoVaultUserPositions(client, args),
+    getMorphoUserRewards: (args) => getMorphoUserRewards(client, args),
+    getMorphoVault: (args) => getMorphoVault(client, args),
+    getMorphoVaults: (args) => getMorphoVaults(client, args),
+    getMorphoUserBalances: (args) => getMorphoUserBalances(client, args),
+    getCirculatingSupplySnapshots: (args) =>
+      getCirculatingSupplySnapshots(client, args),
+    getMarketSnapshots: (args) => getMarketSnapshots(client, args),
   };
 };

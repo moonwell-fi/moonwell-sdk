@@ -45,4 +45,4 @@ const createEnvironment = (
     typeof custom
   >;
 
-export { base, createEnvironment, markets, morphoMarkets, vaults, tokens };
+export { base, createEnvironment, markets, morphoMarkets, tokens, vaults };

@@ -1,7 +1,14 @@
-import type { Address, Chain } from "viem";
+import {
+  type Address,
+  type Chain,
+  getContract,
+  parseAbi,
+  zeroAddress,
+} from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
+import type { Environment } from "../../environments/index.js";
 import { findTokenByAddress } from "../../environments/utils/index.js";
 import type { UserBalance } from "../../types/userBalance.js";
 
@@ -15,6 +22,52 @@ export type GetUserBalancesParameters<
 
 export type GetUserBalancesReturnType = Promise<UserBalance[]>;
 
+const getTokenBalance = async (
+  environment: Environment,
+  userAddress: Address,
+  tokenAddress: Address,
+) => {
+  if (tokenAddress === zeroAddress) {
+    return new Promise<{ amount: bigint; token: `0x${string}` }>((resolve) => {
+      environment.publicClient
+        .getBalance({
+          address: userAddress,
+        })
+        .then((balance) => {
+          resolve({ amount: BigInt(balance), token: tokenAddress });
+        })
+        .catch(() => {
+          resolve({ amount: 0n, token: tokenAddress });
+        });
+    });
+  }
+
+  const erc20Abi = parseAbi([
+    "function balanceOf(address owner) view returns (uint256)",
+  ]);
+
+  const erc20Contract = getContract({
+    address: tokenAddress,
+    abi: erc20Abi,
+    client: environment.publicClient,
+  });
+
+  const result = new Promise<{ amount: bigint; token: `0x${string}` }>(
+    (resolve) => {
+      erc20Contract.read
+        .balanceOf([userAddress])
+        .then((balance) => {
+          resolve({ amount: BigInt(balance), token: tokenAddress });
+        })
+        .catch(() => {
+          resolve({ amount: 0n, token: tokenAddress });
+        });
+    },
+  );
+
+  return result;
+};
+
 export async function getUserBalances<
   environments,
   Network extends Chain | undefined,
@@ -24,17 +77,27 @@ export async function getUserBalances<
 ): GetUserBalancesReturnType {
   const { userAddress } = args;
 
-  const environments = getEnvironmentsFromArgs(client, args);
+  const environments = getEnvironmentsFromArgs(client, args, false);
 
   const environmentsTokensBalances = await Promise.all(
     environments.map((environment) => {
+      if (environment.contracts.views) {
+        return Promise.all([
+          environment.contracts.views.read.getTokensBalances([
+            Object.values(environment.config.tokens).map(
+              (token) => token.address,
+            ),
+            userAddress,
+          ]),
+        ]);
+      }
+
       return Promise.all([
-        environment.contracts.views?.read.getTokensBalances([
-          Object.values(environment.config.tokens).map(
-            (token) => token.address,
+        Promise.all(
+          Object.values(environment.config.tokens).map((token) =>
+            getTokenBalance(environment, userAddress, token.address),
           ),
-          userAddress,
-        ]),
+        ),
       ]);
     }),
   );

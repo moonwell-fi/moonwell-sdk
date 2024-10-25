@@ -5,6 +5,8 @@ export type Market = {
   marketKey: string;
   chainId: number;
   deprecated: boolean;
+  mintPaused: boolean;
+  borrowPaused: boolean;
   seizePaused: boolean;
   transferPaused: boolean;
   marketToken: TokenConfig;
@@ -35,4 +37,16 @@ export type MarketReward = {
   token: TokenConfig;
   supplyApr: number;
   borrowApr: number;
+};
+
+export type MarketSnapshot = {
+  chainId: number;
+  marketId: string;
+  totalSupply: number;
+  totalSupplyUsd: number;
+  totalBorrows: number;
+  totalBorrowsUsd: number;
+  totalLiquidity: number;
+  totalLiquidityUsd: number;
+  timestamp: number;
 };

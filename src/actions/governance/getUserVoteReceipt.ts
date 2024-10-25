@@ -28,7 +28,7 @@ export async function getUserVoteReceipt<
   client: MoonwellClient,
   args: GetUserVoteReceiptParameters<environments, Network>,
 ): GetUserVoteReceiptReturnType {
-  let { proposalId, userAddress } = args;
+  const { proposalId, userAddress } = args;
 
   const environment = getEnvironmentFromArgs(client, args);
 
@@ -37,12 +37,13 @@ export async function getUserVoteReceipt<
   }
 
   let isMultichain = false;
+  let getReceiptProposalId = proposalId;
 
   if (environment.contracts.multichainGovernor) {
     if (environment.custom?.governance?.proposalIdOffset) {
       if (proposalId > environment.custom?.governance?.proposalIdOffset) {
         isMultichain = true;
-        proposalId =
+        getReceiptProposalId =
           proposalId - environment.custom?.governance?.proposalIdOffset;
       }
     }
@@ -55,7 +56,7 @@ export async function getUserVoteReceipt<
 
     const receipt =
       await environment.contracts.multichainGovernor?.read.getReceipt([
-        BigInt(proposalId),
+        BigInt(getReceiptProposalId),
         userAddress,
       ]);
 
@@ -77,14 +78,14 @@ export async function getUserVoteReceipt<
       if (multichainEnvironment) {
         const receipt =
           await multichainEnvironment.contracts.voteCollector?.read.getReceipt([
-            BigInt(proposalId),
+            BigInt(getReceiptProposalId),
             userAddress,
           ]);
 
         const [hasVoted, voteValue, votes] = receipt || [false, 0, 0];
 
         result.push({
-          chainId: environment.chainId,
+          chainId: multichainEnvironment.chainId,
           proposalId,
           account: userAddress,
           option: voteValue,
@@ -95,7 +96,7 @@ export async function getUserVoteReceipt<
     }
   } else {
     const receipt = await environment.contracts.governor?.read.getReceipt([
-      BigInt(proposalId),
+      BigInt(getReceiptProposalId),
       userAddress,
     ]);
 

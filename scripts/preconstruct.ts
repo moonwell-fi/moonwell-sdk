@@ -7,14 +7,8 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
-// biome-ignore lint/suspicious/noConsoleLog:
-console.log("Setting up packages for development.");
-
 const packagePath = resolve(import.meta.dirname, "../src/package.json");
 const packageJson = JSON.parse(readFileSync(packagePath, "utf-8"));
-
-// biome-ignore lint/suspicious/noConsoleLog:
-console.log(`${packageJson.name} — ${dirname(packagePath)}`);
 
 const dir = resolve(dirname(packagePath));
 
@@ -65,6 +59,3 @@ for (const [key, exports] of Object.entries(packageJson.exports)) {
     } catch {}
   }
 }
-
-// biome-ignore lint/suspicious/noConsoleLog:
-console.log("Done.");
