@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.3.1
+
+### Patch Changes
+
+- [`f7c370d7da317a775ed40587ecc0dde892645058`](https://github.com/moonwell-fi/moonwell-sdk/commit/f7c370d7da317a775ed40587ecc0dde892645058) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix building scripts
+
 ## 0.3.0
 
 ### Minor Changes
