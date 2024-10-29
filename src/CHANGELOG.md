@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.4.1
+
+### Patch Changes
+
+- [#13](https://github.com/moonwell-fi/moonwell-sdk/pull/13) [`3d2127f8efe3c646788c4c82b95417bff848551a`](https://github.com/moonwell-fi/moonwell-sdk/commit/3d2127f8efe3c646788c4c82b95417bff848551a) Thanks [@x0s0l](https://github.com/x0s0l)! - Change lodash import
+
 ## 0.4.0
 
 ### Minor Changes
