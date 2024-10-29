@@ -1,4 +1,5 @@
-import { uniqueId } from "lodash";
+import lodash from "lodash";
+const { uniqueId } = lodash;
 
 const messages: Record<
   string,
