@@ -1,4 +1,5 @@
-import { first } from "lodash";
+import lodash from "lodash";
+const { first } = lodash;
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentFromArgs } from "../../../common/index.js";
