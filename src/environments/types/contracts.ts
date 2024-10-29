@@ -7,6 +7,7 @@ import type {
   GovernanceTokenAbi,
   GovernorAbi,
   MarketTokenAbi,
+  MaximillionAbi,
   MorphoBlueAbi,
   MorphoBundlerAbi,
   MorphoPublicAllocatorAbi,
@@ -54,6 +55,12 @@ export type StakingTokenContractReturnType = GetContractReturnType<
 
 export type ComptrollerContractReturnType = GetContractReturnType<
   typeof ComptrollerTokenAbi,
+  PublicClient,
+  Address
+>;
+
+export type MaximillionContractReturnType = GetContractReturnType<
+  typeof MaximillionAbi,
   PublicClient,
   Address
 >;

@@ -24,7 +24,11 @@ export type {
   MorphoVaultUserPosition,
 } from "./types/morphoUserPosition.js";
 export type { MorphoUserReward } from "./types/morphoUserReward.js";
-export type { MorphoVault, MorphoVaultMarket } from "./types/morphoVault.js";
+export type {
+  MorphoVault,
+  MorphoVaultMarket,
+  MorphoVaultSnapshot,
+} from "./types/morphoVault.js";
 export {
   MultichainProposalState,
   ProposalState,

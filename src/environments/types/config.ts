@@ -19,6 +19,7 @@ import {
   GovernanceTokenAbi,
   GovernorAbi,
   MarketTokenAbi,
+  MaximillionAbi,
   MorphoBlueAbi,
   MorphoBundlerAbi,
   MorphoPublicAllocatorAbi,
@@ -41,6 +42,7 @@ import type {
   GovernanceTokenContractReturnType,
   GovernorContractReturnType,
   MarketTokenContractReturnType,
+  MaximillionContractReturnType,
   MorphoBlueContractReturnType,
   MorphoBundlerContractReturnType,
   MorphoPublicAllocatorContractReturnType,
@@ -86,6 +88,7 @@ export type ContractConfig<tokens> = {
   governanceToken?: keyof tokens;
   wrappedNativeToken?: keyof tokens;
   comptroller?: Address;
+  maximillion?: Address;
   views?: Address;
   tokenSale?: Address;
   morphoViews?: Address;
@@ -106,6 +109,7 @@ export type ContractsConfigReturnType = {
   governanceToken: TokenContractReturnType;
   wrappedNativeToken: TokenContractReturnType;
   comptroller: ComptrollerContractReturnType;
+  maximillion: MaximillionContractReturnType;
   views: CoreViewsContractReturnType;
   tokenSale: TokenSaleContractReturnType;
   morphoViews: MorphoViewsContractReturnType;
@@ -293,6 +297,9 @@ export const createEnvironmentConfig = <
       case "comptroller":
         abi = ComptrollerTokenAbi;
         break;
+      case "maximillion":
+        abi = MaximillionAbi;
+        break;
       case "views":
         abi = CoreViewsAbi;
         break;
@@ -373,6 +380,11 @@ export const createEnvironmentConfig = <
         name,
         "comptroller"
       >]: ComptrollerContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
+        "maximillion"
+      >]: MaximillionContractReturnType;
     } & {
       [name in keyof contracts as Extract<
         name,
@@ -513,6 +525,11 @@ export type Environment<
         name,
         "comptroller"
       >]: ComptrollerContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
+        "maximillion"
+      >]: MaximillionContractReturnType;
     } & {
       [name in keyof contracts as Extract<
         name,

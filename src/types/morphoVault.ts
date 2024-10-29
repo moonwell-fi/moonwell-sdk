@@ -35,3 +35,15 @@ export type MorphoVaultMarket = {
   totalSuppliedUsd: number;
   rewards: Omit<MorphoReward, "marketId">[];
 };
+
+export type MorphoVaultSnapshot = {
+  chainId: number;
+  vaultAddress: string;
+  totalSupply: number;
+  totalSupplyUsd: number;
+  totalBorrows: number;
+  totalBorrowsUsd: number;
+  totalLiquidity: number;
+  totalLiquidityUsd: number;
+  timestamp: number;
+};

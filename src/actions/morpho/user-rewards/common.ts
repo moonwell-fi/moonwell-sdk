@@ -14,10 +14,7 @@ export async function getUserMorphoRewardsData(params: {
     params.account,
   );
 
-  const assets = await getMorphoAssetsData(
-    params.environment.chainId,
-    rewards.map((r) => r.asset.address),
-  );
+  const assets = await getMorphoAssetsData(rewards.map((r) => r.asset.address));
 
   const result: (MorphoUserReward | undefined)[] = rewards.map((r) => {
     const asset = assets.find(
@@ -51,8 +48,8 @@ export async function getUserMorphoRewardsData(params: {
 
         const uniformReward: MorphoUserReward = {
           type: "uniform-reward",
-          chainId: r.program.chain_id,
-          account: r.accountId,
+          chainId: r.asset.chain_id,
+          account: r.user,
           rewardToken,
           claimableNow,
           claimableNowUsd,
@@ -63,6 +60,19 @@ export async function getUserMorphoRewardsData(params: {
       }
 
       case "market-reward": {
+        const claimableNow = new Amount(
+          BigInt(r.for_supply?.claimable_now || 0),
+          rewardToken.decimals,
+        );
+        const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+
+        const claimableFuture = new Amount(
+          BigInt(r.for_supply?.claimable_next || 0),
+          rewardToken.decimals,
+        );
+        const claimableFutureUsd =
+          claimableFuture.value * (asset.priceUsd || 0);
+
         const collateralClaimableNow = new Amount(
           BigInt(r.for_collateral?.claimable_now || 0),
           rewardToken.decimals,
@@ -89,26 +99,42 @@ export async function getUserMorphoRewardsData(params: {
         const borrowClaimableFutureUsd =
           borrowClaimableFuture.value * (asset.priceUsd || 0);
 
-        const marketReward: MorphoUserReward = {
-          type: "market-reward",
-          chainId: r.program.chain_id,
-          account: r.accountId,
-          marketId: r.program.market_id || "",
-          rewardToken,
-          collateralRewards: {
-            claimableNow: collateralClaimableNow,
-            claimableNowUsd: collateralClaimableNowUsd,
-            claimableFuture: collateralClaimableFuture,
-            claimableFutureUsd: collateralClaimableFutureUsd,
-          },
-          borrowRewards: {
-            claimableNow: borrowClaimableNow,
-            claimableNowUsd: borrowClaimableNowUsd,
-            claimableFuture: borrowClaimableFuture,
-            claimableFutureUsd: borrowClaimableFutureUsd,
-          },
-        };
-        return marketReward;
+        //Rewards reallocated to vaults are reported as vault rewards
+        if (r.reallocated_from) {
+          const vaultReward: MorphoUserReward = {
+            type: "vault-reward",
+            chainId: r.program.chain_id,
+            account: r.user,
+            vaultId: r.reallocated_from,
+            rewardToken,
+            claimableNow,
+            claimableNowUsd,
+            claimableFuture,
+            claimableFutureUsd,
+          };
+          return vaultReward;
+        } else {
+          const marketReward: MorphoUserReward = {
+            type: "market-reward",
+            chainId: r.program.chain_id,
+            account: r.user,
+            marketId: r.program.market_id || "",
+            rewardToken,
+            collateralRewards: {
+              claimableNow: collateralClaimableNow,
+              claimableNowUsd: collateralClaimableNowUsd,
+              claimableFuture: collateralClaimableFuture,
+              claimableFutureUsd: collateralClaimableFutureUsd,
+            },
+            borrowRewards: {
+              claimableNow: borrowClaimableNow,
+              claimableNowUsd: borrowClaimableNowUsd,
+              claimableFuture: borrowClaimableFuture,
+              claimableFutureUsd: borrowClaimableFutureUsd,
+            },
+          };
+          return marketReward;
+        }
       }
       case "vault-reward": {
         const claimableNow = new Amount(
@@ -126,7 +152,7 @@ export async function getUserMorphoRewardsData(params: {
         const vaultReward: MorphoUserReward = {
           type: "vault-reward",
           chainId: r.program.chain_id,
-          account: r.accountId,
+          account: r.user,
           vaultId: r.program.vault,
           rewardToken,
           claimableNow,
@@ -144,7 +170,7 @@ export async function getUserMorphoRewardsData(params: {
 }
 
 type MorphoRewardsResponse = {
-  accountId: Address;
+  user: Address;
   for_borrow: {
     claimable_next: string;
     claimable_now: string;
@@ -169,10 +195,10 @@ type MorphoRewardsResponse = {
     chain_id: number;
     vault: Address;
   };
-  asset: { address: Address };
+  asset: { address: Address; chain_id: number };
   amount?: { claimable_next: string; claimable_now: string };
   type: "vault-reward" | "market-reward" | "uniform-reward";
-  reallocated_from: string;
+  reallocated_from: Address;
 };
 
 type MorphoAssetResponse = {
@@ -195,7 +221,6 @@ async function getMorphoRewardsData(
 }
 
 async function getMorphoAssetsData(
-  chainId: number,
   addresses: Address[],
 ): Promise<MorphoAssetResponse[]> {
   const rewardsRequest = await getGraphQL<{
@@ -204,9 +229,9 @@ async function getMorphoAssetsData(
     };
   }>(`
     query {
-      assets(where: {address_in: [${uniq(addresses)
-        .map((a: string) => `"${a}"`)
-        .join(",")}], chainId_in: ${chainId}}) {
+      assets(where: { address_in:[${uniq(addresses)
+        .map((a: string) => `"${a.toLowerCase()}"`)
+        .join(",")}]}) {
         items {
           address     
           symbol

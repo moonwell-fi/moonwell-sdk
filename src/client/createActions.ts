@@ -150,6 +150,11 @@ import {
   getMorphoVault,
 } from "../actions/morpho/vaults/getMorphoVault.js";
 import {
+  type GetMorphoVaultSnapshotsParameters,
+  type GetMorphoVaultSnapshotsReturnType,
+  getMorphoVaultSnapshots,
+} from "../actions/morpho/vaults/getMorphoVaultSnapshots.js";
+import {
   type GetMorphoVaultsParameters,
   type GetMorphoVaultsReturnType,
   getMorphoVaults,
@@ -288,6 +293,12 @@ export type Actions<
   getMarketSnapshots: <chain extends Chain | undefined = Chain | undefined>(
     args: GetMarketSnapshotsParameters<environments, chain>,
   ) => GetMarketSnapshotsReturnType;
+
+  getMorphoVaultSnapshots: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoVaultSnapshotsParameters<environments, chain>,
+  ) => GetMorphoVaultSnapshotsReturnType;
 };
 
 export const actions = <
@@ -332,5 +343,6 @@ export const actions = <
     getCirculatingSupplySnapshots: (args) =>
       getCirculatingSupplySnapshots(client, args),
     getMarketSnapshots: (args) => getMarketSnapshots(client, args),
+    getMorphoVaultSnapshots: (args) => getMorphoVaultSnapshots(client, args),
   };
 };

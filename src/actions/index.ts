@@ -157,3 +157,9 @@ export {
   type GetMarketSnapshotsParameters,
   type GetMarketSnapshotsReturnType,
 } from "./core/markets/getMarketSnapshots.js";
+
+export {
+  getMorphoVaultSnapshots,
+  type GetMorphoVaultSnapshotsParameters,
+  type GetMorphoVaultSnapshotsReturnType,
+} from "./morpho/vaults/getMorphoVaultSnapshots.js";
