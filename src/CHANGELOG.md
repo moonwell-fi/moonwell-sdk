@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.4.2
+
+### Patch Changes
+
+- [#16](https://github.com/moonwell-fi/moonwell-sdk/pull/16) [`3bd4c9df75a30b8f97308d12ffc6476e2d7911ca`](https://github.com/moonwell-fi/moonwell-sdk/commit/3bd4c9df75a30b8f97308d12ffc6476e2d7911ca) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix other files using lodash
+
 ## 0.4.1
 
 ### Patch Changes
