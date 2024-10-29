@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.4.0
+
+### Minor Changes
+
+- [#11](https://github.com/moonwell-fi/moonwell-sdk/pull/11) [`214d8ba474451838c9ddb3b0d5b03b563673be74`](https://github.com/moonwell-fi/moonwell-sdk/commit/214d8ba474451838c9ddb3b0d5b03b563673be74) Thanks [@x0s0l](https://github.com/x0s0l)! - Add Morpho Vault Snapshots
+
 ## 0.3.2
 
 ### Patch Changes
