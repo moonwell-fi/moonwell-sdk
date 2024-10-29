@@ -55,6 +55,7 @@ export const getUserPositionData = async (params: {
           marketSuppliedRaw,
           marketToken.decimals,
         );
+
         const supplied = new Amount(
           marketSupplied.value * exchangeRate,
           underlyingToken.decimals,

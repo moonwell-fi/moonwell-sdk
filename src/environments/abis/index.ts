@@ -5,6 +5,7 @@ import CoreViewsAbi from "./coreViewsAbi.js";
 import GovernanceTokenAbi from "./governanceTokenAbi.js";
 import GovernorAbi from "./governorAbi.js";
 import MarketTokenAbi from "./marketTokenAbi.js";
+import MaximillionAbi from "./maximillionAbi.js";
 import MorphoBlueAbi from "./morphoBlueAbi.js";
 import MorphoBundlerAbi from "./morphoBundlerAbi.js";
 import MorphoPublicAllocatorAbi from "./morphoPublicAllocatorAbi.js";
@@ -40,4 +41,5 @@ export {
   TokenSaleAbi,
   VoteCollectorAbi,
   WrappedNativeTokenAbi,
+  MaximillionAbi,
 };
