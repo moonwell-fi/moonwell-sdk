@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.4.4
+
+### Patch Changes
+
+- [#22](https://github.com/moonwell-fi/moonwell-sdk/pull/22) [`6a42f5ed95183a392c7b64abd127adf977e6758d`](https://github.com/moonwell-fi/moonwell-sdk/commit/6a42f5ed95183a392c7b64abd127adf977e6758d) Thanks [@x0s0l](https://github.com/x0s0l)! - Add user position snapshots
+
 ## 0.4.3
 
 ### Patch Changes
