@@ -1,9 +1,11 @@
 import axios from "axios";
-import { isEqual, uniqWith } from "lodash";
+import lodash from "lodash";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { HttpRequestError } from "../../common/index.js";
 import * as logger from "../../logger/console.js";
 import type { Discussion } from "../../types/discussion.js";
+
+const { isEqual, uniqWith } = lodash;
 
 export type GetDiscussionsReturnType = Promise<Discussion[]>;
 

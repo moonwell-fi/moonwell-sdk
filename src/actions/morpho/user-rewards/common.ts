@@ -1,4 +1,5 @@
-import { uniq } from "lodash";
+import lodash from "lodash";
+const { uniq } = lodash;
 import type { Address } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";

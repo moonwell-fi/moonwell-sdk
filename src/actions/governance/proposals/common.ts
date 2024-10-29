@@ -1,6 +1,6 @@
 import axios from "axios";
-
-import { last } from "lodash";
+import lodash from "lodash";
+const { last } = lodash;
 import { moonriver } from "viem/chains";
 import { Amount } from "../../../common/index.js";
 import {
