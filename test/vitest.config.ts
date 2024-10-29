@@ -30,7 +30,7 @@ export default defineConfig({
     environment: "jsdom",
     include: [
       ...(process.env.TYPES ? ["**/*.bench-d.ts"] : []),
-      //"src/**/*.test.ts",
+      "src/**/getUserPositionSnapshots.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,
