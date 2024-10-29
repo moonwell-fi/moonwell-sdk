@@ -22,6 +22,11 @@ import {
   getUserPosition,
 } from "../actions/core/user-positions/getUserPosition.js";
 import {
+  type GetUserPositionSnapshotsParameters,
+  type GetUserPositionSnapshotsReturnType,
+  getUserPositionSnapshots,
+} from "../actions/core/user-positions/getUserPositionSnapshots.js";
+import {
   type GetUserPositionsParameters,
   type GetUserPositionsReturnType,
   getUserPositions,
@@ -299,6 +304,12 @@ export type Actions<
   >(
     args: GetMorphoVaultSnapshotsParameters<environments, chain>,
   ) => GetMorphoVaultSnapshotsReturnType;
+
+  getUserPositionSnapshots: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetUserPositionSnapshotsParameters<environments, chain>,
+  ) => GetUserPositionSnapshotsReturnType;
 };
 
 export const actions = <
@@ -344,5 +355,6 @@ export const actions = <
       getCirculatingSupplySnapshots(client, args),
     getMarketSnapshots: (args) => getMarketSnapshots(client, args),
     getMorphoVaultSnapshots: (args) => getMorphoVaultSnapshots(client, args),
+    getUserPositionSnapshots: (args) => getUserPositionSnapshots(client, args),
   };
 };

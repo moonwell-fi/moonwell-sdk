@@ -14,3 +14,11 @@ export type UserPosition = {
   borrowed: Amount;
   borrowedUsd: number;
 };
+
+export type UserPositionSnapshot = {
+  chainId: number;
+  totalSupplyUsd: number;
+  totalBorrowsUsd: number;
+  totalCollateralUsd: number;
+  timestamp: number;
+};
