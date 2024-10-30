@@ -37,6 +37,7 @@ export type MarketReward = {
   token: TokenConfig;
   supplyApr: number;
   borrowApr: number;
+  liquidStakingApr: number;
 };
 
 export type MarketSnapshot = {

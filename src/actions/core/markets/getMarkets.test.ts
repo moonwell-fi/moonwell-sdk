@@ -19,13 +19,6 @@ describe("Testing markets", () => {
         });
         expect(marketData).toBeDefined();
       });
-
-      // test('Get markets with invalid chain id', async () => {
-      //   const marketData = await testClient.getMarkets({
-      //     chainId: 999999999,
-      //   });
-      //   expect(marketData).toBeUndefined();
-      // });
     },
   );
 });
