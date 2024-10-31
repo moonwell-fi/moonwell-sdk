@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.0
+
+### Minor Changes
+
+- [#24](https://github.com/moonwell-fi/moonwell-sdk/pull/24) [`471622015298aa5613065e73d8f242230fdce2fe`](https://github.com/moonwell-fi/moonwell-sdk/commit/471622015298aa5613065e73d8f242230fdce2fe) Thanks [@x0s0l](https://github.com/x0s0l)! - Add Liquid Staking APR to markets
+
 ## 0.4.4
 
 ### Patch Changes
