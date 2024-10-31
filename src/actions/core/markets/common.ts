@@ -1,10 +1,12 @@
-import { zeroAddress } from "viem";
+import { http, createPublicClient, parseAbi, zeroAddress } from "viem";
+import { base } from "viem/chains";
 import {
   Amount,
   DAYS_PER_YEAR,
   calculateApy,
   perDay,
 } from "../../../common/index.js";
+
 import {
   type Environment,
   publicEnvironments,
@@ -188,6 +190,7 @@ export const getMarketsData = async (environment: Environment) => {
               -1;
 
             market.rewards.push({
+              liquidStakingApr: 0,
               borrowApr,
               supplyApr,
               token,
@@ -210,4 +213,65 @@ export const getMarketsData = async (environment: Environment) => {
   }
 
   return markets;
+};
+
+const fetchFromGenericCacheApi = async <T>(uri: string): Promise<T> => {
+  const response = await fetch(
+    "https://generic-api-cache.moonwell.workers.dev/",
+    {
+      method: "POST",
+      body: `{"uri":"${uri}","cacheDuration":"3600"}`,
+    },
+  );
+
+  return response.json() as T;
+};
+
+export const fetchLiquidStakingRewards = async () => {
+  const result = {
+    cbETH: 0,
+    rETH: 0,
+    wstETH: 0,
+  };
+
+  try {
+    const cbETH = await fetchFromGenericCacheApi<{ apy: string }>(
+      "https://api.exchange.coinbase.com/wrapped-assets/CBETH",
+    );
+    result.cbETH = Number(cbETH.apy) * 100;
+  } catch (error) {
+    result.cbETH = 0;
+  }
+
+  try {
+    const rETH = await fetchFromGenericCacheApi<{ rethAPR: string }>(
+      "https://rocketpool.net/api/mainnet/payload",
+    );
+    result.rETH = Number(rETH.rethAPR) * 100;
+  } catch (error) {
+    result.rETH = 3.20093837536;
+  }
+
+  try {
+    const stETH = await fetchFromGenericCacheApi<{ data: { apr: number } }>(
+      "https://eth-api.lido.fi/v1/protocol/steth/apr/last",
+    );
+
+    const baseClient = createPublicClient({
+      chain: base,
+      transport: http(),
+    });
+
+    const exchangeRate = await baseClient.readContract({
+      address: "0xb88bac61a4ca37c43a3725912b1f472c9a5bc061",
+      abi: parseAbi(["function latestAnswer() view returns (uint256)"]),
+      functionName: "latestAnswer",
+    });
+
+    result.wstETH = stETH.data.apr * (Number(exchangeRate) / 1e18);
+  } catch (error) {
+    result.wstETH = 0;
+  }
+
+  return result;
 };
