@@ -1,7 +1,7 @@
 import type { Chain } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
-import type { NetworkParameterType } from "../../../common/types.js";
+import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import * as logger from "../../../logger/console.js";
 import type { Market } from "../../../types/market.js";
 import { fetchLiquidStakingRewards, getMarketsData } from "./common.js";
@@ -9,7 +9,7 @@ import { fetchLiquidStakingRewards, getMarketsData } from "./common.js";
 export type GetMarketsParameters<
   environments,
   network extends Chain | undefined,
-> = NetworkParameterType<environments, network> & {
+> = OptionalNetworkParameterType<environments, network> & {
   includeLiquidStakingRewards?: boolean;
 };
 
@@ -30,7 +30,7 @@ export async function getMarkets<
     environments.map((environment) => getMarketsData(environment)),
   );
 
-  if (args?.includeLiquidStakingRewards) {
+  if (args?.includeLiquidStakingRewards === true) {
     const liquidStakingRewards = await fetchLiquidStakingRewards();
     for (const item of result.flat()) {
       if (item.underlyingToken.symbol.toLowerCase() === "cbeth") {
@@ -60,10 +60,12 @@ export async function getMarkets<
         });
       }
 
-      item.totalSupplyApr = item.rewards.reduce(
-        (acc, reward) => acc + reward.supplyApr + reward.liquidStakingApr,
-        0,
-      );
+      item.totalSupplyApr =
+        item.baseSupplyApy +
+        item.rewards.reduce(
+          (acc, reward) => acc + reward.supplyApr + reward.liquidStakingApr,
+          0,
+        );
     }
   }
 
