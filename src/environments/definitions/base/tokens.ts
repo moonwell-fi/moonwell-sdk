@@ -83,7 +83,7 @@ export const tokens = createTokenConfig({
   cbBTC: {
     address: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
     decimals: 8,
-    name: "Coinbase Bitcoin",
+    name: "Coinbase Wrapped Bitcoin",
     symbol: "cbBTC",
   },
   MOONWELL_cbBTC: {
@@ -95,7 +95,7 @@ export const tokens = createTokenConfig({
   AERO: {
     address: "0x940181a94A35A4569E4529A3CDfB74e38FD98631",
     decimals: 18,
-    name: "Aerodrome Finance",
+    name: "Aerodrome",
     symbol: "AERO",
   },
   MOONWELL_AERO: {
@@ -179,7 +179,7 @@ export const tokens = createTokenConfig({
   wrsETH: {
     address: "0xEDfa23602D0EC14714057867A78d01e94176BEA0",
     decimals: 18,
-    name: "Kelp DAO Restaked Ethereum",
+    name: "KelpDAO Restaked Ethereum",
     symbol: "wrsETH",
   },
   MOONWELL_wrsETH: {
