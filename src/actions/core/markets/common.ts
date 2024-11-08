@@ -1,5 +1,5 @@
-import { http, createPublicClient, parseAbi, zeroAddress } from "viem";
-import { base } from "viem/chains";
+import { zeroAddress } from "viem";
+
 import {
   Amount,
   DAYS_PER_YEAR,
