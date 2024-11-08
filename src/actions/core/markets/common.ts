@@ -256,19 +256,7 @@ export const fetchLiquidStakingRewards = async () => {
     const stETH = await fetchFromGenericCacheApi<{ data: { apr: number } }>(
       "https://eth-api.lido.fi/v1/protocol/steth/apr/last",
     );
-
-    const baseClient = createPublicClient({
-      chain: base,
-      transport: http(),
-    });
-
-    const exchangeRate = await baseClient.readContract({
-      address: "0xb88bac61a4ca37c43a3725912b1f472c9a5bc061",
-      abi: parseAbi(["function latestAnswer() view returns (uint256)"]),
-      functionName: "latestAnswer",
-    });
-
-    result.wstETH = stETH.data.apr * (Number(exchangeRate) / 1e18);
+    result.wstETH = stETH.data.apr;
   } catch (error) {
     result.wstETH = 0;
   }
