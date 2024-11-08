@@ -247,9 +247,9 @@ export const fetchLiquidStakingRewards = async () => {
     const rETH = await fetchFromGenericCacheApi<{ rethAPR: string }>(
       "https://rocketpool.net/api/mainnet/payload",
     );
-    result.rETH = Number(rETH.rethAPR) * 100;
+    result.rETH = Number(rETH.rethAPR);
   } catch (error) {
-    result.rETH = 3.20093837536;
+    result.rETH = 0;
   }
 
   try {
