@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.1
+
+### Patch Changes
+
+- [#27](https://github.com/moonwell-fi/moonwell-sdk/pull/27) [`b67ea127df5913adc129abc33e79da2700f4b1f8`](https://github.com/moonwell-fi/moonwell-sdk/commit/b67ea127df5913adc129abc33e79da2700f4b1f8) Thanks [@x0s0l](https://github.com/x0s0l)! - Change wstETH APY
+
+- [#27](https://github.com/moonwell-fi/moonwell-sdk/pull/27) [`7968c02ea09e4b8d071d4a41607b774d66479736`](https://github.com/moonwell-fi/moonwell-sdk/commit/7968c02ea09e4b8d071d4a41607b774d66479736) Thanks [@x0s0l](https://github.com/x0s0l)! - Fixed rETH Apy and Aerodrome name
+
 ## 0.5.0
 
 ### Minor Changes
