@@ -407,6 +407,7 @@ export const getExtendedProposalData = async (params: {
                 txnHash: string;
                 blockNumber: number;
                 newState: string;
+                chainId: number;
               }[];
             };
           }[];
@@ -436,6 +437,7 @@ export const getExtendedProposalData = async (params: {
                     txnHash
                     blockNumber
                     newState
+                    chainId
                   }
                 }
               }
@@ -458,6 +460,7 @@ export const getExtendedProposalData = async (params: {
               blockNumber: change.blockNumber,
               state: change.newState,
               transactionHash: change.txnHash,
+              chainId: change.chainId,
             };
           }),
           targets: item.targets,
