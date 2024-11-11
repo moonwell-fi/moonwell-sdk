@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.3
+
+### Patch Changes
+
+- [#32](https://github.com/moonwell-fi/moonwell-sdk/pull/32) [`01d81aa4facd36a8b0bea85caf8ec19bba5d7c57`](https://github.com/moonwell-fi/moonwell-sdk/commit/01d81aa4facd36a8b0bea85caf8ec19bba5d7c57) Thanks [@x0s0l](https://github.com/x0s0l)! - Add chainId to proposal state changes
+
 ## 0.5.2
 
 ### Patch Changes
