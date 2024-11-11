@@ -33,6 +33,7 @@ export type Proposal = {
     blockNumber: number;
     transactionHash: string;
     state: string;
+    chainId: number;
   }[];
 };
 
@@ -82,5 +83,6 @@ export type ExtendedProposalData = {
     blockNumber: number;
     transactionHash: string;
     state: string;
+    chainId: number;
   }[];
 };
