@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.6
+
+### Patch Changes
+
+- [#38](https://github.com/moonwell-fi/moonwell-sdk/pull/38) [`e7d5c4c52ed91514a1ec6a9aea46fecd30f565b7`](https://github.com/moonwell-fi/moonwell-sdk/commit/e7d5c4c52ed91514a1ec6a9aea46fecd30f565b7) Thanks [@x0s0l](https://github.com/x0s0l)! - Deprecate USDbC market
+
 ## 0.5.5
 
 ### Patch Changes
