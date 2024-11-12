@@ -130,8 +130,8 @@ export const tokens = createTokenConfig({
   },
   USDC_WORMHOLE: {
     address: "0x931715fee2d06333043d11f658c8ce934ac61d0c",
-    decimals: 8,
-    name: "Bitcoin",
+    decimals: 6,
+    name: "USD Coin",
     symbol: "USDC.wh",
   },
   MOONWELL_USDC_WORMHOLE: {
