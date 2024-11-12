@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.4
+
+### Patch Changes
+
+- [#34](https://github.com/moonwell-fi/moonwell-sdk/pull/34) [`6eeef06759878d1ae19797a8159a791e2d83dba3`](https://github.com/moonwell-fi/moonwell-sdk/commit/6eeef06759878d1ae19797a8159a791e2d83dba3) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix delegates API
+
 ## 0.5.3
 
 ### Patch Changes
