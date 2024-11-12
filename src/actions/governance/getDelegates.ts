@@ -35,9 +35,9 @@ export async function getDelegates(
           avatar_template: string;
           title: string;
           user_fields: {
-            "1": string;
-            "2": string;
-            "3": string;
+            "1": { value: string[] };
+            "2": { value: string[] };
+            "3": { value: string[] };
           };
           wallet_address: string;
           pitch_intro: string;
@@ -49,7 +49,7 @@ export async function getDelegates(
         load_more_directory_items: string;
       };
     }>(
-      `https://forum.moonwell.fi/directory_items.json?period=all&order=Delegate+Wallet+Address&user_field_ids=2%7C1%7C3&plugin_column_ids=8&page=${page}`,
+      `https://forum.moonwell.fi/directory_items.json?period=all&order=Delegate+Wallet+Address&user_field_ids=2%7C1%7C3&page=${page}`,
     );
 
     if (response.status !== 200 || !response.data) {
@@ -59,9 +59,13 @@ export async function getDelegates(
     const results = response.data.directory_items
       .filter(
         (item) =>
-          item.user.user_fields[1] !== undefined &&
-          isAddress(item.user.user_fields[1]) &&
-          item.user.user_fields[2] !== null,
+          item.user.user_fields["1"] !== undefined &&
+          item.user.user_fields["1"].value !== undefined &&
+          item.user.user_fields["1"].value[0] !== undefined &&
+          isAddress(item.user.user_fields["1"].value[0]) &&
+          item.user.user_fields["2"] !== undefined &&
+          item.user.user_fields["2"].value !== undefined &&
+          item.user.user_fields["2"].value[0] !== undefined,
       )
       .map((item) => {
         const avatar = item.user.avatar_template.replace("{size}", "160");
@@ -70,10 +74,10 @@ export async function getDelegates(
             ? `https://dub1.discourse-cdn.com/flex017${avatar}`
             : avatar,
           name: item.user.username,
-          wallet: item.user.user_fields[1],
+          wallet: item.user.user_fields["1"].value[0],
           pitch: {
-            intro: item.user.user_fields[2],
-            url: item.user.user_fields[3],
+            intro: item.user.user_fields["2"].value[0],
+            url: item.user.user_fields["3"]?.value[0],
           },
         };
         return result;
@@ -81,11 +85,8 @@ export async function getDelegates(
 
     users = users.concat(results);
 
-    if (
-      response.data.directory_items.filter(
-        (r) => r.user.user_fields[1] === undefined,
-      ).length > 0
-    ) {
+    const loadMore = response.data.directory_items.length > 0;
+    if (loadMore) {
       await getUsersPaginated(page + 1);
     }
   };
