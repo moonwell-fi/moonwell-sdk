@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.5
+
+### Patch Changes
+
+- [#36](https://github.com/moonwell-fi/moonwell-sdk/pull/36) [`fd4a570de0bf19315a77f89c47c07c67b952f4ac`](https://github.com/moonwell-fi/moonwell-sdk/commit/fd4a570de0bf19315a77f89c47c07c67b952f4ac) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix USDC.wh name and decimals
+
 ## 0.5.4
 
 ### Patch Changes
