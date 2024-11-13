@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.7
+
+### Patch Changes
+
+- [#40](https://github.com/moonwell-fi/moonwell-sdk/pull/40) [`e78a2d11995dec7b5260112a8caa168e751871fe`](https://github.com/moonwell-fi/moonwell-sdk/commit/e78a2d11995dec7b5260112a8caa168e751871fe) Thanks [@x0s0l](https://github.com/x0s0l)! - Add cbBTC isolated markets
+
+- [#42](https://github.com/moonwell-fi/moonwell-sdk/pull/42) [`84cf0a5c9eb1a06f07d93429627da98ccfb720d7`](https://github.com/moonwell-fi/moonwell-sdk/commit/84cf0a5c9eb1a06f07d93429627da98ccfb720d7) Thanks [@x0s0l](https://github.com/x0s0l)! - Add isolated cbBTC markets
+
 ## 0.5.6
 
 ### Patch Changes
