@@ -86,17 +86,6 @@ export type {
   Transport,
 };
 
-const supportedChains = {
-  base: base,
-  optimism: optimism,
-  moonriver: moonriver,
-  moonbeam: moonbeam,
-  ethereum: ethereum,
-  avalanche: avalanche,
-  arbitrum: arbitrum,
-  polygon: polygon,
-};
-
 const supportedChainsIds: { [id: number]: keyof typeof supportedChains } = {
   [base.id]: "base",
   [optimism.id]: "optimism",
@@ -106,6 +95,17 @@ const supportedChainsIds: { [id: number]: keyof typeof supportedChains } = {
   [avalanche.id]: "avalanche",
   [arbitrum.id]: "arbitrum",
   [polygon.id]: "polygon",
+};
+
+const supportedChains = {
+  base: base,
+  optimism: optimism,
+  moonriver: moonriver,
+  moonbeam: moonbeam,
+  ethereum: ethereum,
+  avalanche: avalanche,
+  arbitrum: arbitrum,
+  polygon: polygon,
 };
 
 type SupportedChains = Prettify<keyof typeof supportedChains>;
