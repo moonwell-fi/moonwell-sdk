@@ -50,5 +50,20 @@ export const morphoMarkets = createMorphoMarketConfig({
       loanToken: "USDC",
       id: "0xdb0bc9f10a174f29a345c5f30a719933f71ccea7a2a75a632a281929bba1b535",
     },
+    "cbBTC-USDC": {
+      collateralToken: "cbBTC",
+      loanToken: "USDC",
+      id: "0x9103c3b4e834476c9a62ea009ba2c884ee42e94e6e314a26f04d312434191836",
+    },
+    "cbBTC-ETH": {
+      collateralToken: "cbBTC",
+      loanToken: "ETH",
+      id: "0x5dffffc7d75dc5abfa8dbe6fad9cbdadf6680cbe1428bafe661497520c84a94c",
+    },
+    "cbBTC-EURC": {
+      collateralToken: "cbBTC",
+      loanToken: "EURC",
+      id: "0x67ebd84b2fb39e3bc5a13d97e4c07abe1ea617e40654826e9abce252e95f049e",
+    },
   },
 });
