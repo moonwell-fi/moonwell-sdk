@@ -14,7 +14,7 @@ const messages: Record<
 > = {};
 
 export function start(action: string, message: string) {
-  if (window) {
+  if (typeof window !== "undefined") {
     const id = uniqueId();
 
     messages[id] = {
@@ -36,7 +36,7 @@ export function start(action: string, message: string) {
 }
 
 export function end(id?: string) {
-  if (window && id) {
+  if (typeof window !== "undefined" && id) {
     const message = messages[id];
     if (message) {
       message.end = new Date();
