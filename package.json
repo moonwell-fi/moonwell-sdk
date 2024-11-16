@@ -57,5 +57,8 @@
   },
   "engines": {
     "node": "22.x"
+  },
+  "dependencies": {
+    "lottie-react": "^2.4.0"
   }
 }
