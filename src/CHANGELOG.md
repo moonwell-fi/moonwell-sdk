@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.8
+
+### Patch Changes
+
+- [#43](https://github.com/moonwell-fi/moonwell-sdk/pull/43) [`7869645bda66b207a19df6d53cfe6b048e5ea580`](https://github.com/moonwell-fi/moonwell-sdk/commit/7869645bda66b207a19df6d53cfe6b048e5ea580) Thanks [@x0s0l](https://github.com/x0s0l)! - Add dayjs dependency
+
 ## 0.5.7
 
 ### Patch Changes
