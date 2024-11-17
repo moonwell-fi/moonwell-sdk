@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.9
+
+### Patch Changes
+
+- [#45](https://github.com/moonwell-fi/moonwell-sdk/pull/45) [`cf6631b1125800287013a2cffb3a1eac23d2fd95`](https://github.com/moonwell-fi/moonwell-sdk/commit/cf6631b1125800287013a2cffb3a1eac23d2fd95) Thanks [@x0s0l](https://github.com/x0s0l)! - Add safecheck for window object
+
 ## 0.5.8
 
 ### Patch Changes
