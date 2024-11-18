@@ -107,7 +107,7 @@ export const tokens = createTokenConfig({
   DAI: {
     address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
     decimals: 18,
-    name: "DAI Stablecoin",
+    name: "DAI",
     symbol: "DAI",
   },
   MOONWELL_DAI: {
