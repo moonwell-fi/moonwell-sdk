@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.10
+
+### Patch Changes
+
+- [#47](https://github.com/moonwell-fi/moonwell-sdk/pull/47) [`04f6f9c5824a8f6d7e2bab9fc440730dff21b2d4`](https://github.com/moonwell-fi/moonwell-sdk/commit/04f6f9c5824a8f6d7e2bab9fc440730dff21b2d4) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Renamed KelpDAO and Velodrome on Optimism
+
+- [#47](https://github.com/moonwell-fi/moonwell-sdk/pull/47) [`f138c1c21be7ba033bdcb67e97b45b1b5289c658`](https://github.com/moonwell-fi/moonwell-sdk/commit/f138c1c21be7ba033bdcb67e97b45b1b5289c658) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Renamed DAI on Base and Optimism
+
 ## 0.5.9
 
 ### Patch Changes
