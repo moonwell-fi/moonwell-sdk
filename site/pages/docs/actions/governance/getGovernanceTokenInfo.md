@@ -24,7 +24,7 @@ const info = await moonwellClient.getGovernanceTokenInfo(); // [!code focus]
 
 ## Returns
 
-[`GovernanceTokenInfo`]<!-- /docs/glossary/types#governance-token-info -->
+`{ totalSupply: Amount } | undefined`
 
 A governance token info.
 

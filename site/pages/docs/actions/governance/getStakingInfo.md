@@ -24,7 +24,7 @@ const info = await moonwellClient.getStakingInfo(); // [!code focus]
 
 ## Returns
 
-[`StakingInfo`]<!-- /docs/glossary/types#staking-info -->
+[`StakingInfo[]`]<!-- /docs/glossary/types#staking-info -->
 
 A staking info.
 

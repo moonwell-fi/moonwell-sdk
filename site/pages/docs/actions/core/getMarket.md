@@ -13,7 +13,7 @@ Returns the market.
 ```ts twoslash [example.ts]
 import { moonwellClient } from './client'
 
-const market = await moonwellClient.getMarkets(); // [!code focus]
+const market = await moonwellClient.getMarket(); // [!code focus]
 ```
 
 ```ts twoslash [client.ts] filename="client.ts"
@@ -39,7 +39,7 @@ Whether to include liquid staking rewards in the response.
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-const markets = await moonwellClient.getMarkets({
+const market = await moonwellClient.getMarket({
   includeLiquidStakingRewards: true // [!code focus]
 })
 ``` -->
