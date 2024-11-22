@@ -11,7 +11,7 @@ export const sidebar: Sidebar = {
     },
     {
       text: "Actions",
-      collapsed: true,
+      collapsed: false,
       items: [
         {
           text: "Core",
