@@ -1,3 +1,46 @@
-# Get started
+import InstallCommandTabs from '../../components/InstallCommandTabs.mdx'
 
-Hello world!
+# Getting Started [Get started with moonwell sdk in just a few lines of code.]
+
+## Overview
+
+
+
+## Installation
+
+<InstallCommandTabs />
+
+## Quick Start
+
+### 1. Set up your Networks & RPC urls
+
+Firstly, set up your [Networks](/docs/networks/introduction) & [RPC urls](/docs/rpc/introduction).
+
+```ts twoslash
+import { createMoonwellClient } from '@moonwell-fi/moonwell-sdk';
+
+const moonwellClient = createMoonwellClient({ // [!code focus]
+  networks: { // [!code focus]
+    base: { // [!code focus]
+      rpcUrls: ["https://base.llamarpc.com"], // [!code focus]
+    }, // [!code focus]
+    optimism: { // [!code focus]
+      rpcUrls: ["https://optimism.llamarpc.com"], // [!code focus]
+    }, // [!code focus]
+  }, // [!code focus]
+}); // [!code focus]
+```
+
+:::info
+In a production app, it is highly recommended to pass through your authenticated RPC provider URL (Alchemy, Infura, Ankr, etc). If no URL is provided, moonwell sdk will default to a public RPC provider. [Read more](/docs/clients/transports/http#usage).
+:::
+
+### 2. Consume Actions
+
+Now that you have a Client set up, you can now interact with Base and consume [Actions](/docs/actions/public/introduction)!
+
+```ts twoslash 
+// [!include ~/snippets/moonClient.ts]
+
+const markets = await moonwellClient.getMarkets(); // [!code focus]
+```

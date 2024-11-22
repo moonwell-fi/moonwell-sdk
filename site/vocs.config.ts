@@ -1,4 +1,6 @@
 import { defineConfig } from "vocs";
+import pkg from "../src/package.json";
+import { sidebar } from "./sidebar";
 
 export default defineConfig({
   theme: {
@@ -6,13 +8,13 @@ export default defineConfig({
       color: {
         // white: { light: string, dark: string },
         // black: { light: string, dark: string },
-        background: { light: "#2474da", dark: "#2474da" },
+        background: { light: "#FFFFFF", dark: "#232225" },
         // background2: { light: string, dark: string },
         // background3: { light: string, dark: string },
         // background4: { light: string, dark: string },
         // background5: { light: string, dark: string },
-        // backgroundAccent: { light: string, dark: string },
-        // backgroundAccentHover: { light: string, dark: string },
+        backgroundAccent: { light: "#2474da", dark: "#2474da" },
+        backgroundAccentHover: { light: "#2474DA", dark: "#2474DA" },
         // backgroundAccentText: { light: string, dark: string },
         // backgroundBlueTint: { light: string, dark: string },
         // backgroundDark: { light: string, dark: string },
@@ -24,7 +26,7 @@ export default defineConfig({
         // backgroundYellowTint: { light: string, dark: string },
         // border: { light: string, dark: string },
         // border2: { light: string, dark: string },
-        // borderAccent: { light: string, dark: string },
+        borderAccent: { light: "#2474DA", dark: "#2474DA" },
         // borderBlue: { light: string, dark: string },
         // borderGreen: { light: string, dark: string },
         // borderIris: { light: string, dark: string },
@@ -36,8 +38,8 @@ export default defineConfig({
         // text2: { light: string, dark: string },
         // text3: { light: string, dark: string },
         // text4: { light: string, dark: string },
-        // textAccent: { light: string, dark: string },
-        // textAccentHover: { light: string, dark: string },
+        textAccent: { light: "#2474da", dark: "#2474da" },
+        textAccentHover: { light: "#2474DA", dark: "#2474DA" },
         // textBlue: { light: string, dark: string },
         // textBlueHover: { light: string, dark: string },
         // textGreen: { light: string, dark: string },
@@ -93,14 +95,36 @@ export default defineConfig({
   },
   rootDir: ".",
   title: "Moonwell SDK",
-  sidebar: [
+  iconUrl: "favicon.svg",
+  sidebar,
+  socials: [
     {
-      text: "Getting Started",
-      link: "/getting-started",
+      icon: "github",
+      link: "https://github.com/moonwell-fi",
     },
     {
-      text: "Example",
-      link: "/example",
+      icon: "discord",
+      link: "https://discord.com/invite/moonwellfi",
+    },
+    {
+      icon: "x",
+      link: "https://x.com/MoonwellDeFi",
+    },
+  ],
+  topNav: [
+    { text: "Docs", link: "/docs/getting-started", match: "/docs" },
+    {
+      text: pkg.version,
+      items: [
+        {
+          text: "Changelog",
+          link: "https://github.com/moonwell-fi/moonwell-sdk/blob/main/src/CHANGELOG.md",
+        },
+        {
+          text: "Contributing",
+          link: "https://github.com/moonwell-fi/moonwell-sdk/blob/main/.github/CONTRIBUTING.md",
+        },
+      ],
     },
   ],
 });
