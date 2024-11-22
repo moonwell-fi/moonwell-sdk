@@ -7,7 +7,7 @@
     "build": "vocs build",
     "preview": "vocs preview"
   },
-  "dependencies": {
+  "devDependencies": {
     "@moonwell-fi/moonwell-sdk": "^0.5.7",
     "@types/react": "latest",
     "react": "latest",
