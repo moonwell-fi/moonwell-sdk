@@ -24,9 +24,12 @@ const snapshots = await moonwellClient.getStakingSnapshots(); // [!code focus]
 
 ## Returns
 
-[`StakingSnapshot[]`]<!-- /docs/glossary/types#staking-snapshot -->
+```
+StakingSnapshot[]
+```
 
-A list of staking snapshots.
+- **Type:** [`StakingSnapshot[]`](/docs/glossary/types#stakingsnapshot)
+
 
 <!-- ## Parameters
 

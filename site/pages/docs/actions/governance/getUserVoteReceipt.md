@@ -24,9 +24,11 @@ const receipt = await moonwellClient.getUserVoteReceipt(); // [!code focus]
 
 ## Returns
 
-[`VoteReceipt[]`]<!-- /docs/glossary/types#user-vote-receipt -->
+```
+VoteReceipt[]
+```
 
-A user vote receipt.
+- **Type:** [`VoteReceipt[]`](/docs/glossary/types#votereceipt)
 
 <!-- ## Parameters
 

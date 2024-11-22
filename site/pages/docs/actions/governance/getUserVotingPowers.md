@@ -24,9 +24,11 @@ const powers = await moonwellClient.getUserVotingPowers(); // [!code focus]
 
 ## Returns
 
-[`UserVotingPowers[]`]<!-- /docs/glossary/types#user-voting-power -->
+```
+UserVotingPowers[]
+```
 
-A list of user voting powers.
+- **Type:** [`UserVotingPowers[]`](/docs/glossary/types#uservotingpowers)
 
 <!-- ## Parameters
 

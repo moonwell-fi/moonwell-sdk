@@ -24,9 +24,11 @@ const marketUserPositions = await moonwellClient.getMorphoMarketUserPositions();
 
 ## Returns
 
-[`MorphoMarketUserPosition[]`]<!-- /docs/glossary/types#morpho-market-user-position -->
+```
+MorphoMarketUserPosition[]
+```
 
-A list of Morpho market user positions.
+- **Type:** [`MorphoMarketUserPosition[]`](/docs/glossary/types#morphomarketuserposition)
 
 <!-- ## Parameters
 

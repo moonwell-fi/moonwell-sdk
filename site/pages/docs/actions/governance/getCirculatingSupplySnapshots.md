@@ -24,9 +24,12 @@ const snapshots = await moonwellClient.getCirculatingSupplySnapshots(); // [!cod
 
 ## Returns
 
-[`CirculatingSupplySnapshot[]`]<!-- /docs/glossary/types#circulating-supply-snapshot -->
+```
+CirculatingSupplySnapshot[]
+```
 
-A list of circulating supply snapshots.
+- **Type:** [`CirculatingSupplySnapshot[]`](/docs/glossary/types#circulatingsupplysnapshot)
+
 
 <!-- ## Parameters
 

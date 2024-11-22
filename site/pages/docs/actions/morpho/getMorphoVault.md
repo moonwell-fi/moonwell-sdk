@@ -24,9 +24,11 @@ const vault = await moonwellClient.getMorphoVault(); // [!code focus]
 
 ## Returns
 
-[`MorphoVault`]<!-- /docs/glossary/types#morpho-vault -->
+```
+MorphoVault | undefined
+```
 
-A Morpho vault.
+- **Type:** [`MorphoVault`](/docs/glossary/types#morphovault)
 
 <!-- ## Parameters
 

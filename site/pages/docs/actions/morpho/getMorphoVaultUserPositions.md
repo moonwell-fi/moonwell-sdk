@@ -24,9 +24,11 @@ const vaultUserPositions = await moonwellClient.getMorphoVaultUserPositions(); /
 
 ## Returns
 
-[`MorphoVaultUserPosition[]`]<!-- /docs/glossary/types#morpho-vault-user-position -->
+```
+MorphoVaultUserPosition[]
+```
 
-A list of Morpho vault user positions.
+- **Type:** [`MorphoVaultUserPosition[]`](/docs/glossary/types#morphovaultuserposition)
 
 <!-- ## Parameters
 

@@ -24,9 +24,11 @@ const position = await moonwellClient.getUserPosition(); // [!code focus]
 
 ## Returns
 
-[`UserPosition`]<!-- /docs/glossary/types#user-position -->
+```
+UserPosition | undefined
+```
 
-A user position.
+- **Type:** [`UserPosition`](/docs/glossary/types#userposition)
 
 <!-- ## Parameters
 

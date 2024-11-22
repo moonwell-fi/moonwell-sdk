@@ -24,9 +24,11 @@ const userRewards = await moonwellClient.getMorphoUserRewards(); // [!code focus
 
 ## Returns
 
-[`MorphoUserReward[]`]<!-- /docs/glossary/types#morpho-user-reward -->
+```
+MorphoUserReward[]
+```
 
-A list of Morpho user rewards.
+- **Type:** [`MorphoUserReward[]`](/docs/glossary/types#morphouserreward)
 
 <!-- ## Parameters
 

@@ -24,9 +24,11 @@ const rewards = await moonwellClient.getUserRewards(); // [!code focus]
 
 ## Returns
 
-[`UserReward[]`]<!-- /docs/glossary/types#user-reward -->
+```
+UserReward[]
+```
 
-A list of user rewards.
+- **Type:** [`UserReward[]`](/docs/glossary/types#userreward)
 
 <!-- ## Parameters
 

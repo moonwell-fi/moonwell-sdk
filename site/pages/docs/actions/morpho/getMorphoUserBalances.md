@@ -24,9 +24,11 @@ const balances = await moonwellClient.getMorphoUserBalances(); // [!code focus]
 
 ## Returns
 
-[`UserBalance[]`]<!-- /docs/glossary/types#morpho-user-balance -->
+```
+UserBalance[]
+```
 
-A list of Morpho user balances.
+- **Type:** [`UserBalance[]`](/docs/glossary/types#morphouserbalance)
 
 <!-- ## Parameters
 

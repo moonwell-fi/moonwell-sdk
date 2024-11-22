@@ -24,9 +24,11 @@ const proposals = await moonwellClient.getSnapshotProposals(); // [!code focus]
 
 ## Returns
 
-[`Proposals`]<!-- /docs/glossary/types#snapshot-proposal -->
+```
+{ proposals: SnapshotProposal[], total: number, active: number }
+```
 
-A list of snapshot proposals.
+- **Type:** [`SnapshotProposal[]`](/docs/glossary/types#snapshotproposal)
 
 <!-- ## Parameters
 

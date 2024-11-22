@@ -24,9 +24,11 @@ const delegates = await moonwellClient.getDelegates(); // [!code focus]
 
 ## Returns
 
-[`Delegate[]`]<!-- /docs/glossary/types#delegate -->
+```
+Delegate[]
+```
 
-A list of delegates.
+- **Type:** [`Delegate[]`](/docs/glossary/types#delegate)
 
 <!-- ## Parameters
 

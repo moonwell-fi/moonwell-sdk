@@ -24,9 +24,11 @@ const balances = await moonwellClient.getUserBalances(); // [!code focus]
 
 ## Returns
 
-[`UserBalance[]`]<!-- /docs/glossary/types#user-balance -->
+```
+UserBalance[]
+```
 
-A list of user balances.
+- **Type:** [`UserBalance[]`](/docs/glossary/types#user-balance)
 
 <!-- ## Parameters
 

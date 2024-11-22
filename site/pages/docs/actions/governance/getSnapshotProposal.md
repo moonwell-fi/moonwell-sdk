@@ -24,9 +24,11 @@ const proposal = await moonwellClient.getSnapshotProposal(); // [!code focus]
 
 ## Returns
 
-[`SnapshotProposal`]<!-- /docs/glossary/types#snapshot-proposal -->
+```
+SnapshotProposal | undefined
+```
 
-A snapshot proposal.
+- **Type:** [`SnapshotProposal`](/docs/glossary/types#snapshotproposal)
 
 <!-- ## Parameters
 

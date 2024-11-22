@@ -24,9 +24,11 @@ const discussions = await moonwellClient.getDiscussions(); // [!code focus]
 
 ## Returns
 
-[`Discussion[]`]<!-- /docs/glossary/types#discussion -->
+```
+Discussion[]
+```
 
-A list of discussions.
+- **Type:** [`Discussion[]`](/docs/glossary/types#discussion)
 
 <!-- ## Parameters
 

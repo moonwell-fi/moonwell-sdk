@@ -24,9 +24,11 @@ const market = await moonwellClient.getMorphoMarket(); // [!code focus]
 
 ## Returns
 
-[`MorphoMarket`]<!-- /docs/glossary/types#morpho-market -->
+```
+MorphoMarket | undefined
+```
 
-A Morpho market.
+- **Type:** [`MorphoMarket`](/docs/glossary/types#morphomarket)
 
 <!-- ## Parameters
 

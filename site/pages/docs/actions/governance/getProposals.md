@@ -24,9 +24,10 @@ const proposals = await moonwellClient.getProposals(); // [!code focus]
 
 ## Returns
 
-[`Proposal[]`]<!-- /docs/glossary/types#proposal -->
-
-A list of proposals.
+```
+Proposal[]
+```
+- **Type:** [`Proposal[]`](/docs/glossary/types#proposal)
 
 <!-- ## Parameters
 

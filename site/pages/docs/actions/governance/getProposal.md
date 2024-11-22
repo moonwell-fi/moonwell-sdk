@@ -24,9 +24,11 @@ const proposal = await moonwellClient.getProposal(); // [!code focus]
 
 ## Returns
 
-[`Proposal`]<!-- /docs/glossary/types#proposal -->
+```
+Proposal | undefined
+```
 
-A proposal.
+- **Type:** [`Proposal`](/docs/glossary/types#proposal)
 
 <!-- ## Parameters
 

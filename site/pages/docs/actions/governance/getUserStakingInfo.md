@@ -24,9 +24,11 @@ const info = await moonwellClient.getUserStakingInfo(); // [!code focus]
 
 ## Returns
 
-[`UserStakingInfo[]`]<!-- /docs/glossary/types#user-staking-info -->
+```
+UserStakingInfo[]
+```
 
-A user staking info.
+- **Type:** [`UserStakingInfo[]`](/docs/glossary/types#userstakinginfo)
 
 <!-- ## Parameters
 

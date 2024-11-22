@@ -24,9 +24,11 @@ const positions = await moonwellClient.getUserPositions(); // [!code focus]
 
 ## Returns
 
-[`UserPosition[]`]<!-- /docs/glossary/types#user-position -->
+```
+UserPosition[]
+```
 
-A list of user positions.
+- **Type:** [`UserPosition[]`](/docs/glossary/types#userposition)
 
 <!-- ## Parameters
 

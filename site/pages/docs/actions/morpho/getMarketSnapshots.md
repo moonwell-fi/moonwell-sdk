@@ -24,9 +24,11 @@ const marketSnapshots = await moonwellClient.getMarketSnapshots(); // [!code foc
 
 ## Returns
 
-[`MarketSnapshot[]`]<!-- /docs/glossary/types#morpho-market-snapshot -->
+```
+MarketSnapshot[]
+```
 
-A list of Morpho market snapshots.
+- **Type:** [`MarketSnapshot[]`](/docs/glossary/types#marketsnapshot)
 
 <!-- ## Parameters
 

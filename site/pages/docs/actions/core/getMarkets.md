@@ -24,9 +24,11 @@ const markets = await moonwellClient.getMarkets(); // [!code focus]
 
 ## Returns
 
-[`Market[]`]<!-- /docs/glossary/types#market -->
+```
+Market[]
+```
 
-A list of markets.
+- **Type:** [`Market[]`](/docs/glossary/types#market)
 
 ## Parameters
 
