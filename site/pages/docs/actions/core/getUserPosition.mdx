@@ -1,0 +1,121 @@
+import NetworkMarketInfo from '../../../../components/NetworkMarketInfo.mdx';
+
+# getUserPosition
+
+Returns user position.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const position = await moonwellClient.getUserPosition({ // [!code focus:5]
+  userAddress: "0x0000000000000000000000000000000000000000",
+  chainId: 8453,
+  marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457",
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+UserPosition | undefined
+```
+
+- **Type:** [`UserPosition`](/docs/glossary/types#userposition)
+
+## Parameters
+
+### userAddress
+
+- **Type:** `Address`
+
+The address of the user.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const position = await moonwellClient.getUserPosition({
+  userAddress: "0x0000000000000000000000000000000000000000", // [!code focus]
+  chainId: 8453,
+  marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457",
+});
+```
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the position for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const position = await moonwellClient.getUserPosition({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  chainId: 8453, // [!code focus]
+  marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457",
+});
+```
+
+### marketAddress
+
+- **Type:** `Address`
+
+The address of the market.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const position = await moonwellClient.getUserPosition({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  chainId: 8453,
+  marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457", // [!code focus]
+});
+```
+
+<NetworkMarketInfo />
+
+### network
+
+- **Type:** `string`
+
+The network where the market is located.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const position = await moonwellClient.getUserPosition<typeof base>({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  network: "base", // [!code focus]
+  market: "MOONWELL_ETH",
+});
+```
+
+### market
+
+- **Type:** `string`
+
+The name of the market.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const position = await moonwellClient.getUserPosition<typeof base>({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  network: "base",
+  market: "MOONWELL_ETH", // [!code focus]
+});
+```

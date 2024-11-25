@@ -1,6 +1,4 @@
----
-description: Returns the all markets available on Moonwell.
----
+import OptionalNetworkInfo from '../../../../components/OptionalNetworkInfo.mdx';
 
 # getMarkets
 
@@ -32,7 +30,7 @@ Market[]
 
 ## Parameters
 
-### includeLiquidStakingRewards
+### includeLiquidStakingRewards (optional)
 
 - **Type:** `boolean`
 
@@ -44,34 +42,36 @@ Whether to include liquid staking rewards in the response.
 const markets = await moonwellClient.getMarkets({
   includeLiquidStakingRewards: true // [!code focus]
 })
+
 ```
+### chainId (optional)
 
-<!-- ### blockNumber (optional)
+- **Type:** `number`
 
-- **Type:** `bigint`
-
-The balance of the account at a block number.
+The chain ID to filter the markets by.
 
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-const balance = await publicClient.getBalance({
-  address: '0xA0Cf798816D4b9b9866b5330EEa46a18382f251e',
-  blockNumber: 69420n  // [!code focus]
+const markets = await moonwellClient.getMarkets({
+  chainId: 8453 // [!code focus]
 })
 ```
 
-### blockTag (optional)
+<OptionalNetworkInfo />
 
-- **Type:** `'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'`
+### network (optional)
 
-The balance of the account at a block tag.
+- **Type:** `string`
+
+The network to filter the markets by.
 
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-const balance = await publicClient.getBalance({
-  address: '0xA0Cf798816D4b9b9866b5330EEa46a18382f251e',
-  blockTag: 'safe'  // [!code focus]
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const markets = await moonwellClient.getMarkets<typeof base>({
+  network: "base" // [!code focus]
 })
-``` -->
+```

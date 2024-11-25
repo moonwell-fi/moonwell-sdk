@@ -1,0 +1,100 @@
+import NetworkMarketInfo from '../../../../components/NetworkMarketInfo.mdx';
+
+# getMarket
+
+Returns the market.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const market = await moonwellClient.getMarket({ // [!code focus:4]
+  chainId: 8453,
+  marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457",
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+Market | undefined
+```
+
+- **Type:** [`Market`](/docs/glossary/types#market)
+
+## Parameters
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID where the market is located.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const market = await moonwellClient.getMarket({
+  chainId: 8453, // [!code focus]
+  marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457",
+});
+```
+
+### marketAddress
+
+- **Type:** `Address`
+
+The address of the market.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const market = await moonwellClient.getMarket({
+  chainId: 8453,
+  marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457", // [!code focus]
+});
+```
+
+<NetworkMarketInfo />
+
+### network
+
+- **Type:** `string`
+
+The network where the market is located.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const market = await moonwellClient.getMarket<typeof base>({
+  network: "base", // [!code focus]
+  market: "MOONWELL_ETH",
+});
+```
+
+### market
+
+- **Type:** `string`
+
+The name of the market.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const market = await moonwellClient.getMarket<typeof base>({
+  network: "base",
+  market: "MOONWELL_ETH", // [!code focus]
+});
+```
