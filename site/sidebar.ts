@@ -17,86 +17,41 @@ export const sidebar: Sidebar = {
           text: "Core",
           collapsed: true,
           items: [
-            { text: "getMarket", link: "/docs/actions/core/getMarket" },
-            { text: "getMarkets", link: "/docs/actions/core/getMarkets" },
             {
-              text: "getUserBalances",
-              link: "/docs/actions/core/getUserBalances",
+              text: "Markets Information",
+              items: [
+                { text: "getMarket", link: "/docs/actions/core/getMarket" },
+                { text: "getMarkets", link: "/docs/actions/core/getMarkets" },
+                {
+                  text: "getMarketSnapshots",
+                  link: "/docs/actions/core/getMarketSnapshots",
+                },
+              ],
             },
             {
-              text: "getUserPosition",
-              link: "/docs/actions/core/getUserPosition",
-            },
-            {
-              text: "getUserPositions",
-              link: "/docs/actions/core/getUserPositions",
-            },
-            { text: "getUserReward", link: "/docs/actions/core/getUserReward" },
-            {
-              text: "getUserRewards",
-              link: "/docs/actions/core/getUserRewards",
-            },
-            {
-              text: "getMarketSnapshots",
-              link: "/docs/actions/core/getMarketSnapshots",
-            },
-          ],
-        },
-        {
-          text: "Governance",
-          collapsed: true,
-          items: [
-            {
-              text: "getProposal",
-              link: "/docs/actions/governance/getProposal",
-            },
-            {
-              text: "getProposals",
-              link: "/docs/actions/governance/getProposals",
-            },
-            {
-              text: "getSnapshotProposal",
-              link: "/docs/actions/governance/getSnapshotProposal",
-            },
-            {
-              text: "getSnapshotProposals",
-              link: "/docs/actions/governance/getSnapshotProposals",
-            },
-            {
-              text: "getDelegates",
-              link: "/docs/actions/governance/getDelegates",
-            },
-            {
-              text: "getDiscussions",
-              link: "/docs/actions/governance/getDiscussions",
-            },
-            {
-              text: "getGovernanceTokenInfo",
-              link: "/docs/actions/governance/getGovernanceTokenInfo",
-            },
-            {
-              text: "getStakingInfo",
-              link: "/docs/actions/governance/getStakingInfo",
-            },
-            {
-              text: "getStakingSnapshots",
-              link: "/docs/actions/governance/getStakingSnapshots",
-            },
-            {
-              text: "getUserStakingInfo",
-              link: "/docs/actions/governance/getUserStakingInfo",
-            },
-            {
-              text: "getUserVoteReceipt",
-              link: "/docs/actions/governance/getUserVoteReceipt",
-            },
-            {
-              text: "getUserVotingPowers",
-              link: "/docs/actions/governance/getUserVotingPowers",
-            },
-            {
-              text: "getCirculatingSupplySnapshots",
-              link: "/docs/actions/governance/getCirculatingSupplySnapshots",
+              text: "User Positions",
+              items: [
+                {
+                  text: "getUserPosition",
+                  link: "/docs/actions/core/getUserPosition",
+                },
+                {
+                  text: "getUserPositions",
+                  link: "/docs/actions/core/getUserPositions",
+                },
+                {
+                  text: "getUserBalances",
+                  link: "/docs/actions/core/getUserBalances",
+                },
+                {
+                  text: "getUserReward",
+                  link: "/docs/actions/core/getUserReward",
+                },
+                {
+                  text: "getUserRewards",
+                  link: "/docs/actions/core/getUserRewards",
+                },
+              ],
             },
           ],
         },
@@ -105,48 +60,141 @@ export const sidebar: Sidebar = {
           collapsed: true,
           items: [
             {
-              text: "getMorphoMarket",
-              link: "/docs/actions/morpho/getMorphoMarket",
+              text: "Isolated Markets",
+              items: [
+                {
+                  text: "getMorphoMarket",
+                  link: "/docs/actions/morpho/getMorphoMarket",
+                },
+                {
+                  text: "getMorphoMarkets",
+                  link: "/docs/actions/morpho/getMorphoMarkets",
+                },
+              ],
             },
             {
-              text: "getMorphoMarkets",
-              link: "/docs/actions/morpho/getMorphoMarkets",
+              text: "Vaults",
+              items: [
+                {
+                  text: "getMorphoVault",
+                  link: "/docs/actions/morpho/getMorphoVault",
+                },
+                {
+                  text: "getMorphoVaults",
+                  link: "/docs/actions/morpho/getMorphoVaults",
+                },
+                {
+                  text: "getMorphoVaultSnapshots",
+                  link: "/docs/actions/morpho/getMorphoVaultSnapshots",
+                },
+              ],
             },
             {
-              text: "getMorphoMarketUserPosition",
-              link: "/docs/actions/morpho/getMorphoMarketUserPosition",
+              text: "User Positions",
+              items: [
+                {
+                  text: "getMorphoMarketUserPosition",
+                  link: "/docs/actions/morpho/getMorphoMarketUserPosition",
+                },
+                {
+                  text: "getMorphoMarketUserPositions",
+                  link: "/docs/actions/morpho/getMorphoMarketUserPositions",
+                },
+                {
+                  text: "getMorphoVaultUserPosition",
+                  link: "/docs/actions/morpho/getMorphoVaultUserPosition",
+                },
+                {
+                  text: "getMorphoVaultUserPositions",
+                  link: "/docs/actions/morpho/getMorphoVaultUserPositions",
+                },
+                {
+                  text: "getMorphoUserBalances",
+                  link: "/docs/actions/morpho/getMorphoUserBalances",
+                },
+                {
+                  text: "getMorphoUserRewards",
+                  link: "/docs/actions/morpho/getMorphoUserRewards",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          text: "Governance",
+          collapsed: true,
+          items: [
+            {
+              text: "Staking",
+              items: [
+                {
+                  text: "getStakingInfo",
+                  link: "/docs/actions/governance/getStakingInfo",
+                },
+                {
+                  text: "getStakingSnapshots",
+                  link: "/docs/actions/governance/getStakingSnapshots",
+                },
+                {
+                  text: "getUserStakingInfo",
+                  link: "/docs/actions/governance/getUserStakingInfo",
+                },
+                {
+                  text: "getGovernanceTokenInfo",
+                  link: "/docs/actions/governance/getGovernanceTokenInfo",
+                },
+                {
+                  text: "getUserVoteReceipt",
+                  link: "/docs/actions/governance/getUserVoteReceipt",
+                },
+                {
+                  text: "getUserVotingPowers",
+                  link: "/docs/actions/governance/getUserVotingPowers",
+                },
+                {
+                  text: "getCirculatingSupplySnapshots",
+                  link: "/docs/actions/governance/getCirculatingSupplySnapshots",
+                },
+              ],
             },
             {
-              text: "getMorphoMarketUserPositions",
-              link: "/docs/actions/morpho/getMorphoMarketUserPositions",
+              text: "Onchain Proposals",
+              items: [
+                {
+                  text: "getProposal",
+                  link: "/docs/actions/governance/getProposal",
+                },
+                {
+                  text: "getProposals",
+                  link: "/docs/actions/governance/getProposals",
+                },
+              ],
             },
             {
-              text: "getMorphoUserBalances",
-              link: "/docs/actions/morpho/getMorphoUserBalances",
+              text: "Snapshot Proposals",
+              items: [
+                {
+                  text: "getSnapshotProposal",
+                  link: "/docs/actions/governance/getSnapshotProposal",
+                },
+                {
+                  text: "getSnapshotProposals",
+                  link: "/docs/actions/governance/getSnapshotProposals",
+                },
+              ],
             },
             {
-              text: "getMorphoUserRewards",
-              link: "/docs/actions/morpho/getMorphoUserRewards",
-            },
-            {
-              text: "getMorphoVault",
-              link: "/docs/actions/morpho/getMorphoVault",
-            },
-            {
-              text: "getMorphoVaults",
-              link: "/docs/actions/morpho/getMorphoVaults",
-            },
-            {
-              text: "getMorphoVaultSnapshots",
-              link: "/docs/actions/morpho/getMorphoVaultSnapshots",
-            },
-            {
-              text: "getMorphoVaultUserPosition",
-              link: "/docs/actions/morpho/getMorphoVaultUserPosition",
-            },
-            {
-              text: "getMorphoVaultUserPositions",
-              link: "/docs/actions/morpho/getMorphoVaultUserPositions",
+              text: "Forum",
+              items: [
+                {
+                  text: "getDelegates",
+                  link: "/docs/actions/governance/getDelegates",
+                },
+                {
+                  text: "getDiscussions",
+                  link: "/docs/actions/governance/getDiscussions",
+                },
+              ],
             },
           ],
         },
