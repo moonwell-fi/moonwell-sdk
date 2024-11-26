@@ -1,0 +1,83 @@
+import NetworkParameterInfo from '../../../../components/NetworkParameterInfo.mdx';
+
+# getProposal
+
+Returns the proposal.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const proposal = await moonwellClient.getProposal({ // [!code focus:4]
+  proposalId: 1,
+  chainId: 1284,
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+Proposal | undefined
+```
+
+- **Type:** [`Proposal`](/docs/glossary/types#proposal)
+
+## Parameters
+
+### proposalId
+
+- **Type:** `number`
+
+The ID of the proposal.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposal = await moonwellClient.getProposal({
+  proposalId: 1, // [!code focus]
+  chainId: 1284,
+});
+```
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the proposal for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposal = await moonwellClient.getProposal({
+  proposalId: 1,
+  chainId: 1284, // [!code focus]
+});
+```
+
+<NetworkParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the proposal for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const proposal = await moonwellClient.getProposal<typeof moonbeam>({
+  proposalId: 1,
+  network: "moonbeam", // [!code focus]
+});
+```

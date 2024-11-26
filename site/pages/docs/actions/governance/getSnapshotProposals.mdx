@@ -1,0 +1,77 @@
+import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+
+# getSnapshotProposals
+
+Returns all snapshot proposals.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const proposals = await moonwellClient.getSnapshotProposals(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+{ proposals: SnapshotProposal[], total: number, active: number }
+```
+
+- **Type:** [`SnapshotProposal[]`](/docs/glossary/types#snapshotproposal)
+
+## Parameters
+
+### pagination
+
+- **Type:** `{ size?: number; page?: number }`
+
+The pagination options.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposals = await moonwellClient.getSnapshotProposals({
+  pagination: { size: 10, page: 1 }, // [!code focus]
+});
+```
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the proposals for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposals = await moonwellClient.getSnapshotProposals({
+  chainId: 1284, // [!code focus]
+});
+```
+
+<OptionalNetworkParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the proposals for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const proposals = await moonwellClient.getSnapshotProposals<typeof moonbeam>({
+  network: "moonbeam", // [!code focus]
+});
+```

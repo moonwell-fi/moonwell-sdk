@@ -1,7 +1,3 @@
----
-description: Returns the governance token info.
----
-
 # getGovernanceTokenInfo
 
 Returns the governance token info.
@@ -13,7 +9,9 @@ Returns the governance token info.
 ```ts twoslash [example.ts]
 import { moonwellClient } from './client'
 
-const info = await moonwellClient.getGovernanceTokenInfo(); // [!code focus]
+const info = await moonwellClient.getGovernanceTokenInfo({ // [!code focus:3]
+  governanceToken: "WELL",
+});
 ```
 
 ```ts twoslash [client.ts] filename="client.ts"
@@ -30,18 +28,18 @@ const info = await moonwellClient.getGovernanceTokenInfo(); // [!code focus]
 
 - **Type:** [`Amount`](/docs/glossary/types#amount)
 
-<!-- ## Parameters
+## Parameters
 
-### includeLiquidStakingRewards
+### governanceToken
 
-- **Type:** `boolean`
+- **Type:** `"WELL" | "WELL_TESTNET" | "MOVR"`
 
-Whether to include liquid staking rewards in the response.
+The governance token to get the info for.
 
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-const markets = await moonwellClient.getMarkets({
-  includeLiquidStakingRewards: true // [!code focus]
-})
-``` -->
+const info = await moonwellClient.getGovernanceTokenInfo({
+  governanceToken: "WELL", // [!code focus]
+});
+```

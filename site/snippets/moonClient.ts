@@ -7,5 +7,8 @@ export const moonwellClient = createMoonwellClient({
     base: {
       rpcUrls: ["https://base.llamarpc.com"],
     },
+    moonbeam: {
+      rpcUrls: ["https://moonbeam.llamarpc.com"],
+    },
   },
 });

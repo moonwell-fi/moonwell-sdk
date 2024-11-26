@@ -1,8 +1,8 @@
-import OptionalNetworkParameterInfo from '../../../../components/OptionalNetworkParameterInfo.mdx';
+import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
 
-# getUserPositions
+# getUserStakingInfo
 
-Returns all user positions.
+Returns the user staking info.
 
 ## Usage
 
@@ -11,7 +11,7 @@ Returns all user positions.
 ```ts twoslash [example.ts]
 import { moonwellClient } from './client'
 
-const positions = await moonwellClient.getUserPositions({ // [!code focus:3]
+const info = await moonwellClient.getUserStakingInfo({ // [!code focus:3]
   userAddress: "0x0000000000000000000000000000000000000000",
 });
 ```
@@ -25,10 +25,10 @@ const positions = await moonwellClient.getUserPositions({ // [!code focus:3]
 ## Returns
 
 ```
-UserPosition[]
+UserStakingInfo[]
 ```
 
-- **Type:** [`UserPosition[]`](/docs/glossary/types#userposition)
+- **Type:** [`UserStakingInfo[]`](/docs/glossary/types#userstakinginfo)
 
 ## Parameters
 
@@ -36,12 +36,12 @@ UserPosition[]
 
 - **Type:** `Address`
 
-The address of the user.
+The user address to get the staking info for.
 
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-const positions = await moonwellClient.getUserPositions({
+const info = await moonwellClient.getUserStakingInfo({
   userAddress: "0x0000000000000000000000000000000000000000", // [!code focus]
 });
 ```
@@ -50,14 +50,14 @@ const positions = await moonwellClient.getUserPositions({
 
 - **Type:** `number`
 
-The chain ID to get the positions for.
+The chain ID to get the user staking info for.
 
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-const positions = await moonwellClient.getUserPositions({
+const info = await moonwellClient.getUserStakingInfo({
   userAddress: "0x0000000000000000000000000000000000000000",
-  chainId: 8453, // [!code focus]
+  chainId: 1284, // [!code focus]
 });
 ```
 
@@ -67,15 +67,15 @@ const positions = await moonwellClient.getUserPositions({
 
 - **Type:** `string`
 
-The network to filter the markets by.
+The network to get the user staking info for.
 
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-import { base } from "@moonwell-fi/moonwell-sdk/environments";
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
 
-const positions = await moonwellClient.getUserPositions<typeof base>({
+const info = await moonwellClient.getUserStakingInfo<typeof moonbeam>({
   userAddress: "0x0000000000000000000000000000000000000000",
-  network: "base" // [!code focus]
-})
+  network: "moonbeam", // [!code focus]
+});
 ```

@@ -1,0 +1,27 @@
+# getDelegates
+
+Returns all delegates.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const delegates = await moonwellClient.getDelegates(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+Delegate[]
+```
+
+- **Type:** [`Delegate[]`](/docs/glossary/types#delegate)

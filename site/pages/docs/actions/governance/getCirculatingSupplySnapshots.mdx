@@ -1,0 +1,64 @@
+import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+
+# getCirculatingSupplySnapshots
+
+Returns all circulating supply snapshots.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const snapshots = await moonwellClient.getCirculatingSupplySnapshots(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+CirculatingSupplySnapshot[]
+```
+
+- **Type:** [`CirculatingSupplySnapshot[]`](/docs/glossary/types#circulatingsupplysnapshot)
+
+
+## Parameters
+
+### chainId (optional)
+
+- **Type:** `number`
+
+The chain ID to get the circulating supply snapshots for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const snapshots = await moonwellClient.getCirculatingSupplySnapshots({
+  chainId: 1284, // [!code focus]
+});
+```
+
+<OptionalNetworkParameterInfo />
+
+### network (optional)
+
+- **Type:** `string`
+
+The network to get the circulating supply snapshots for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const snapshots = await moonwellClient.getCirculatingSupplySnapshots<typeof moonbeam>({
+  network: "moonbeam", // [!code focus]
+});
+```
