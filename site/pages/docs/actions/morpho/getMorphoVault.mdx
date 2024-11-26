@@ -1,0 +1,116 @@
+import NetworkMorphoVaultParameterInfo from "../../../../components/NetworkMorphoVaultParameterInfo.mdx";
+
+# getMorphoVault
+
+Returns the Morpho vault.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const vault = await moonwellClient.getMorphoVault({ // [!code focus:4]
+  chainId: 8453,
+  vaultAddress: "0x0000000000000000000000000000000000000000",
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+MorphoVault | undefined
+```
+
+- **Type:** [`MorphoVault`](/docs/glossary/types#morphovault)
+
+## Parameters
+
+### includeRewards
+
+- **Type:** `boolean`
+
+Whether to include rewards in the response.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const vault = await moonwellClient.getMorphoVault({
+  chainId: 8453,
+  vaultAddress: "0x0000000000000000000000000000000000000000",
+  includeRewards: true, // [!code focus]
+});
+```
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the vault for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const vault = await moonwellClient.getMorphoVault({
+  chainId: 8453, // [!code focus]
+  vaultAddress: "0x0000000000000000000000000000000000000000",
+});
+```
+
+### vaultAddress
+
+- **Type:** `Address`
+
+The address of the vault to get.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const vault = await moonwellClient.getMorphoVault({
+  chainId: 8453,
+  vaultAddress: "0x0000000000000000000000000000000000000000", // [!code focus]
+});
+```
+
+<NetworkMorphoVaultParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the vault for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const vault = await moonwellClient.getMorphoVault<typeof base>({
+  network: "base", // [!code focus]
+  vault: "mwETH",
+});
+```
+
+### vault
+
+- **Type:** `string`
+
+The key of the vault to get.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const vault = await moonwellClient.getMorphoVault<typeof base>({
+  network: "base",
+  vault: "mwETH", // [!code focus]
+});
+```

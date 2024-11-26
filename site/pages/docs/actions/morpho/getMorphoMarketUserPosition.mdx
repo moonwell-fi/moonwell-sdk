@@ -1,0 +1,121 @@
+import NetworkMorphoMarketParameterInfo from "../../../../components/NetworkMorphoMarketParameterInfo.mdx";
+
+# getMorphoMarketUserPosition
+
+Returns the Morpho market user position.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const marketUserPosition = await moonwellClient.getMorphoMarketUserPosition({ // [!code focus:5]
+  userAddress: "0x0000000000000000000000000000000000000000",
+  chainId: 8453,
+  marketId: "0x0000000000000000000000000000000000000000",
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+```
+MorphoMarketUserPosition | undefined
+```
+
+- **Type:** [`MorphoMarketUserPosition`](/docs/glossary/types#morphomarketuserposition)
+
+## Parameters
+
+### userAddress
+
+- **Type:** `Address`
+
+The user address to get the market user position for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const marketUserPosition = await moonwellClient.getMorphoMarketUserPosition({
+  userAddress: "0x0000000000000000000000000000000000000000", // [!code focus]
+  chainId: 8453,
+  marketId: "0x0000000000000000000000000000000000000000",
+});
+```
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the market user position for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const marketUserPosition = await moonwellClient.getMorphoMarketUserPosition({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  chainId: 8453, // [!code focus]
+  marketId: "0x0000000000000000000000000000000000000000",
+});
+```
+
+### marketId
+
+- **Type:** `Address`
+
+The unique ID of the market.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const marketUserPosition = await moonwellClient.getMorphoMarketUserPosition({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  chainId: 8453,
+  marketId: "0x0000000000000000000000000000000000000000", // [!code focus]
+});
+```
+
+<NetworkMorphoMarketParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the market user position for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const marketUserPosition = await moonwellClient.getMorphoMarketUserPosition<typeof base>({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  network: "base", // [!code focus]
+  market: "USDC-ETH",
+});
+```
+
+### market
+
+- **Type:** `string`
+
+The market to get the user position for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const marketUserPosition = await moonwellClient.getMorphoMarketUserPosition<typeof base>({
+  userAddress: "0x0000000000000000000000000000000000000000",
+  network: "base",
+  market: "USDC-ETH", // [!code focus]
+});
+```
