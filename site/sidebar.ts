@@ -36,6 +36,10 @@ export const sidebar: Sidebar = {
               text: "getUserRewards",
               link: "/docs/actions/core/getUserRewards",
             },
+            {
+              text: "getMarketSnapshots",
+              link: "/docs/actions/core/getMarketSnapshots",
+            },
           ],
         },
         {
@@ -100,10 +104,6 @@ export const sidebar: Sidebar = {
           text: "Morpho",
           collapsed: true,
           items: [
-            {
-              text: "getMarketSnapshots",
-              link: "/docs/actions/morpho/getMarketSnapshots",
-            },
             {
               text: "getMorphoMarket",
               link: "/docs/actions/morpho/getMorphoMarket",
