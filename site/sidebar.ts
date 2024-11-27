@@ -22,10 +22,6 @@ export const sidebar: Sidebar = {
               items: [
                 { text: "getMarket", link: "/docs/actions/core/getMarket" },
                 { text: "getMarkets", link: "/docs/actions/core/getMarkets" },
-                {
-                  text: "getMarketSnapshots",
-                  link: "/docs/actions/core/getMarketSnapshots",
-                },
               ],
             },
             {
@@ -83,10 +79,6 @@ export const sidebar: Sidebar = {
                   text: "getMorphoVaults",
                   link: "/docs/actions/morpho/getMorphoVaults",
                 },
-                {
-                  text: "getMorphoVaultSnapshots",
-                  link: "/docs/actions/morpho/getMorphoVaultSnapshots",
-                },
               ],
             },
             {
@@ -132,28 +124,12 @@ export const sidebar: Sidebar = {
                   link: "/docs/actions/governance/getStakingInfo",
                 },
                 {
-                  text: "getStakingSnapshots",
-                  link: "/docs/actions/governance/getStakingSnapshots",
-                },
-                {
                   text: "getUserStakingInfo",
                   link: "/docs/actions/governance/getUserStakingInfo",
                 },
                 {
                   text: "getGovernanceTokenInfo",
                   link: "/docs/actions/governance/getGovernanceTokenInfo",
-                },
-                {
-                  text: "getUserVoteReceipt",
-                  link: "/docs/actions/governance/getUserVoteReceipt",
-                },
-                {
-                  text: "getUserVotingPowers",
-                  link: "/docs/actions/governance/getUserVotingPowers",
-                },
-                {
-                  text: "getCirculatingSupplySnapshots",
-                  link: "/docs/actions/governance/getCirculatingSupplySnapshots",
                 },
               ],
             },
@@ -195,6 +171,41 @@ export const sidebar: Sidebar = {
                   link: "/docs/actions/governance/getDiscussions",
                 },
               ],
+            },
+            {
+              text: "User Votes",
+              items: [
+                {
+                  text: "getUserVoteReceipt",
+                  link: "/docs/actions/governance/getUserVoteReceipt",
+                },
+                {
+                  text: "getUserVotingPowers",
+                  link: "/docs/actions/governance/getUserVotingPowers",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          text: "Historical Data",
+          collapsed: true,
+          items: [
+            {
+              text: "getMarketSnapshots",
+              link: "/docs/actions/core/getMarketSnapshots",
+            },
+            {
+              text: "getMorphoVaultSnapshots",
+              link: "/docs/actions/morpho/getMorphoVaultSnapshots",
+            },
+            {
+              text: "getStakingSnapshots",
+              link: "/docs/actions/governance/getStakingSnapshots",
+            },
+            {
+              text: "getCirculatingSupplySnapshots",
+              link: "/docs/actions/governance/getCirculatingSupplySnapshots",
             },
           ],
         },
