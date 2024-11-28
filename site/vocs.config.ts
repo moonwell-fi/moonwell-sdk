@@ -104,7 +104,7 @@ export default defineConfig({
     },
     {
       icon: "discord",
-      link: "https://discord.com/invite/moonwellfi",
+      link: "https://discord.gg/moonwellfi",
     },
     {
       icon: "x",

@@ -1,13 +1,14 @@
 ---
-title: Viem · TypeScript Interface for Ethereum
+title: Moonwell SDK · TypeScript Interface for Moonwell
 content:
   width: 100%
 layout: landing
 logo: false
 ---
 
-import { HomePage } from 'vocs/components'
-import InstallCommandTabs from '../components/InstallCommandTabs.mdx'
+import { HomePage } from 'vocs/components';
+import InstallCommandTabs from '../components/InstallCommandTabs.mdx';
+import { PackegeDownloadsBadge } from '../components/PackegeDownloadsBadge';
 import Orbital from '../components/Orbital';
  
 {/* <div className="absolute h-screen top-0 left-0 right-0 bottom-0 px-4 text-center z-0">
@@ -28,42 +29,28 @@ import Orbital from '../components/Orbital';
         <div className="font-regular text-[21px] max-sm:text-[18px] text-[#919193] max-md:text-center">Build reliable apps & libraries with <span className="text-black dark:text-white">lightweight</span>, <span className="text-black dark:text-white">composable</span>, and <span className="text-black dark:text-white">type-safe</span> modules that interface with Ethereum</div>
         <div className="flex justify-center space-x-2">
           <HomePage.Button href="/docs/getting-started" variant="accent">Get started</HomePage.Button>
-          <HomePage.Button href="/docs/introduction">Why Viem?</HomePage.Button>
-          <HomePage.Button href="https://github.com/wevm/viem">GitHub</HomePage.Button>
+          <HomePage.Button href="https://github.com/moonwell-fi/moonwell-sdk">GitHub</HomePage.Button>
         </div>
       </div>
       <div className="flex flex-col justify-between w-[440px] space-y-10 max-lg:w-[300px] max-md:hidden">
         <div id="home-install" className="h-full">
-
-<InstallCommandTabs/>
-
-    </div>
-    <div className="flex justify-between space-x-2">
-    <a href="https://github.com/wevm/viem/stargazers" className="cursor-pointer h-[36px] max-w-[120px] flex-1 relative rounded-lg overflow-hidden border border-black/10 dark:border-white/20" style={{ color: 'inherit' }} rel="noreferrer noopener" target="_blank">
-      <div className="absolute flex z-[1] p-[6px] h-full w-full">
-        <div className="flex-1 bg-white/60 dark:bg-black/40 flex items-center w-full h-full rounded-md">
-          <span className="font-medium text-[15px] opacity-80 leading-none w-full text-center">stars</span>
+          <InstallCommandTabs/>
         </div>
-        <div className="flex items-center h-full px-2">
-          <span className="font-medium text-[15px] text-center leading-none w-full text-black dark:text-white">2.4k</span>
-        </div>
-      </div>
-      <div className="absolute left-0 right-0 top-0 bottom-0 bg-black/5 dark:bg-white/5 z-0" />
-      <div className="absolute left-0 right-0 top-0 bottom-0 backdrop-blur-[2px] backdrop-filter z-0" />
-    </a>
-    <a href="https://app.codecov.io/gh/wevm/viem" className="cursor-pointer h-[36px] max-w-[160px] flex-1 relative rounded-lg overflow-hidden border border-green-400/50" style={{ color: 'inherit' }} rel="noreferrer noopener" target="_blank">
-      <div className="absolute flex z-[1] p-[6px] h-full w-full">
-        <div className="flex-1 bg-white/60 dark:bg-black/40 flex items-center w-full h-full rounded-md">
-          <span className="font-medium text-[15px] leading-none opacity-80 w-full text-center">coverage</span>
-        </div>
-        <div className="flex items-center h-full px-2">
-          <span className="font-medium text-[15px] leading-none text-center w-full text-green-400">100%</span>
-        </div>
-      </div>
-      <div className="absolute left-0 right-0 top-0 bottom-0 bg-green-400 opacity-10 z-[0]" />
-      <div className="absolute left-0 right-0 top-0 bottom-0 backdrop-blur-[2px] backdrop-filter z-[0]" />
-    </a>
-    <a href="https://github.com/wevm/viem/blob/main/LICENSE" className="cursor-pointer h-[36px] max-w-[130px] flex-1 relative rounded-lg overflow-hidden border border-black/10 dark:border-white/20 max-lg:hidden" style={{ color: 'inherit' }} rel="noreferrer noopener" target="_blank">
+        <div className="flex justify-end space-x-2">
+    {/* <a href="https://github.com/moonwell-fi/moonwell-sdk/blob/main/LICENSE">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcSet="https://img.shields.io/npm/l/@moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat"/>
+      <img src="https://img.shields.io/npm/l/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="MIT License" className='h-6'/>
+    </picture>
+  </a> */}
+  {/* <a href="https://www.npmjs.com/package/@moonwell-fi/moonwell-sdk">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcSet="https://img.shields.io/npm/dm/@moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat"/>
+      <img src="https://img.shields.io/npm/dm/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="Downloads per month" className='h-6'/>
+    </picture>
+  </a> */}
+  <PackegeDownloadsBadge />
+    <a href="https://github.com/moonwell-fi/moonwell-sdk/blob/HEAD/LICENSE" className="cursor-pointer h-[36px] max-w-[130px] flex-1 relative rounded-lg overflow-hidden border border-black/10 dark:border-white/20 max-lg:hidden" style={{ color: 'inherit' }} rel="noreferrer noopener" target="_blank">
       <div className="absolute flex z-[1] p-[6px] h-full w-full">
         <div className="flex-1 bg-white/60 dark:bg-black/40 flex items-center w-full h-full rounded-md">
           <span className="font-medium text-[15px] leading-none opacity-80 w-full text-center">license</span>
@@ -78,58 +65,13 @@ import Orbital from '../components/Orbital';
     </div>
     </div>
     </div>
-    <div className="flex justify-between flex-wrap mt-16 max-sm:hidden">
-      <div className="pr-2 w-1/4 max-lg:pb-3 max-sm:px-0 max-lg:w-1/2 max-sm:w-full z-0">
-        <div className="relative w-full h-[168px] max-lg:h-[142px] overflow-hidden">
-          <div className="border-black dark:border-white border border-solid border-opacity-10 dark:border-opacity-10 rounded-lg h-full px-5 py-6 absolute z-10 flex flex-col justify-between w-full">
-            <div className="text-xl font-medium text-black dark:text-white">Modular</div>
-            <div className="text-[17px] text-[#919193]">Composable modules to build applications & libraries with speed</div>
-          </div>
-          <div className="absolute left-0 right-0 top-0 bottom-0 dark:bg-[#313136] opacity-20 z-0" />
-          <div className="absolute left-0 right-0 top-0 bottom-0 backdrop-filter backdrop-blur-[2px] z-0" />
-        </div>
-      </div>
-      <div className="pl-2 pr-2 max-sm:px-0 max-lg:pb-3 max-lg:pr-0 w-1/4 max-lg:w-1/2 max-sm:w-full z-0">
-        <div className="relative w-full h-[168px] max-lg:h-[142px]">
-          <div className="border-black dark:border-white border border-solid border-opacity-10 dark:border-opacity-10 rounded-lg h-full px-5 py-6 absolute z-10 flex flex-col justify-between w-full">
-            <div className="text-xl font-medium text-black dark:text-white">Lightweight</div>
-            <div>
-            <div className="text-[17px] text-[#919193]">Tiny bundle size optimized for tree-shaking</div>
-            <a href="/docs/introduction#bundle-size" className="text-[17px]">See more</a>
-            </div>
-          </div>
-          <div className="absolute left-0 right-0 top-0 bottom-0 dark:bg-[#313136] opacity-20 z-0" />
-          <div className="absolute left-0 right-0 top-0 bottom-0 backdrop-filter backdrop-blur-[2px] z-0" />
-        </div>
-      </div>
-      <div className="pl-2 pr-2 max-lg:pb-3 max-sm:px-0 max-lg:pl-0 w-1/4 max-lg:w-1/2 max-sm:w-full z-0">
-        <div className="relative w-full h-[168px] max-lg:h-[142px]">
-          <div className="border-black dark:border-white border border-solid border-opacity-10 dark:border-opacity-10 rounded-lg h-full px-5 py-6 absolute z-10 flex flex-col justify-between w-full">
-            <div className="text-xl font-medium text-black dark:text-white">Performant</div>
-            <div className="text-[17px] text-[#919193]">Optimized architecture compared to alternative libraries</div>
-          </div>
-          <div className="absolute left-0 right-0 top-0 bottom-0 dark:bg-[#313136] opacity-20 z-0" />
-          <div className="absolute left-0 right-0 top-0 bottom-0 backdrop-filter backdrop-blur-[2px] z-0" />
-        </div>
-      </div>
-      <div className="pl-2 w-1/4 max-sm:px-0 max-lg:w-1/2 max-sm:w-full z-0">
-        <div className="relative w-full h-[168px] max-lg:h-[142px]">
-          <div className="border-black dark:border-white border border-solid border-opacity-10 dark:border-opacity-10 rounded-lg h-full px-5 py-6 absolute z-10 flex flex-col justify-between w-full">
-            <div className="text-xl font-medium text-black dark:text-white">Typed APIs</div>
-            <div className="text-[17px] text-[#919193]">Flexible programmatic APIs with extensive TypeScript typing</div>
-          </div>
-          <div className="absolute left-0 right-0 top-0 bottom-0 dark:bg-[#313136] opacity-20 z-0" />
-          <div className="absolute left-0 right-0 top-0 bottom-0 backdrop-filter backdrop-blur-[2px] z-0" />
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
 <article className="vocs_Content max-w-3xl mt-[-80px] mx-auto">
 
 #
-# Overview
+# Quick Start
 
 ```ts twoslash
 // 1. Import modules.
@@ -153,36 +95,48 @@ const markets = await moonwellClient.getMarkets();
 
 # Features
 
-viem supports all these features out-of-the-box:
+- Up-to-date repository of Moonwell deployed contracts
+- First-class APIs for interacting with [Moonwell Smart Contracts](https://github.com/moonwell-fi/moonwell-contracts-v2)
+- Support for multiple networks: Base, Optimism, Moonbeam, and Moonriver
+- Comprehensive market data retrieval
+- User position and reward tracking
+- Governance functionality
+- Morpho integration
 
-- Abstractions over the [JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/) to make your life easier
-- First-class APIs for interacting with [Smart Contracts](https://ethereum.org/en/glossary/#smart-contract)
-- Language closely aligned to official [Ethereum terminology](https://ethereum.org/en/glossary/)
-- Import your Browser Extension, WalletConnect or Private Key Wallet
-- Browser native [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt), instead of large BigNumber libraries
-- Utilities for working with [ABIs](https://ethereum.org/en/glossary/#abi) (encoding/decoding/inspection)
-- TypeScript ready 
-- First-class support for [Anvil](https://book.getfoundry.sh/), [Hardhat](https://hardhat.org/) & [Ganache](https://trufflesuite.com/ganache/)
-- Test suite running against [forked](https://ethereum.org/en/glossary/#fork) Ethereum network
+# Documentation
+
+For detailed documentation and API reference, visit our [SDK Documentation](https://sdk.moonwell.fi/docs/getting-started).
+
+# Supported Networks
+
+- Base
+- Optimism
+- Moonbeam
+- Moonriver
+
+# Key Features
+
+- Market Data: Retrieve comprehensive information about Moonwell markets
+- User Positions: Get user positions across all markets or for specific markets
+- Rewards: Track user rewards across markets
+- Governance: Access proposal data and voting information
+- Morpho Integration: Interact with Morpho markets and vaults
+
+# Contributing
+
+We welcome contributions! Please read our [contributing guidelines](https://github.com/moonwell-fi/moonwell-sdk/blob/HEAD/.github/CONTRIBUTING.md) before submitting pull requests.
 
 # Community
 
-Check out the following places for more wagmi-related content:
+Join our community and stay updated:
 
-- Follow [@wevm_dev](https://twitter.com/wevm_dev), [@_jxom](https://twitter.com/_jxom), and [@awkweb](https://twitter.com/awkweb) on Twitter for project updates
-- Join the [discussions on GitHub](https://github.com/wevm/viem/discussions)
-- [Share your project/organization](https://github.com/wevm/viem/discussions/104) that uses viem
+- Follow [@MoonwellDeFi](https://x.com/MoonwellDeFi) on Twitter
+- Join our [Discord](https://discord.gg/moonwellfi)
 
-# Support
+# License
 
-Help support future development and make wagmi a sustainable open-source project:
-
-- [GitHub Sponsors](https://github.com/sponsors/wevm?metadata_campaign=docs_support)
-- [Gitcoin Grant](https://wagmi.sh/gitcoin)
-- [wevm.eth](https://etherscan.io/enslookup-search?search=wevm.eth)
-
-# Sponsors
-
-::sponsors
+This project is licensed under the [MIT License](https://github.com/moonwell-fi/moonwell-sdk/blob/HEAD/LICENSE).
 
 </article>
+
+
