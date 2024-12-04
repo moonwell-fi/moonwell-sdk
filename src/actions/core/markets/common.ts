@@ -67,6 +67,17 @@ export const getMarketsData = async (environment: Environment) => {
       const { marketConfig, marketToken, underlyingToken, marketKey } =
         marketFound;
 
+      let badDebt = new Amount(0n, underlyingToken.decimals);
+      if (marketConfig.badDebt === true) {
+        try {
+          const badDebtResult =
+            await environment.markets[marketKey]?.read.badDebt();
+          badDebt = new Amount(badDebtResult, underlyingToken.decimals);
+        } catch (error) {
+          // ignore
+        }
+      }
+
       const supplyCaps = new Amount(
         marketInfo.supplyCap,
         underlyingToken.decimals,
@@ -106,6 +117,7 @@ export const getMarketsData = async (environment: Environment) => {
         underlyingToken.decimals,
       );
 
+      const badDebtUsd = badDebt.value * underlyingPrice;
       const totalSupplyUsd = totalSupply.value * underlyingPrice;
       const totalBorrowsUsd = totalBorrows.value * underlyingPrice;
       const totalReservesUsd = totalReserves.value * underlyingPrice;
@@ -132,6 +144,8 @@ export const getMarketsData = async (environment: Environment) => {
         reserveFactor,
         supplyCaps,
         supplyCapsUsd,
+        badDebt,
+        badDebtUsd,
         totalBorrows,
         totalBorrowsUsd,
         totalReserves,
