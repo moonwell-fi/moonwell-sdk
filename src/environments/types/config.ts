@@ -74,6 +74,7 @@ export type MarketConfig<tokens> = {
   marketToken: keyof tokens;
   underlyingToken: keyof tokens;
   deprecated?: boolean;
+  badDebt?: boolean;
 };
 
 export type MorphoMarketConfig<tokens> = {

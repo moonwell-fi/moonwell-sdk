@@ -11,10 +11,12 @@ export const markets = createMarketConfig({
     MOONWELL_xcDOT: {
       marketToken: "MOONWELL_xcDOT",
       underlyingToken: "xcDOT",
+      badDebt: true,
     },
     MOONWELL_FRAX: {
       marketToken: "MOONWELL_FRAX",
       underlyingToken: "FRAX",
+      badDebt: true,
     },
     MOONWELL_xcUSDC: {
       marketToken: "MOONWELL_xcUSDC",

@@ -17,6 +17,8 @@ export type Market = {
   supplyCapsUsd: number;
   borrowCaps: Amount;
   borrowCapsUsd: number;
+  badDebt: Amount;
+  badDebtUsd: number;
   totalSupply: Amount;
   totalSupplyUsd: number;
   totalBorrows: Amount;
