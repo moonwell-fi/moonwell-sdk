@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.11
+
+### Patch Changes
+
+- [#49](https://github.com/moonwell-fi/moonwell-sdk/pull/49) [`ad563c55f115523c7cf877c5c3240ee9228ea749`](https://github.com/moonwell-fi/moonwell-sdk/commit/ad563c55f115523c7cf877c5c3240ee9228ea749) Thanks [@x0s0l](https://github.com/x0s0l)! - Add bad debt
+
 ## 0.5.10
 
 ### Patch Changes
