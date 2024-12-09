@@ -107,7 +107,10 @@ import {
 import {
   type GetMarketSnapshotsParameters,
   type GetMarketSnapshotsReturnType,
+  type GetMorphoVaultUserPositionSnapshotsParameters,
+  type GetMorphoVaultUserPositionSnapshotsReturnType,
   getMarketSnapshots,
+  getMorphoVaultUserPositionSnapshots,
 } from "../actions/index.js";
 import {
   type GetMorphoUserBalancesParameters,
@@ -310,6 +313,12 @@ export type Actions<
   >(
     args: GetUserPositionSnapshotsParameters<environments, chain>,
   ) => GetUserPositionSnapshotsReturnType;
+
+  getMorphoVaultUserPositionSnapshots: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoVaultUserPositionSnapshotsParameters<environments, chain>,
+  ) => GetMorphoVaultUserPositionSnapshotsReturnType;
 };
 
 export const actions = <
@@ -356,5 +365,7 @@ export const actions = <
     getMarketSnapshots: (args) => getMarketSnapshots(client, args),
     getMorphoVaultSnapshots: (args) => getMorphoVaultSnapshots(client, args),
     getUserPositionSnapshots: (args) => getUserPositionSnapshots(client, args),
+    getMorphoVaultUserPositionSnapshots: (args) =>
+      getMorphoVaultUserPositionSnapshots(client, args),
   };
 };

@@ -21,3 +21,11 @@ export type MorphoMarketUserPosition = {
   borrowed: Amount;
   borrowedShares: Amount;
 };
+
+export type MorphoVaultUserPositionSnapshot = {
+  chainId: number;
+  account: Address;
+  vaultAddress: Address;
+  suppliedUsd: number;
+  timestamp: number;
+};
