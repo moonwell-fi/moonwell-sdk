@@ -37,63 +37,6 @@ const market = await moonwellClient.getMarket({ // [!code focus:4]
   })
 } />
 
-{/* ```ts twoslash
-import { Market } from "@moonwell-fi/moonwell-sdk/types/market";
-import { Amount } from "@moonwell-fi/moonwell-sdk/common";
-// ---cut---
-
-const exampleResult: Market = {
-  marketKey: '',
-  chainId: 0,
-  deprecated: false,
-  mintPaused: false,
-  borrowPaused: false,
-  seizePaused: false,
-  transferPaused: false,
-  marketToken: {
-    address: `0x00000000000000000`,
-    decimals: 0,
-    name: '',
-    symbol: '',
-  },
-  underlyingToken: {
-    address: `0x00000000000000000`,
-    decimals: 0,
-    name: '',
-    symbol: '',
-},
-  collateralFactor: 0,
-  underlyingPrice: 0,
-  supplyCaps: new Amount(0,0),
-  supplyCapsUsd: 0,
-  borrowCaps: new Amount(0,0),
-  borrowCapsUsd: 0,
-  totalSupply: new Amount(0,0),
-  totalSupplyUsd: 0,
-  totalBorrows: new Amount(0,0),
-  totalBorrowsUsd: 0,
-  totalReserves: new Amount(0,0),
-  totalReservesUsd: 0,
-  cash: new Amount(0,0),
-  exchangeRate: 0,
-  reserveFactor: 0,
-  baseSupplyApy: 0,
-  baseBorrowApy: 0,
-  totalSupplyApr: 0,
-  totalBorrowApr: 0,
-  rewards: [{
-    token: {
-      address: `0x0000000000000000000000000000000000000000`,
-      decimals: 0,
-      name: '',
-      symbol: '',
-    },
-    supplyApr: 0,
-    borrowApr: 0,
-    liquidStakingApr: 0,
-  }],
-};
-``` */}
 :::
 
 ```

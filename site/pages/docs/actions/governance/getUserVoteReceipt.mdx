@@ -1,4 +1,6 @@
 import NetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getUserVoteReceipt
 
@@ -25,6 +27,18 @@ const receipt = await moonwellClient.getUserVoteReceipt({ // [!code focus:5]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getUserVoteReceipt({
+    proposalId: 1,
+    userAddress: "0x0000000000000000000000000000000000000000",
+    chainId: 1284,
+  })
+} />
+
+:::
 
 ```
 VoteReceipt[]

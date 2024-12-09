@@ -1,4 +1,6 @@
 import NetworkMorphoMarketParameterInfo from "../../../../components/NetworkMorphoMarketParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getMorphoMarket
 
@@ -24,6 +26,17 @@ const market = await moonwellClient.getMorphoMarket({ // [!code focus:4]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMorphoMarket({
+    chainId: 8453,
+    marketId: "0x8793cf302b8ffd655ab97bd1c695dbd967807e8367a65cb2f4edaf1380ba1bda",
+  })
+} />
+
+:::
 
 ```
 MorphoMarket | undefined

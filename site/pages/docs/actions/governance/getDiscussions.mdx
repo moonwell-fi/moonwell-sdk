@@ -1,3 +1,6 @@
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
 # getDiscussions
 
 Returns all discussions.
@@ -19,6 +22,14 @@ const discussions = await moonwellClient.getDiscussions(); // [!code focus]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getDiscussions()
+} />
+
+:::
 
 ```
 Discussion[]

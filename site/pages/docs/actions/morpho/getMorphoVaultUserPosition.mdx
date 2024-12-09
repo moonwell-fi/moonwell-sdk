@@ -1,4 +1,6 @@
 import NetworkMorphoVaultParameterInfo from "../../../../components/NetworkMorphoVaultParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getMorphoVaultUserPosition
 
@@ -25,6 +27,18 @@ const vaultUserPosition = await moonwellClient.getMorphoVaultUserPosition({ // [
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMorphoVaultUserPosition({
+    userAddress: "0x0000000000000000000000000000000000000000",
+    chainId: 8453,
+    vaultAddress: "0xa0E430870c4604CcfC7B38Ca7845B1FF653D0ff1",
+  })
+} />
+
+:::
 
 ```
 MorphoVaultUserPosition | undefined

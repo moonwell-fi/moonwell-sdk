@@ -1,4 +1,6 @@
 import OptionalNetworkParameterInfo from '../../../../components/OptionalNetworkParameterInfo.mdx';
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getUserBalances
 
@@ -23,6 +25,16 @@ const balances = await moonwellClient.getUserBalances({ // [!code focus:3]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getUserBalances({
+    userAddress: "0x0000000000000000000000000000000000000000",
+  })
+} />
+
+:::
 
 ```
 UserBalance[]

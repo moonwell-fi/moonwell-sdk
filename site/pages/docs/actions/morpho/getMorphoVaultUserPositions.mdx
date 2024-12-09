@@ -1,4 +1,6 @@
 import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getMorphoVaultUserPositions
 
@@ -23,6 +25,16 @@ const vaultUserPositions = await moonwellClient.getMorphoVaultUserPositions({ //
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMorphoVaultUserPositions({
+    userAddress: "0x0000000000000000000000000000000000000000",
+  })
+} />
+
+:::
 
 ```
 MorphoVaultUserPosition[]

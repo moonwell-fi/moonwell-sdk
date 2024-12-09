@@ -1,4 +1,6 @@
 import NetworkMarketParameterInfo from '../../../../components/NetworkMarketParameterInfo.mdx';
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getUserPosition
 
@@ -25,6 +27,18 @@ const position = await moonwellClient.getUserPosition({ // [!code focus:5]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getUserPosition({
+    userAddress: "0x0000000000000000000000000000000000000000",
+    chainId: 8453,
+    marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457",
+  })
+} />
+
+:::
 
 ```
 UserPosition | undefined

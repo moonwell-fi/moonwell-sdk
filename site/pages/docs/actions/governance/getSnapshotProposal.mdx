@@ -1,4 +1,6 @@
 import NetworkParameterInfo from "../../../../components/NetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getSnapshotProposal
 
@@ -24,6 +26,17 @@ const proposal = await moonwellClient.getSnapshotProposal({ // [!code focus:4]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getSnapshotProposal({
+    proposalId: '0x14846ac838c7a144ffa257d4d8bc39091d30086b0d84eac4dc86263bbaa093d0',
+    chainId: 1284,
+  })
+} />
+
+:::
 
 ```
 SnapshotProposal | undefined

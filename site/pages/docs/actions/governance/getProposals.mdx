@@ -1,4 +1,6 @@
 import OptionalNetworkParameterInfo from '../../../../components/OptionalNetworkParameterInfo.mdx';
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getProposals
 
@@ -21,6 +23,16 @@ const proposals = await moonwellClient.getProposals(); // [!code focus]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getProposals({
+    chainId: 1284,
+  })
+} />
+
+:::
 
 ```
 Proposal[]

@@ -1,4 +1,7 @@
 import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
 
 # getMorphoMarkets
 
@@ -21,6 +24,16 @@ const markets = await moonwellClient.getMorphoMarkets(); // [!code focus]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMorphoMarkets({
+    chainId: 8453,
+  })
+} />
+
+:::
 
 ```
 MorphoMarket[]

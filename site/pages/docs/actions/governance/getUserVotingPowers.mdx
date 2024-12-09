@@ -1,4 +1,6 @@
 import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getUserVotingPowers
 
@@ -24,6 +26,17 @@ const powers = await moonwellClient.getUserVotingPowers({ // [!code focus:4]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getUserVotingPowers({
+    governanceToken: "WELL",
+    userAddress: "0x0000000000000000000000000000000000000000",
+  })
+} />
+
+:::
 
 ```
 UserVotingPowers[]

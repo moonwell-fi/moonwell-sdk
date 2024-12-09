@@ -1,4 +1,6 @@
 import NetworkParameterInfo from '../../../../components/NetworkParameterInfo.mdx';
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getMarketSnapshots
 
@@ -25,6 +27,18 @@ const marketSnapshots = await moonwellClient.getMarketSnapshots({ // [!code focu
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMarketSnapshots({
+    type: "core",
+    marketId: "0x628ff693426583D9a7FB391E54366292F509D457",
+    chainId: 8453,
+  })
+} />
+
+:::
 
 ```
 MarketSnapshot[]

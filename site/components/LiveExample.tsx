@@ -5,7 +5,7 @@ interface LiveExampleProps<T> {
 }
 
 export function LiveExample<T>({ promise }: LiveExampleProps<T>) {
-  const [data, setData] = useState<T | undefined>(undefined);
+  const [data, setData] = useState<T | T[] | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,9 +13,11 @@ export function LiveExample<T>({ promise }: LiveExampleProps<T>) {
     async function fetchData() {
       try {
         const result = await promise;
-        setData(result);
+        const data = Array.isArray(result) ? [result[0]] : result;
+        setData(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error loading example");
+        setError("An error occurred while fetching the example");
+        console.error(err);
       } finally {
         setLoading(false);
       }

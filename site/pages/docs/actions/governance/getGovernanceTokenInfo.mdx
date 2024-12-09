@@ -1,3 +1,6 @@
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
 # getGovernanceTokenInfo
 
 Returns the governance token info.
@@ -21,6 +24,16 @@ const info = await moonwellClient.getGovernanceTokenInfo({ // [!code focus:3]
 :::
 
 ## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getGovernanceTokenInfo({
+    governanceToken: "WELL",
+  })
+} />
+
+:::
 
 ```
 { totalSupply: Amount } | undefined
