@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.12
+
+### Patch Changes
+
+- [#51](https://github.com/moonwell-fi/moonwell-sdk/pull/51) [`23b021afea636c39e865abbdad6d4d956b24844a`](https://github.com/moonwell-fi/moonwell-sdk/commit/23b021afea636c39e865abbdad6d4d956b24844a) Thanks [@x0s0l](https://github.com/x0s0l)! - Add Morpho Vault User Position Snapshots
+
 ## 0.5.11
 
 ### Patch Changes
