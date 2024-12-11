@@ -107,7 +107,7 @@ export const tokens = createTokenConfig({
   VELO: {
     address: "0x9560e827af36c94d2ac33a39bce1fe78631088db",
     decimals: 18,
-    name: "Velodrome Finance",
+    name: "Velodrome",
     symbol: "VELO",
   },
   MOONWELL_VELO: {
@@ -119,7 +119,7 @@ export const tokens = createTokenConfig({
   DAI: {
     address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
     decimals: 18,
-    name: "DAI Stablecoin",
+    name: "DAI",
     symbol: "DAI",
   },
   MOONWELL_DAI: {
@@ -143,7 +143,7 @@ export const tokens = createTokenConfig({
   wrsETH: {
     address: "0x87eEE96D50Fb761AD85B1c982d28A042169d61b1",
     decimals: 18,
-    name: "Kelp DAO Restaked Ethereum",
+    name: "KelpDAO Restaked Ethereum",
     symbol: "wrsETH",
   },
   MOONWELL_wrsETH: {

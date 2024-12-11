@@ -55,7 +55,7 @@ yarn add @moonwell-fi/moonwell-sdk
 ## Quick Start
 ```typescript
 // 1. Import modules.
-import { createMoonwellClient, base, optimism } from '@moonwell-fi/moonwell-sdk';
+import { createMoonwellClient } from '@moonwell-fi/moonwell-sdk';
 
 // 2. Set up your client with desired networks & RPC urls.
 const moonwellClient = createMoonwellClient({

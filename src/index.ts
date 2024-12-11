@@ -22,6 +22,7 @@ export type { MorphoReward } from "./types/morphoReward.js";
 export type {
   MorphoMarketUserPosition,
   MorphoVaultUserPosition,
+  MorphoVaultUserPositionSnapshot,
 } from "./types/morphoUserPosition.js";
 export type { MorphoUserReward } from "./types/morphoUserReward.js";
 export type {

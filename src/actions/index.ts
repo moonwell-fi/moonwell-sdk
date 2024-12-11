@@ -163,3 +163,9 @@ export {
   type GetMorphoVaultSnapshotsParameters,
   type GetMorphoVaultSnapshotsReturnType,
 } from "./morpho/vaults/getMorphoVaultSnapshots.js";
+
+export {
+  getMorphoVaultUserPositionSnapshots,
+  type GetMorphoVaultUserPositionSnapshotsParameters,
+  type GetMorphoVaultUserPositionSnapshotsReturnType,
+} from "./morpho/user-positions/getMorphoVaultUserPositionSnapshots.js";

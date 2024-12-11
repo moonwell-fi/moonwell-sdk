@@ -1,5 +1,69 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.12
+
+### Patch Changes
+
+- [#51](https://github.com/moonwell-fi/moonwell-sdk/pull/51) [`23b021afea636c39e865abbdad6d4d956b24844a`](https://github.com/moonwell-fi/moonwell-sdk/commit/23b021afea636c39e865abbdad6d4d956b24844a) Thanks [@x0s0l](https://github.com/x0s0l)! - Add Morpho Vault User Position Snapshots
+
+## 0.5.11
+
+### Patch Changes
+
+- [#49](https://github.com/moonwell-fi/moonwell-sdk/pull/49) [`ad563c55f115523c7cf877c5c3240ee9228ea749`](https://github.com/moonwell-fi/moonwell-sdk/commit/ad563c55f115523c7cf877c5c3240ee9228ea749) Thanks [@x0s0l](https://github.com/x0s0l)! - Add bad debt
+
+## 0.5.10
+
+### Patch Changes
+
+- [#47](https://github.com/moonwell-fi/moonwell-sdk/pull/47) [`04f6f9c5824a8f6d7e2bab9fc440730dff21b2d4`](https://github.com/moonwell-fi/moonwell-sdk/commit/04f6f9c5824a8f6d7e2bab9fc440730dff21b2d4) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Renamed KelpDAO and Velodrome on Optimism
+
+- [#47](https://github.com/moonwell-fi/moonwell-sdk/pull/47) [`f138c1c21be7ba033bdcb67e97b45b1b5289c658`](https://github.com/moonwell-fi/moonwell-sdk/commit/f138c1c21be7ba033bdcb67e97b45b1b5289c658) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Renamed DAI on Base and Optimism
+
+## 0.5.9
+
+### Patch Changes
+
+- [#45](https://github.com/moonwell-fi/moonwell-sdk/pull/45) [`cf6631b1125800287013a2cffb3a1eac23d2fd95`](https://github.com/moonwell-fi/moonwell-sdk/commit/cf6631b1125800287013a2cffb3a1eac23d2fd95) Thanks [@x0s0l](https://github.com/x0s0l)! - Add safecheck for window object
+
+## 0.5.8
+
+### Patch Changes
+
+- [#43](https://github.com/moonwell-fi/moonwell-sdk/pull/43) [`7869645bda66b207a19df6d53cfe6b048e5ea580`](https://github.com/moonwell-fi/moonwell-sdk/commit/7869645bda66b207a19df6d53cfe6b048e5ea580) Thanks [@x0s0l](https://github.com/x0s0l)! - Add dayjs dependency
+
+## 0.5.7
+
+### Patch Changes
+
+- [#40](https://github.com/moonwell-fi/moonwell-sdk/pull/40) [`e78a2d11995dec7b5260112a8caa168e751871fe`](https://github.com/moonwell-fi/moonwell-sdk/commit/e78a2d11995dec7b5260112a8caa168e751871fe) Thanks [@x0s0l](https://github.com/x0s0l)! - Add cbBTC isolated markets
+
+- [#42](https://github.com/moonwell-fi/moonwell-sdk/pull/42) [`84cf0a5c9eb1a06f07d93429627da98ccfb720d7`](https://github.com/moonwell-fi/moonwell-sdk/commit/84cf0a5c9eb1a06f07d93429627da98ccfb720d7) Thanks [@x0s0l](https://github.com/x0s0l)! - Add isolated cbBTC markets
+
+## 0.5.6
+
+### Patch Changes
+
+- [#38](https://github.com/moonwell-fi/moonwell-sdk/pull/38) [`e7d5c4c52ed91514a1ec6a9aea46fecd30f565b7`](https://github.com/moonwell-fi/moonwell-sdk/commit/e7d5c4c52ed91514a1ec6a9aea46fecd30f565b7) Thanks [@x0s0l](https://github.com/x0s0l)! - Deprecate USDbC market
+
+## 0.5.5
+
+### Patch Changes
+
+- [#36](https://github.com/moonwell-fi/moonwell-sdk/pull/36) [`fd4a570de0bf19315a77f89c47c07c67b952f4ac`](https://github.com/moonwell-fi/moonwell-sdk/commit/fd4a570de0bf19315a77f89c47c07c67b952f4ac) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix USDC.wh name and decimals
+
+## 0.5.4
+
+### Patch Changes
+
+- [#34](https://github.com/moonwell-fi/moonwell-sdk/pull/34) [`6eeef06759878d1ae19797a8159a791e2d83dba3`](https://github.com/moonwell-fi/moonwell-sdk/commit/6eeef06759878d1ae19797a8159a791e2d83dba3) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix delegates API
+
+## 0.5.3
+
+### Patch Changes
+
+- [#32](https://github.com/moonwell-fi/moonwell-sdk/pull/32) [`01d81aa4facd36a8b0bea85caf8ec19bba5d7c57`](https://github.com/moonwell-fi/moonwell-sdk/commit/01d81aa4facd36a8b0bea85caf8ec19bba5d7c57) Thanks [@x0s0l](https://github.com/x0s0l)! - Add chainId to proposal state changes
+
 ## 0.5.2
 
 ### Patch Changes

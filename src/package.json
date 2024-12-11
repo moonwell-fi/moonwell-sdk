@@ -1,7 +1,7 @@
 {
   "name": "@moonwell-fi/moonwell-sdk",
   "description": "TypeScript Interface for Moonwell",
-  "version": "0.5.2",
+  "version": "0.5.12",
   "type": "module",
   "main": "./_cjs/index.js",
   "module": "./_esm/index.js",
@@ -63,6 +63,7 @@
   "dependencies": {
     "@types/lodash": "^4.17.9",
     "axios": "^1.7.7",
+    "dayjs": "^1.11.13",
     "lodash": "^4.17.21",
     "viem": "^2.21.16"
   },
