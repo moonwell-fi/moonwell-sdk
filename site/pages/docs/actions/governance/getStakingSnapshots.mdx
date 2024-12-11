@@ -1,0 +1,82 @@
+import NetworkParameterInfo from "../../../../components/NetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getStakingSnapshots
+
+Retrieves historical snapshots of staking positions across the protocol. These snapshots capture the state of all staking positions at specific points in time, including information such as:
+- Total staked amounts
+- Individual staker positions
+- Staking rewards data
+- Timestamp of each snapshot
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const snapshots = await moonwellClient.getStakingSnapshots({ // [!code focus:3]
+  chainId: 1284,
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getStakingSnapshots({
+    chainId: 1284,
+  })
+} />
+
+:::
+
+```
+StakingSnapshot[]
+```
+
+- **Type:** [`StakingSnapshot[]`](/docs/glossary/types#stakingsnapshot)
+
+
+## Parameters
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the staking snapshots for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const snapshots = await moonwellClient.getStakingSnapshots({
+  chainId: 1284, // [!code focus]
+});
+```
+
+<NetworkParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the staking snapshots for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const snapshots = await moonwellClient.getStakingSnapshots<typeof moonbeam>({
+  network: "moonbeam", // [!code focus]
+});
+```

@@ -1,0 +1,38 @@
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getDiscussions
+
+Returns all governance discussions across the Moonwell protocol. This function allows you to fetch the complete list of active and past governance discussions, including proposals, their descriptions, and related metadata.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const discussions = await moonwellClient.getDiscussions(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getDiscussions()
+} />
+
+:::
+
+```
+Discussion[]
+```
+
+- **Type:** [`Discussion[]`](/docs/glossary/types#discussion)

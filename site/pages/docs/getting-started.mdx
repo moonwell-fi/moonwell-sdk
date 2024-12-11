@@ -1,0 +1,53 @@
+import InstallCommandTabs from '../../components/InstallCommandTabs.mdx'
+
+# Getting Started [Integrate Moonwell SDK with just a few lines of code]
+
+## Overview
+
+Moonwell SDK is a TypeScript library that provides a simple and intuitive way to interact with Moonwell's lending protocol. It offers a comprehensive set of tools for querying market data across multiple networks including Base and Optimism.
+
+Key features:
+- 🔌 Easy network configuration
+- 📊 Real-time market data access
+- 📱 Multi-network support
+
+## Installation
+
+<InstallCommandTabs />
+
+## Quick Start
+
+### 1. Set up your Networks & RPC urls
+
+```ts twoslash
+import { createMoonwellClient } from '@moonwell-fi/moonwell-sdk';
+
+const moonwellClient = createMoonwellClient({ // [!code focus]
+  networks: { // [!code focus]
+    base: { // [!code focus]
+      rpcUrls: ["https://base.llamarpc.com"], // [!code focus]
+    }, // [!code focus]
+    optimism: { // [!code focus]
+      rpcUrls: ["https://optimism.llamarpc.com"], // [!code focus]
+    }, // [!code focus]
+  }, // [!code focus]
+}); // [!code focus]
+```
+
+:::info
+In a production app, it is highly recommended to pass through your authenticated RPC provider URL (Alchemy, Infura, Ankr, etc). If no URL is provided, moonwell-sdk will default to a public RPC provider.
+:::
+
+### 2. Consume Actions
+
+Now that you have a Client set up, you can now interact with Base and consume [Actions](/docs/actions/core/getMarkets)!
+
+```ts twoslash 
+// [!include ~/snippets/moonClient.ts]
+
+const markets = await moonwellClient.getMarkets(); // [!code focus]
+```
+
+## Live Example
+
+<iframe className="mt-6" width="100%" height="600px" frameBorder="0" src="https://stackblitz.com/edit/moonwell-sdk?ctl=1&embed=1&file=index.ts&hideExplorer=1&hideNavigation=1&view=editor"></iframe>

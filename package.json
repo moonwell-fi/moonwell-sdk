@@ -12,6 +12,8 @@
     "lint:repo": "sherif",
     "lint": "biome check --fix",
     "typecheck": "tsc --noEmit",
+    "docs:dev": "pnpm -C ./site dev",
+    "docs:build": "pnpm -C ./site build",
     "test": "vitest -c ./test/vitest.config.ts dev",
     "preinstall": "pnpx only-allow pnpm",
     "postinstall": "git submodule update --init --recursive",
@@ -57,5 +59,8 @@
   },
   "engines": {
     "node": "22.x"
+  },
+  "dependencies": {
+    "lottie-react": "^2.4.0"
   }
 }

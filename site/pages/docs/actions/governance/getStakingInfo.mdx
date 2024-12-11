@@ -1,0 +1,78 @@
+import NetworkParameterInfo from "../../../../components/NetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getStakingInfo
+
+Returns detailed information about the current staking state in the Moonwell protocol, including rewards data and protocol parameters. This function is useful for retrieving information about WELL token staking, such as total staked amounts and current reward rates.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const info = await moonwellClient.getStakingInfo({ // [!code focus:3]
+  chainId: 1284,
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getStakingInfo({
+    chainId: 1284,
+  })
+} />
+
+:::
+
+```
+StakingInfo[]
+```
+
+- **Type:** [`StakingInfo[]`](/docs/glossary/types#stakinginfo)
+
+
+## Parameters
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the staking info for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const info = await moonwellClient.getStakingInfo({
+  chainId: 1284, // [!code focus]
+});
+```
+
+<NetworkParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the staking info for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const info = await moonwellClient.getStakingInfo<typeof moonbeam>({
+  network: "moonbeam", // [!code focus]
+});
+```

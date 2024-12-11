@@ -1,0 +1,97 @@
+import NetworkParameterInfo from "../../../../components/NetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getSnapshotProposal
+
+Retrieves detailed information about a specific governance proposal from Moonwell Offchain Governance on [Snapshot](https://snapshot.org/). This function allows you to fetch proposal data such as the proposal title, description, voting options, current voting results, and other metadata using the proposal's unique identifier.
+
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const proposal = await moonwellClient.getSnapshotProposal({ // [!code focus:4]
+  proposalId: '0x0000000000000000000000000000000000000000',
+  chainId: 1284,
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getSnapshotProposal({
+    proposalId: '0x14846ac838c7a144ffa257d4d8bc39091d30086b0d84eac4dc86263bbaa093d0',
+    chainId: 1284,
+  })
+} />
+
+:::
+
+```
+SnapshotProposal | undefined
+```
+
+- **Type:** [`SnapshotProposal`](/docs/glossary/types#snapshotproposal)
+
+## Parameters
+
+### proposalId
+
+- **Type:** `string`
+
+The ID of the proposal.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposal = await moonwellClient.getSnapshotProposal({
+  proposalId: '0x0000000000000000000000000000000000000000', // [!code focus]
+  chainId: 1284,
+});
+```
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the proposal for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposal = await moonwellClient.getSnapshotProposal({
+  proposalId: '0x0000000000000000000000000000000000000000',
+  chainId: 1284, // [!code focus]
+});
+```
+
+<NetworkParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the proposal for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const proposal = await moonwellClient.getSnapshotProposal<typeof moonbeam>({
+  proposalId: '0x0000000000000000000000000000000000000000',
+  network: "moonbeam", // [!code focus]
+});
+```

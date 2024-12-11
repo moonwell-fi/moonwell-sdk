@@ -1,0 +1,74 @@
+import OptionalNetworkParameterInfo from '../../../../components/OptionalNetworkParameterInfo.mdx';
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getProposals
+
+Returns all governance proposals from the Moonwell protocol. This includes both active and historical proposals, allowing you to view the complete governance history. Each proposal contains details such as the proposal title, description, voting status, vote counts, and execution status.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const proposals = await moonwellClient.getProposals(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getProposals({
+    chainId: 1284,
+  })
+} />
+
+:::
+
+```
+Proposal[]
+```
+- **Type:** [`Proposal[]`](/docs/glossary/types#proposal)
+
+## Parameters
+
+### chainId (optional)
+
+- **Type:** `number`
+
+The chain ID to get the proposals for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposals = await moonwellClient.getProposals({
+  chainId: 1284 // [!code focus]
+})
+```
+
+<OptionalNetworkParameterInfo />
+
+### network (optional)
+
+- **Type:** `string`
+
+The network to get the proposals for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const proposals = await moonwellClient.getProposals<typeof moonbeam>({
+  network: "moonbeam" // [!code focus]
+})
+```
