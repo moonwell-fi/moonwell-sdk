@@ -56,6 +56,10 @@ async function fetchCoreMarketSnapshots(
     totalBorrowsUSD: number;
     totalSupplies: number;
     totalSuppliesUSD: number;
+    totalLiquidity: number;
+    totalLiquidityUSD: number;
+    baseSupplyApy: number;
+    baseBorrowApy: number;
     timestamp: number;
   }
 
@@ -85,6 +89,10 @@ async function fetchCoreMarketSnapshots(
                 totalBorrowsUSD
                 totalSupplies
                 totalSuppliesUSD
+                totalLiquidity
+                totalLiquidityUSD
+                baseSupplyApy
+                baseBorrowApy
                 timestamp
               }
               pageInfo {
@@ -112,11 +120,8 @@ async function fetchCoreMarketSnapshots(
 
       const borrowUsd = Number(point.totalBorrowsUSD);
       const suppliedUsd = Number(point.totalSuppliesUSD);
-
-      let liquidity = supplied - borrow > 0 ? supplied - borrow : 0;
-      let liquidityUsd = supplied - borrow > 0 ? suppliedUsd - borrowUsd : 0;
-      liquidity = Math.max(liquidity, 0);
-      liquidityUsd = Math.max(liquidityUsd, 0);
+      const liquidity = Math.max(point.totalLiquidity, 0);
+      const liquidityUsd = Math.max(point.totalLiquidityUSD, 0);
 
       const result: MarketSnapshot = {
         marketId: marketAddress.toLowerCase(),
@@ -128,6 +133,8 @@ async function fetchCoreMarketSnapshots(
         totalBorrowsUsd: borrowUsd,
         totalLiquidity: liquidity,
         totalLiquidityUsd: liquidityUsd,
+        baseSupplyApy: point.baseSupplyApy,
+        baseBorrowApy: point.baseBorrowApy,
       };
 
       return result;
@@ -192,6 +199,14 @@ async function fetchIsolatedMarketSnapshots(
           decimals
         }
         historicalState {
+         supplyApy(options: $options) {
+            x
+            y
+          }
+          borrowApy(options: $options) {
+            x
+            y
+          }
           borrowAssets(options: $options) {
             x
             y
@@ -258,6 +273,11 @@ async function fetchIsolatedMarketSnapshots(
                 index
               ];
 
+            const supplyApy =
+              result.marketTotalTimeseries.historicalState.supplyApy[index];
+            const borrowApy =
+              result.marketTotalTimeseries.historicalState.borrowApy[index];
+
             return {
               chainId: environment.chainId,
               timestamp: borrowAssets.x * 1000,
@@ -279,6 +299,8 @@ async function fetchIsolatedMarketSnapshots(
                   loanPrice) /
                 collateralPrice,
               totalLiquidityUsd: Number(liquidityAssetsUsd.y),
+              baseSupplyApy: supplyApy.y,
+              baseBorrowApy: borrowApy.y,
             };
           },
         );
