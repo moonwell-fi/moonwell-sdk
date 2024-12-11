@@ -4,7 +4,7 @@ import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getMarketSnapshots
 
-Returns market snapshots.
+Returns market snapshots for either core or isolated markets on a specified network.
 
 ## Usage
 
@@ -51,8 +51,11 @@ MarketSnapshot[]
 ### type
 
 - **Type:** `"core" | "isolated"`
+- **Required:** Yes
 
-Whether to get the core market snapshots or the isolated market snapshots.
+Specifies which type of market to query:
+- `"core"` - Moonwell Core lending markets
+- `"isolated"` - Morpho Markets with isolated risk parameters
 
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]

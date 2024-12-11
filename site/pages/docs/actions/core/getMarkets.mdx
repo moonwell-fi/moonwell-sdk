@@ -4,7 +4,8 @@ import { moonwellClient } from '../../../../snippets/moonClient';
 
 # getMarkets
 
-Returns the all markets available on Moonwell.
+Retrieves a list of all markets available on Moonwell. 
+Each market contains detailed information about the asset, including supply and borrow rates, total liquidity, collateral factor, and other key metrics.
 
 ## Usage
 
@@ -13,7 +14,14 @@ Returns the all markets available on Moonwell.
 ```ts twoslash [example.ts]
 import { moonwellClient } from './client'
 
-const markets = await moonwellClient.getMarkets(); // [!code focus]
+const allMarkets = await moonwellClient.getMarkets(); // [!code focus]
+
+// Get markets for a specific chain with liquid staking rewards
+const marketsWithRewards = await moonwellClient.getMarkets({
+  chainId: 8453,
+  includeLiquidStakingRewards: true
+});
+
 ```
 
 ```ts twoslash [client.ts] filename="client.ts"
@@ -23,6 +31,8 @@ const markets = await moonwellClient.getMarkets(); // [!code focus]
 :::
 
 ## Returns
+
+Returns an array of Market objects containing detailed information about each available market.
 
 :::details[Example]
 
@@ -39,12 +49,20 @@ Market[]
 ```
 
 - **Type:** [`Market[]`](/docs/glossary/types#market)
+- **Description:** An array of market objects, each containing:
+  - Asset information (symbol, name, decimals)
+  - Current market rates (supply APY, borrow APY)
+  - Market size (total supply, total borrow)
+  - Risk parameters (collateral factor, liquidation threshold)
+  - Protocol fees and reserves
 
 ## Parameters
 
 ### includeLiquidStakingRewards (optional)
 
 - **Type:** `boolean`
+- **Default:** `false`
+- **Description:** When set to `true`, includes additional information about liquid staking rewards available for each market.
 
 Whether to include liquid staking rewards in the response.
 
