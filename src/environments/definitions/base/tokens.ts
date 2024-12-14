@@ -158,6 +158,12 @@ export const tokens = createTokenConfig({
     name: "Moonwell Flagship EURC",
     symbol: "mwEURC",
   },
+  mwcbBTC: {
+    address: "0x543257eF2161176D7C8cD90BA65C2d4CaEF5a796",
+    decimals: 18,
+    name: "Moonwell Frontier cbBTC",
+    symbol: "mwcbBTC",
+  },
   WELL: {
     address: "0xA88594D404727625A9437C3f886C7643872296AE",
     decimals: 18,
