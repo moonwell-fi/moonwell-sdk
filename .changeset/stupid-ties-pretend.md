@@ -2,4 +2,4 @@
 "@moonwell-fi/moonwell-sdk": patch
 ---
 
-Add Moonwell Frontier cbBTC Vault
+Fix docs site build
