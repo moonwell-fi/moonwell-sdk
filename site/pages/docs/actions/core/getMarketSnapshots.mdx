@@ -1,0 +1,120 @@
+import NetworkParameterInfo from '../../../../components/NetworkParameterInfo.mdx';
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getMarketSnapshots
+
+Returns market snapshots for either core or isolated markets on a specified network.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const marketSnapshots = await moonwellClient.getMarketSnapshots({ // [!code focus:5]
+  type: "core",
+  marketId: "0x0000000000000000000000000000000000000000",
+  chainId: 8453,
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMarketSnapshots({
+    type: "core",
+    marketId: "0x628ff693426583D9a7FB391E54366292F509D457",
+    chainId: 8453,
+  })
+} />
+
+:::
+
+```
+MarketSnapshot[]
+```
+
+- **Type:** [`MarketSnapshot[]`](/docs/glossary/types#marketsnapshot)
+
+## Parameters
+
+### type
+
+- **Type:** `"core" | "isolated"`
+- **Required:** Yes
+
+Specifies which type of market to query:
+- `"core"` - Moonwell Core lending markets
+- `"isolated"` - Morpho Markets with isolated risk parameters
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const coreSnapshots = await moonwellClient.getMarketSnapshots({
+  type: "core", // [!code focus]
+  marketId: "0x0000000000000000000000000000000000000000",
+  chainId: 8453,
+});
+```
+
+### marketId
+
+- **Type:** `Address`
+
+The market ID to get the snapshots for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const coreSnapshots = await moonwellClient.getMarketSnapshots({
+  type: "core",
+  marketId: "0x0000000000000000000000000000000000000000", // [!code focus]
+  chainId: 8453,
+});
+```
+
+### chainId
+
+- **Type:** `number`
+
+The chain ID to get the snapshots for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const coreSnapshots = await moonwellClient.getMarketSnapshots({
+  type: "core",
+  marketId: "0x0000000000000000000000000000000000000000",
+  chainId: 8453, // [!code focus]
+});
+```
+
+<NetworkParameterInfo />
+
+### network
+
+- **Type:** `string`
+
+The network to get the snapshots for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const coreSnapshots = await moonwellClient.getMarketSnapshots<typeof base>({
+  type: "core",
+  marketId: "0x0000000000000000000000000000000000000000",
+  network: "base", // [!code focus]
+});
+```

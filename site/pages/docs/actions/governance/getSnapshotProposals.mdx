@@ -1,0 +1,90 @@
+import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getSnapshotProposals
+
+Returns all governance proposals from Moonwell Offchain Governance on [Snapshot](https://snapshot.org/) including both active and completed proposals. This function allows you to query proposals across different networks and includes details such as proposal titles, descriptions, voting periods, choices, and current voting results. You can filter proposals by chain ID or network and paginate through results.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const proposals = await moonwellClient.getSnapshotProposals(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getSnapshotProposals({
+    pagination: { size: 1, page: 1 },
+    chainId: 1284,
+  })
+} />
+
+:::
+
+```
+{ proposals: SnapshotProposal[], total: number, active: number }
+```
+
+- **Type:** [`SnapshotProposal[]`](/docs/glossary/types#snapshotproposal)
+
+## Parameters
+
+### pagination (optional)
+
+- **Type:** `{ size?: number; page?: number }`
+
+The pagination options.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposals = await moonwellClient.getSnapshotProposals({
+  pagination: { size: 10, page: 1 }, // [!code focus]
+});
+```
+
+### chainId (optional)
+
+- **Type:** `number`
+
+The chain ID to get the proposals for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposals = await moonwellClient.getSnapshotProposals({
+  chainId: 1284, // [!code focus]
+});
+```
+
+<OptionalNetworkParameterInfo />
+
+### network (optional)
+
+- **Type:** `string`
+
+The network to get the proposals for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+
+const proposals = await moonwellClient.getSnapshotProposals<typeof moonbeam>({
+  network: "moonbeam", // [!code focus]
+});
+```

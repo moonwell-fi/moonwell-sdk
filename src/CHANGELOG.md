@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.13
+
+### Patch Changes
+
+- [#53](https://github.com/moonwell-fi/moonwell-sdk/pull/53) [`09604ff8f13f7e326e47914d7e337d1fe76161ab`](https://github.com/moonwell-fi/moonwell-sdk/commit/09604ff8f13f7e326e47914d7e337d1fe76161ab) Thanks [@x0s0l](https://github.com/x0s0l)! - Add borrow apy and supply apy to markets snapshots
+
 ## 0.5.12
 
 ### Patch Changes

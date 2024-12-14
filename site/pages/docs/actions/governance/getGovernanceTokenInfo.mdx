@@ -1,0 +1,59 @@
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getGovernanceTokenInfo
+
+Returns information about the specified governance token, including its total supply.
+
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const info = await moonwellClient.getGovernanceTokenInfo({ // [!code focus:3]
+  governanceToken: "WELL",
+});
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getGovernanceTokenInfo({
+    governanceToken: "WELL",
+  })
+} />
+
+:::
+
+```
+{ totalSupply: Amount } | undefined
+```
+
+- **Type:** [`Amount`](/docs/glossary/types#amount)
+
+## Parameters
+
+### governanceToken
+
+- **Type:** `"WELL" | "WELL_TESTNET" | "MOVR"`
+
+The governance token to get the info for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const info = await moonwellClient.getGovernanceTokenInfo({
+  governanceToken: "WELL", // [!code focus]
+});
+```

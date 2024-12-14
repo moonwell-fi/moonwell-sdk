@@ -1,0 +1,90 @@
+import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+
+# getMorphoMarkets
+
+Retrieves a comprehensive list of all Morpho lending and borrowing markets supported by Moonwell, including their current states, interest rates, and market-specific parameters. Each market contains detailed information about the underlying asset, total supply, total borrow, and current market conditions.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const markets = await moonwellClient.getMorphoMarkets(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMorphoMarkets({
+    chainId: 8453,
+  })
+} />
+
+:::
+
+```
+MorphoMarket[]
+```
+
+- **Type:** [`MorphoMarket[]`](/docs/glossary/types#morphomarket)
+
+## Parameters
+
+### includeRewards (optional)
+
+- **Type:** `boolean`
+
+Whether to include rewards in the response.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const markets = await moonwellClient.getMorphoMarkets({
+  includeRewards: true // [!code focus]
+})
+```
+
+### chainId (optional)
+
+- **Type:** `number`
+
+The chain ID to get the markets for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const markets = await moonwellClient.getMorphoMarkets({
+  chainId: 8453 // [!code focus]
+})
+```
+
+<OptionalNetworkParameterInfo />
+
+### network (optional)
+
+- **Type:** `string`
+
+The network to get the markets for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const markets = await moonwellClient.getMorphoMarkets<typeof base>({
+  network: "base", // [!code focus]
+});
+```

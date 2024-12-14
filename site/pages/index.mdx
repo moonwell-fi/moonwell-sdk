@@ -1,0 +1,142 @@
+---
+title: Moonwell SDK · TypeScript Interface for Moonwell
+content:
+  width: 100%
+layout: landing
+logo: false
+---
+
+import { HomePage } from 'vocs/components';
+import InstallCommandTabs from '../components/InstallCommandTabs.mdx';
+import { PackegeDownloadsBadge } from '../components/PackegeDownloadsBadge';
+import Orbital from '../components/Orbital';
+ 
+{/* <div className="absolute h-screen top-0 left-0 right-0 bottom-0 px-4 text-center z-0">
+  <Orbital />  
+</div> */}
+{/* 
+<Lottie
+  className="mx-auto max-w-[80%] sm:max-w-[40%] opacity-90 sm:opacity-55 z-0 "
+  animationData={Orbital}
+  loop={true}
+/> */}
+          
+<div className="max-w-[1120px] mx-auto vp-doc relative px-[24px] mb-[96px] mt-[32px] md:px-0 md:mb-[64px]">
+  <div className="pt-[48px] max-sm:pt-0">
+    <div className="max-sm:px-0 flex justify-between z-0 max-md:justify-center">
+      <div className="space-y-8 max-w-[400px] flex flex-col items-start max-md:items-center">
+        <img className="h-[72px] invert-[1] dark:invert-0 max-sm:h-[60px]" src="/Moonwell-Logo-White.svg" alt="moonwell logo" />
+        <div className="font-regular text-[21px] max-sm:text-[18px] text-[#919193] max-md:text-center">Build reliable apps & libraries with <span className="text-black dark:text-white">lightweight</span>, <span className="text-black dark:text-white">composable</span>, and <span className="text-black dark:text-white">type-safe</span> modules that interface with Ethereum</div>
+        <div className="flex justify-center space-x-2">
+          <HomePage.Button href="/docs/getting-started" variant="accent">Get started</HomePage.Button>
+          <HomePage.Button href="https://github.com/moonwell-fi/moonwell-sdk">GitHub</HomePage.Button>
+        </div>
+      </div>
+      <div className="flex flex-col justify-between w-[440px] space-y-10 max-lg:w-[300px] max-md:hidden">
+        <div id="home-install" className="h-full">
+          <InstallCommandTabs/>
+        </div>
+        <div className="flex justify-end space-x-2">
+    {/* <a href="https://github.com/moonwell-fi/moonwell-sdk/blob/main/LICENSE">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcSet="https://img.shields.io/npm/l/@moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat"/>
+      <img src="https://img.shields.io/npm/l/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="MIT License" className='h-6'/>
+    </picture>
+  </a> */}
+  {/* <a href="https://www.npmjs.com/package/@moonwell-fi/moonwell-sdk">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcSet="https://img.shields.io/npm/dm/@moonwell-fi/moonwell-sdk?colorA=21262d&colorB=21262d&style=flat"/>
+      <img src="https://img.shields.io/npm/dm/@moonwell-fi/moonwell-sdk?colorA=f6f8fa&colorB=f6f8fa&style=flat" alt="Downloads per month" className='h-6'/>
+    </picture>
+  </a> */}
+  <PackegeDownloadsBadge />
+    <a href="https://github.com/moonwell-fi/moonwell-sdk/blob/HEAD/LICENSE" className="cursor-pointer h-[36px] max-w-[130px] flex-1 relative rounded-lg overflow-hidden border border-black/10 dark:border-white/20 max-lg:hidden" style={{ color: 'inherit' }} rel="noreferrer noopener" target="_blank">
+      <div className="absolute flex z-[1] p-[6px] h-full w-full">
+        <div className="flex-1 bg-white/60 dark:bg-black/40 flex items-center w-full h-full rounded-md">
+          <span className="font-medium text-[15px] leading-none opacity-80 w-full text-center">license</span>
+        </div>
+        <div className="flex items-center h-full px-2">
+          <span className="font-medium text-[15px] leading-none text-center w-full text-black dark:text-white">MIT</span>
+        </div>
+      </div>
+      <div className="absolute left-0 right-0 top-0 bottom-0 bg-black/5 dark:bg-white/5 z-[0]" />
+      <div className="absolute left-0 right-0 top-0 bottom-0 backdrop-blur-[2px] backdrop-filter z-[0]" />
+    </a>
+    </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<article className="vocs_Content max-w-3xl mt-[-80px] mx-auto">
+
+#
+# Quick Start
+
+```ts twoslash
+// 1. Import modules.
+import { createMoonwellClient } from '@moonwell-fi/moonwell-sdk';
+
+// 2. Set up your client with desired networks & RPC urls.
+const moonwellClient = createMoonwellClient({
+  networks: {
+    base: {
+      rpcUrls: ["https://base.llamarpc.com"],
+    },
+    optimism: {
+      rpcUrls: ["https://optimism.llamarpc.com"],
+    },
+  },
+});
+
+// 3. Consume an action!
+const markets = await moonwellClient.getMarkets();
+```
+
+# Features
+
+- Up-to-date repository of Moonwell deployed contracts
+- First-class APIs for interacting with [Moonwell Smart Contracts](https://github.com/moonwell-fi/moonwell-contracts-v2)
+- Support for multiple networks: Base, Optimism, Moonbeam, and Moonriver
+- Comprehensive market data retrieval
+- User position and reward tracking
+- Governance functionality
+- Morpho integration
+
+# Documentation
+
+For detailed documentation and API reference, visit our [SDK Documentation](https://sdk.moonwell.fi/docs/getting-started).
+
+# Supported Networks
+
+- Base
+- Optimism
+- Moonbeam
+- Moonriver
+
+# Key Features
+
+- Market Data: Retrieve comprehensive information about Moonwell markets
+- User Positions: Get user positions across all markets or for specific markets
+- Rewards: Track user rewards across markets
+- Governance: Access proposal data and voting information
+- Morpho Integration: Interact with Morpho markets and vaults
+
+# Contributing
+
+We welcome contributions! Please read our [contributing guidelines](https://github.com/moonwell-fi/moonwell-sdk/blob/HEAD/.github/CONTRIBUTING.md) before submitting pull requests.
+
+# Community
+
+Join our community and stay updated:
+
+- Follow [@MoonwellDeFi](https://x.com/MoonwellDeFi) on Twitter
+- Join our [Discord](https://discord.gg/moonwellfi)
+
+# License
+
+This project is licensed under the [MIT License](https://github.com/moonwell-fi/moonwell-sdk/blob/HEAD/LICENSE).
+
+</article>
+
+

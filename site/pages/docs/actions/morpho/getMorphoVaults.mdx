@@ -1,0 +1,89 @@
+import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+import { LiveExample } from '../../../../components/LiveExample';
+import { moonwellClient } from '../../../../snippets/moonClient';
+
+# getMorphoVaults
+
+Retrieves a list of all Moonwell Morpho Vaults with their current state, including supply and borrow rates, total deposits, total borrows, and other key metrics.
+
+## Usage
+
+:::code-group
+
+```ts twoslash [example.ts]
+import { moonwellClient } from './client'
+
+const vaults = await moonwellClient.getMorphoVaults(); // [!code focus]
+```
+
+```ts twoslash [client.ts] filename="client.ts"
+// [!include ~/snippets/moonClient.ts]
+```
+
+:::
+
+## Returns
+
+:::details[Example]
+
+<LiveExample promise={
+  moonwellClient.getMorphoVaults({
+    chainId: 8453,
+  })
+} />
+
+:::
+
+```
+MorphoVault[]
+```
+
+- **Type:** [`MorphoVault[]`](/docs/glossary/types#morphovault)
+
+## Parameters
+
+### includeRewards (optional)
+
+- **Type:** `boolean`
+
+Whether to include rewards in the response.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const vaults = await moonwellClient.getMorphoVaults({
+  includeRewards: true // [!code focus]
+})
+```
+
+### chainId (optional)
+
+- **Type:** `number`
+
+The chain ID to get the markets for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const vaults = await moonwellClient.getMorphoVaults({
+  chainId: 8453 // [!code focus]
+})
+```
+
+<OptionalNetworkParameterInfo />
+
+### network (optional)
+
+- **Type:** `string`
+
+The network to get the markets for.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+import { base } from "@moonwell-fi/moonwell-sdk/environments";
+
+const vaults = await moonwellClient.getMorphoVaults<typeof base>({
+  network: "base", // [!code focus]
+});
+```
