@@ -402,8 +402,8 @@ export const getExtendedProposalData = async (params: {
             targets: string[];
             calldatas: string[];
             signatures: string[];
-            stateChanges: {
-              items: {
+            stateChanges?: {
+              items?: {
                 txnHash: string;
                 blockNumber: number;
                 newState: string;
@@ -455,14 +455,15 @@ export const getExtendedProposalData = async (params: {
           description: item.description,
           calldatas: item.calldatas,
           signatures: item.signatures,
-          stateChanges: item.stateChanges.items.map((change) => {
-            return {
-              blockNumber: change.blockNumber,
-              state: change.newState,
-              transactionHash: change.txnHash,
-              chainId: change.chainId,
-            };
-          }),
+          stateChanges:
+            item.stateChanges?.items?.map((change) => {
+              return {
+                blockNumber: change.blockNumber,
+                state: change.newState,
+                transactionHash: change.txnHash,
+                chainId: change.chainId,
+              };
+            }) ?? [],
           targets: item.targets,
         };
 

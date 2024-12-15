@@ -8,7 +8,7 @@
     "preview": "vocs preview"
   },
   "devDependencies": {
-    "@moonwell-fi/moonwell-sdk": "^0.5.7",
+    "@moonwell-fi/moonwell-sdk": "file:../src",
     "@types/react": "latest",
     "react": "latest",
     "react-dom": "latest",

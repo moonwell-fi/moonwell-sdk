@@ -61,8 +61,8 @@ importers:
   site:
     devDependencies:
       '@moonwell-fi/moonwell-sdk':
-        specifier: ^0.5.7
-        version: 0.5.10(typescript@5.7.2)(zod@3.23.8)
+        specifier: file:../src
+        version: link:../src
       '@types/react':
         specifier: latest
         version: 18.3.12
@@ -693,14 +693,6 @@ packages:
     resolution: {integrity: sha512-q4xOtUXpCzeouE8GaJ8StT4rDxm/U5j6lkMHL2srb2Q3Y7cobE0aXyPzXVVlbeIMBi+5R5MpbiaVE5/vJUdnHg==}
     peerDependencies:
       rollup: '>=2'
-
-  '@moonwell-fi/moonwell-sdk@0.5.10':
-    resolution: {integrity: sha512-jHVl0drausFhPpUedn/KcDoyr2EXm6NgEnKD1/GUNKFz74wNosMe4br1+RVTalgtwMtW9V6GKKl1Eypv+5xqEw==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   '@noble/curves@1.6.0':
     resolution: {integrity: sha512-TlaHRXDehJuRNR9TfZDNQ45mMEd5dwUwmicsafcIX4SsNiqnCHKjE/1alYPd/lDRVhxdhUAlv8uEhMCI5zjIJQ==}
@@ -4564,21 +4556,6 @@ snapshots:
     transitivePeerDependencies:
       - acorn
       - supports-color
-
-  '@moonwell-fi/moonwell-sdk@0.5.10(typescript@5.7.2)(zod@3.23.8)':
-    dependencies:
-      '@types/lodash': 4.17.10
-      axios: 1.7.7
-      dayjs: 1.11.13
-      lodash: 4.17.21
-      viem: 2.21.21(typescript@5.7.2)(zod@3.23.8)
-    optionalDependencies:
-      typescript: 5.7.2
-    transitivePeerDependencies:
-      - bufferutil
-      - debug
-      - utf-8-validate
-      - zod
 
   '@noble/curves@1.6.0':
     dependencies:
