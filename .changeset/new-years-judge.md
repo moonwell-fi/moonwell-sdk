@@ -2,4 +2,4 @@
 "@moonwell-fi/moonwell-sdk": patch
 ---
 
-Docs fix 2
+Use local sdk instead of published one
