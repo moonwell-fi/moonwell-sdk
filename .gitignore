@@ -1,4 +1,6 @@
-
+_cjs
+_esm
+_types
 *.local
 .DS_Store
 .attest
@@ -8,19 +10,11 @@ bench
 cache
 coverage
 node_modules
-
+tsconfig*.tsbuildinfo
 wagmi
 src/node/trustedSetups_esm.ts
 **/trusted-setups/**/*.txt
 .idea
-
-# build
-/src/_cjs
-/src/_esm
-/src/_types
-
-.tsbuildinfo
-*.tsbuildinfo
 
 # local env files
 .env
