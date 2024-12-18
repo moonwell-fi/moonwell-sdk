@@ -1,5 +1,15 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.14
+
+### Patch Changes
+
+- [#61](https://github.com/moonwell-fi/moonwell-sdk/pull/61) [`f475d3774246d3678eb3c819cb1aa58bbad2ea35`](https://github.com/moonwell-fi/moonwell-sdk/commit/f475d3774246d3678eb3c819cb1aa58bbad2ea35) Thanks [@x0s0l](https://github.com/x0s0l)! - Use local sdk instead of published one
+
+- [#57](https://github.com/moonwell-fi/moonwell-sdk/pull/57) [`11fe28e6dbe122eca4fead5213bb10d0071184c0`](https://github.com/moonwell-fi/moonwell-sdk/commit/11fe28e6dbe122eca4fead5213bb10d0071184c0) Thanks [@x0s0l](https://github.com/x0s0l)! - Add Moonwell Frontier cbBTC Vault
+
+- [#59](https://github.com/moonwell-fi/moonwell-sdk/pull/59) [`7a70e4021756fd3cfda7a9112d37311929bdc154`](https://github.com/moonwell-fi/moonwell-sdk/commit/7a70e4021756fd3cfda7a9112d37311929bdc154) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix docs site build
+
 ## 0.5.13
 
 ### Patch Changes
