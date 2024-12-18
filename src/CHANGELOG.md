@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.15
+
+### Patch Changes
+
+- [#64](https://github.com/moonwell-fi/moonwell-sdk/pull/64) [`1dc4db89da946e062e7d378fa5c2904aec9d6562`](https://github.com/moonwell-fi/moonwell-sdk/commit/1dc4db89da946e062e7d378fa5c2904aec9d6562) Thanks [@x0s0l](https://github.com/x0s0l)! - Add LBTC-CBBTC Morpho Market
+
 ## 0.5.14
 
 ### Patch Changes
