@@ -49,9 +49,7 @@
   },
   "typesVersions": {
     "*": {
-      "actions": [
-        "./_types/actions/index.d.ts"
-      ]
+      "actions": ["./_types/actions/index.d.ts"]
     }
   },
   "peerDependencies": {
@@ -72,9 +70,7 @@
   "license": "MIT",
   "homepage": "https://moonwell.fi",
   "repository": "moonwell-fi/moonwell-sdk",
-  "authors": [
-    "x0s0l.eth"
-  ],
+  "authors": ["x0s0l.eth"],
   "keywords": [
     "eth",
     "ethereum",
