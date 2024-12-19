@@ -198,6 +198,6 @@ export const tokens = createTokenConfig({
     address: "0x5d746848005507DA0b1717C137A10C30AD9ee307",
     decimals: 6,
     name: "PT Lombard LBTC 29MAY2025",
-    symbol: "PT-LBTC-29MAY2025",
+    symbol: "PT_LBTC_29MAY2025",
   },
 });
