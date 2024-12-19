@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.17
+
+### Patch Changes
+
+- [#70](https://github.com/moonwell-fi/moonwell-sdk/pull/70) [`41605a539d6c1d3d6105b52be95f4c427181cdc1`](https://github.com/moonwell-fi/moonwell-sdk/commit/41605a539d6c1d3d6105b52be95f4c427181cdc1) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix PT Lombard LBTC 29MAY2025 symbol and collateral price logic
+
 ## 0.5.16
 
 ### Patch Changes
