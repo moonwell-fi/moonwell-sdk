@@ -65,9 +65,17 @@ export async function getMorphoMarketsData(params: {
           36 + loanToken.decimals - collateralToken.decimals,
         ).value;
 
-        const collateralTokenPrice = new Amount(marketInfo.collateralPrice, 18)
+        let collateralTokenPrice = new Amount(marketInfo.collateralPrice, 18)
           .value;
-        const loanTokenPrice = new Amount(marketInfo.loanPrice, 18).value;
+        let loanTokenPrice = new Amount(marketInfo.loanPrice, 18).value;
+
+        if (collateralTokenPrice === 0 && loanTokenPrice > 0) {
+          collateralTokenPrice = loanTokenPrice * oraclePrice;
+        }
+
+        if (loanTokenPrice === 0 && collateralTokenPrice > 0) {
+          loanTokenPrice = collateralTokenPrice / oraclePrice;
+        }
 
         const performanceFee = new Amount(marketInfo.fee, 18).value;
         const loanToValue = new Amount(marketInfo.lltv, 18).value;
