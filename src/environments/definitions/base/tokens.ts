@@ -83,7 +83,7 @@ export const tokens = createTokenConfig({
   cbBTC: {
     address: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
     decimals: 8,
-    name: "Coinbase Wrapped Bitcoin",
+    name: "Coinbase Bitcoin",
     symbol: "cbBTC",
   },
   MOONWELL_cbBTC: {
