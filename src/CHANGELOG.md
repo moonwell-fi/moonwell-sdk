@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.18
+
+### Patch Changes
+
+- [#72](https://github.com/moonwell-fi/moonwell-sdk/pull/72) [`6f1b9ad8c004fc42b0364d171326599025900a76`](https://github.com/moonwell-fi/moonwell-sdk/commit/6f1b9ad8c004fc42b0364d171326599025900a76) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Changed cbBTC name
+
 ## 0.5.17
 
 ### Patch Changes
