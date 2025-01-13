@@ -195,7 +195,7 @@ export const tokens = createTokenConfig({
     symbol: "wrsETH",
   },
   MOONWELL_WELL: {
-    address: "0xdC7810B47eAAb250De623F0eE07764afa5F71ED1  ",
+    address: "0xdC7810B47eAAb250De623F0eE07764afa5F71ED1",
     decimals: 8,
     name: "Moonwell WELL",
     symbol: "WELL",
