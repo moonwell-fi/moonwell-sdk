@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.19
+
+### Patch Changes
+
+- [#74](https://github.com/moonwell-fi/moonwell-sdk/pull/74) [`0fcd0d5daf26faa07451a1e25980ab853570b96a`](https://github.com/moonwell-fi/moonwell-sdk/commit/0fcd0d5daf26faa07451a1e25980ab853570b96a) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix build
+
+- [#74](https://github.com/moonwell-fi/moonwell-sdk/pull/74) [`e5b6526f295f8f0c668e3fe33300db471c65dcb2`](https://github.com/moonwell-fi/moonwell-sdk/commit/e5b6526f295f8f0c668e3fe33300db471c65dcb2) Thanks [@x0s0l](https://github.com/x0s0l)! - Add WELL Market on Base
+
 ## 0.5.18
 
 ### Patch Changes
