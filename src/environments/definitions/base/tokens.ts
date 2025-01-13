@@ -194,6 +194,12 @@ export const tokens = createTokenConfig({
     name: "Moonwell wrsETH",
     symbol: "wrsETH",
   },
+  MOONWELL_WELL: {
+    address: "0xdC7810B47eAAb250De623F0eE07764afa5F71ED1",
+    decimals: 8,
+    name: "Moonwell WELL",
+    symbol: "WELL",
+  },
   PT_LBTC_29MAY2025: {
     address: "0x5d746848005507DA0b1717C137A10C30AD9ee307",
     decimals: 6,
