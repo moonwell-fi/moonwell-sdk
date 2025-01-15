@@ -167,7 +167,7 @@ export const tokens = createTokenConfig({
   WELL: {
     address: "0xA88594D404727625A9437C3f886C7643872296AE",
     decimals: 18,
-    name: "WELL",
+    name: "Moonwell",
     symbol: "WELL",
   },
   WORMHOLE_WELL: {
@@ -205,5 +205,11 @@ export const tokens = createTokenConfig({
     decimals: 6,
     name: "PT Lombard LBTC 29MAY2025",
     symbol: "PT_LBTC_29MAY2025",
+  },
+  LBTC: {
+    address: "0xecAc9C5F704e954931349Da37F60E39f515c11c1",
+    decimals: 8,
+    name: "Lombard Staked Bitcoin",
+    symbol: "LBTC",
   },
 });
