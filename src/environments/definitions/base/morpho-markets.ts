@@ -70,5 +70,10 @@ export const morphoMarkets = createMorphoMarketConfig({
       loanToken: "cbBTC",
       id: "0x9a697eb760dd12aaea23699c96ea2ebbfe48b7af64138d92c4d232b9ed380024",
     },
+    "LBTC-cbBTC": {
+      collateralToken: "LBTC",
+      loanToken: "cbBTC",
+      id: "0x4944a1169bc07b441473b830308ffe5bb535c10a9f824e33988b60738120c48e",
+    },
   },
 });
