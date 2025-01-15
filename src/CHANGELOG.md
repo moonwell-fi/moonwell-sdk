@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.20
+
+### Patch Changes
+
+- [#76](https://github.com/moonwell-fi/moonwell-sdk/pull/76) [`1253c6505b872a0ba81651acacf9a9457adc58e0`](https://github.com/moonwell-fi/moonwell-sdk/commit/1253c6505b872a0ba81651acacf9a9457adc58e0) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added LBTC-cbBTC market
+
+- [#76](https://github.com/moonwell-fi/moonwell-sdk/pull/76) [`adc7f3862cedf4bd54af0f993af5ae96f08ae798`](https://github.com/moonwell-fi/moonwell-sdk/commit/adc7f3862cedf4bd54af0f993af5ae96f08ae798) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Renamed token well to Moonwell
+
 ## 0.5.19
 
 ### Patch Changes
