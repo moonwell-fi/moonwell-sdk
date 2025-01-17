@@ -287,24 +287,26 @@ async function fetchIsolatedMarketSnapshots(
             const borrowApy =
               result.marketTotalTimeseries.historicalState.borrowApy[index];
 
-            const totalSupply = new Amount(
-              BigInt(supplyAssets.y),
-              Number(collateralDecimals),
-            ).value;
+            const collateralTokenPrice =
+              result.marketTotalTimeseries.collateralAsset.priceUsd;
+            const loanTokenPrice =
+              result.marketTotalTimeseries.loanAsset.priceUsd;
+
+            const totalSupply =
+              (new Amount(BigInt(supplyAssets.y), Number(loanDecimals)).value *
+                loanTokenPrice) /
+              collateralTokenPrice;
 
             const totalBorrows = new Amount(
               BigInt(borrowAssets.y),
               Number(loanDecimals),
             ).value;
 
-            const totalLiquidity = new Amount(
-              BigInt(liquidityAssets.y),
-              Number(loanDecimals),
-            ).value;
-
-            const collateralTokenPrice =
-              Number(supplyAssetsUsd.y) / totalSupply;
-            const loanTokenPrice = Number(borrowAssetsUsd.y) / totalBorrows;
+            const totalLiquidity =
+              (new Amount(BigInt(liquidityAssets.y), Number(loanDecimals))
+                .value *
+                loanTokenPrice) /
+              collateralTokenPrice;
 
             return {
               chainId: environment.chainId,
