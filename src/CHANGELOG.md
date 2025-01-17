@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.22
+
+### Patch Changes
+
+- [#80](https://github.com/moonwell-fi/moonwell-sdk/pull/80) [`50b52e21c445de918ac18ea152545cd83e615d6e`](https://github.com/moonwell-fi/moonwell-sdk/commit/50b52e21c445de918ac18ea152545cd83e615d6e) Thanks [@x0s0l](https://github.com/x0s0l)! - Fix market snapshots
+
 ## 0.5.21
 
 ### Patch Changes
