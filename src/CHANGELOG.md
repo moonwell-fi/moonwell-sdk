@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.21
+
+### Patch Changes
+
+- [#78](https://github.com/moonwell-fi/moonwell-sdk/pull/78) [`63e0d41365fbb0839275c9436e4df2a399fb00e7`](https://github.com/moonwell-fi/moonwell-sdk/commit/63e0d41365fbb0839275c9436e4df2a399fb00e7) Thanks [@x0s0l](https://github.com/x0s0l)! - Add token price to market snapshots
+
 ## 0.5.20
 
 ### Patch Changes
