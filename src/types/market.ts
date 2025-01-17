@@ -53,5 +53,7 @@ export type MarketSnapshot = {
   totalLiquidityUsd: number;
   baseSupplyApy: number;
   baseBorrowApy: number;
+  loanTokenPrice: number;
+  collateralTokenPrice: number;
   timestamp: number;
 };
