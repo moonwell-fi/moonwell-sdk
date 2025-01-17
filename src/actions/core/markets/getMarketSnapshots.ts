@@ -255,9 +255,6 @@ async function fetchIsolatedMarketSnapshots(
             const loanDecimals =
               result.marketTotalTimeseries.loanAsset.decimals;
 
-            const collateralDecimals =
-              result.marketTotalTimeseries.collateralAsset.decimals;
-
             const borrowAssetsUsd =
               result.marketTotalTimeseries.historicalState.borrowAssetsUsd[
                 index
