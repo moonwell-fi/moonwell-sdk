@@ -123,6 +123,8 @@ async function fetchCoreMarketSnapshots(
       const liquidity = Math.max(point.totalLiquidity, 0);
       const liquidityUsd = Math.max(point.totalLiquidityUSD, 0);
 
+      const price = suppliedUsd / supplied;
+
       const result: MarketSnapshot = {
         marketId: marketAddress.toLowerCase(),
         chainId: environment.chainId,
@@ -135,6 +137,8 @@ async function fetchCoreMarketSnapshots(
         totalLiquidityUsd: liquidityUsd,
         baseSupplyApy: point.baseSupplyApy,
         baseBorrowApy: point.baseBorrowApy,
+        collateralTokenPrice: price,
+        loanTokenPrice: price,
       };
 
       return result;
@@ -250,24 +254,28 @@ async function fetchIsolatedMarketSnapshots(
           ): MarketSnapshot => {
             const loanDecimals =
               result.marketTotalTimeseries.loanAsset.decimals;
-            const collateralPrice =
-              result.marketTotalTimeseries.collateralAsset.priceUsd;
-            const loanPrice = result.marketTotalTimeseries.loanAsset.priceUsd;
+
+            const collateralDecimals =
+              result.marketTotalTimeseries.collateralAsset.decimals;
 
             const borrowAssetsUsd =
               result.marketTotalTimeseries.historicalState.borrowAssetsUsd[
                 index
               ];
+
             const supplyAssets =
               result.marketTotalTimeseries.historicalState.supplyAssets[index];
+
             const supplyAssetsUsd =
               result.marketTotalTimeseries.historicalState.supplyAssetsUsd[
                 index
               ];
+
             const liquidityAssets =
               result.marketTotalTimeseries.historicalState.liquidityAssets[
                 index
               ];
+
             const liquidityAssetsUsd =
               result.marketTotalTimeseries.historicalState.liquidityAssetsUsd[
                 index
@@ -275,32 +283,43 @@ async function fetchIsolatedMarketSnapshots(
 
             const supplyApy =
               result.marketTotalTimeseries.historicalState.supplyApy[index];
+
             const borrowApy =
               result.marketTotalTimeseries.historicalState.borrowApy[index];
+
+            const totalSupply = new Amount(
+              BigInt(supplyAssets.y),
+              Number(collateralDecimals),
+            ).value;
+
+            const totalBorrows = new Amount(
+              BigInt(borrowAssets.y),
+              Number(loanDecimals),
+            ).value;
+
+            const totalLiquidity = new Amount(
+              BigInt(liquidityAssets.y),
+              Number(loanDecimals),
+            ).value;
+
+            const collateralTokenPrice =
+              Number(supplyAssetsUsd.y) / totalSupply;
+            const loanTokenPrice = Number(borrowAssetsUsd.y) / totalBorrows;
 
             return {
               chainId: environment.chainId,
               timestamp: borrowAssets.x * 1000,
               marketId: marketAddress.toLowerCase(),
-              totalBorrows: new Amount(
-                BigInt(borrowAssets.y),
-                Number(loanDecimals),
-              ).value,
+              totalBorrows,
               totalBorrowsUsd: Number(borrowAssetsUsd.y),
-              totalSupply:
-                (new Amount(BigInt(supplyAssets.y), Number(loanDecimals))
-                  .value *
-                  loanPrice) /
-                collateralPrice,
+              totalSupply,
               totalSupplyUsd: Number(supplyAssetsUsd.y),
-              totalLiquidity:
-                (new Amount(BigInt(liquidityAssets.y), Number(loanDecimals))
-                  .value *
-                  loanPrice) /
-                collateralPrice,
+              totalLiquidity,
               totalLiquidityUsd: Number(liquidityAssetsUsd.y),
               baseSupplyApy: supplyApy.y,
               baseBorrowApy: borrowApy.y,
+              loanTokenPrice,
+              collateralTokenPrice,
             };
           },
         );
