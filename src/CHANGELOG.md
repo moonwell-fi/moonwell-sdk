@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.24
+
+### Patch Changes
+
+- [#84](https://github.com/moonwell-fi/moonwell-sdk/pull/84) [`4b0b3719e53c80bac1d1d7ae43fd161c5e7af834`](https://github.com/moonwell-fi/moonwell-sdk/commit/4b0b3719e53c80bac1d1d7ae43fd161c5e7af834) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Renamed bBTC and USDS
+
 ## 0.5.23
 
 ### Patch Changes
