@@ -57,5 +57,17 @@ export const markets = createMarketConfig({
       marketToken: "MOONWELL_WELL",
       underlyingToken: "WELL",
     },
+    MOONWELL_USDS: {
+      marketToken: "MOONWELL_USDS",
+      underlyingToken: "USDS",
+    },
+    MOONWELL_tBTC: {
+      marketToken: "MOONWELL_tBTC",
+      underlyingToken: "tBTC",
+    },
+    MOONWELL_LBTC: {
+      marketToken: "MOONWELL_LBTC",
+      underlyingToken: "LBTC",
+    },
   },
 });

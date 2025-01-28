@@ -212,4 +212,34 @@ export const tokens = createTokenConfig({
     name: "Lombard Staked Bitcoin",
     symbol: "LBTC",
   },
+  USDS: {
+    address: "0x820C137fa70C8691f0e44Dc420a5e53c168921Dc",
+    decimals: 18,
+    name: "USDS Stablecoin",
+    symbol: "USDS",
+  },
+  MOONWELL_USDS: {
+    address: "0xb6419c6C2e60c4025D6D06eE4F913ce89425a357",
+    decimals: 8,
+    name: "Moonwell USDS",
+    symbol: "mUSDS",
+  },
+  tBTC: {
+    address: "0x236aa50979D5f3De3Bd1Eeb40E81137F22ab794b",
+    decimals: 18,
+    name: "Base tBTC v2",
+    symbol: "tBTC",
+  },
+  MOONWELL_tBTC: {
+    address: "0x9A858ebfF1bEb0D3495BB0e2897c1528eD84A218",
+    decimals: 8,
+    name: "Moonwell tBTC",
+    symbol: "mtBTC",
+  },
+  MOONWELL_LBTC: {
+    address: "0x10fF57877b79e9bd949B3815220eC87B9fc5D2ee",
+    decimals: 8,
+    name: "Moonwell LBTC",
+    symbol: "mLBTC",
+  },
 });
