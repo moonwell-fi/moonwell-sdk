@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.23
+
+### Patch Changes
+
+- [#82](https://github.com/moonwell-fi/moonwell-sdk/pull/82) [`ac84fe42756dae63d1815ed529394bdab4798b40`](https://github.com/moonwell-fi/moonwell-sdk/commit/ac84fe42756dae63d1815ed529394bdab4798b40) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added USDS, LBTC, and TBTC markets
+
 ## 0.5.22
 
 ### Patch Changes
