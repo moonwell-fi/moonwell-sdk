@@ -215,7 +215,7 @@ export const tokens = createTokenConfig({
   USDS: {
     address: "0x820C137fa70C8691f0e44Dc420a5e53c168921Dc",
     decimals: 18,
-    name: "USDS Stablecoin",
+    name: "Sky Dollar",
     symbol: "USDS",
   },
   MOONWELL_USDS: {
@@ -227,7 +227,7 @@ export const tokens = createTokenConfig({
   tBTC: {
     address: "0x236aa50979D5f3De3Bd1Eeb40E81137F22ab794b",
     decimals: 18,
-    name: "Base tBTC v2",
+    name: "Threshold Bitcoin",
     symbol: "tBTC",
   },
   MOONWELL_tBTC: {
