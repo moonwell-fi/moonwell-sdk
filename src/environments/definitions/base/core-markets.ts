@@ -69,5 +69,9 @@ export const markets = createMarketConfig({
       marketToken: "MOONWELL_LBTC",
       underlyingToken: "LBTC",
     },
+    MOONWELL_VIRTUAL: {
+      marketToken: "MOONWELL_VIRTUAL",
+      underlyingToken: "VIRTUAL",
+    },
   },
 });
