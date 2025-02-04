@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.26
+
+### Patch Changes
+
+- [#88](https://github.com/moonwell-fi/moonwell-sdk/pull/88) [`ce517c3fe1da6db5d931a77193b589b558a487d2`](https://github.com/moonwell-fi/moonwell-sdk/commit/ce517c3fe1da6db5d931a77193b589b558a487d2) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fixed rewards supply and changed API cache time
+
 ## 0.5.25
 
 ### Patch Changes
