@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.25
+
+### Patch Changes
+
+- [#86](https://github.com/moonwell-fi/moonwell-sdk/pull/86) [`f627e3d32e82a7960bf9906e4bbfc85099f45d44`](https://github.com/moonwell-fi/moonwell-sdk/commit/f627e3d32e82a7960bf9906e4bbfc85099f45d44) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added VIRTUALS market
+
+- [#86](https://github.com/moonwell-fi/moonwell-sdk/pull/86) [`4c093c47cb4ca69ac93f821e5e433d940e5ab99f`](https://github.com/moonwell-fi/moonwell-sdk/commit/4c093c47cb4ca69ac93f821e5e433d940e5ab99f) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added handling for division by zero in getMarketsData
+
 ## 0.5.24
 
 ### Patch Changes
