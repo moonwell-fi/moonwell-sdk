@@ -196,12 +196,19 @@ export const getMarketsData = async (environment: Environment) => {
               price;
 
             const supplyApr =
-              (supplyRewardsPerDayUsd / totalSupplyUsd) * DAYS_PER_YEAR * 100;
+              totalSupplyUsd === 0
+                ? 0
+                : (supplyRewardsPerDayUsd / totalSupplyUsd) *
+                  DAYS_PER_YEAR *
+                  100 *
+                  -1;
             const borrowApr =
-              (borrowRewardsPerDayUsd / totalBorrowsUsd) *
-              DAYS_PER_YEAR *
-              100 *
-              -1;
+              totalBorrowsUsd === 0
+                ? 0
+                : (borrowRewardsPerDayUsd / totalBorrowsUsd) *
+                  DAYS_PER_YEAR *
+                  100 *
+                  -1;
 
             market.rewards.push({
               liquidStakingApr: 0,

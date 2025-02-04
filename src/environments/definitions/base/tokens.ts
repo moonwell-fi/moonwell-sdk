@@ -242,4 +242,16 @@ export const tokens = createTokenConfig({
     name: "Moonwell LBTC",
     symbol: "mLBTC",
   },
+  VIRTUAL: {
+    address: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+    decimals: 18,
+    name: "Virtuals Protocol",
+    symbol: "VIRTUAL",
+  },
+  MOONWELL_VIRTUAL: {
+    address: "0xdE8Df9d942D78edE3Ca06e60712582F79CFfFC64",
+    decimals: 8,
+    name: "Moonwell Virtual",
+    symbol: "mVIRTUAL",
+  },
 });
