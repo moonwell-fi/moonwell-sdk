@@ -200,8 +200,7 @@ export const getMarketsData = async (environment: Environment) => {
                 ? 0
                 : (supplyRewardsPerDayUsd / totalSupplyUsd) *
                   DAYS_PER_YEAR *
-                  100 *
-                  -1;
+                  100;
             const borrowApr =
               totalBorrowsUsd === 0
                 ? 0
@@ -241,7 +240,7 @@ const fetchFromGenericCacheApi = async <T>(uri: string): Promise<T> => {
     "https://generic-api-cache.moonwell.workers.dev/",
     {
       method: "POST",
-      body: `{"uri":"${uri}","cacheDuration":"3600"}`,
+      body: `{"uri":"${uri}","cacheDuration":"300"}`,
     },
   );
 
