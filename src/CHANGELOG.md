@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.5.27
+
+### Patch Changes
+
+- [#90](https://github.com/moonwell-fi/moonwell-sdk/pull/90) [`3b1cc6f16ca563c36ec3f9c9f03a25bd46cde69b`](https://github.com/moonwell-fi/moonwell-sdk/commit/3b1cc6f16ca563c36ec3f9c9f03a25bd46cde69b) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fixed decimal configuration for PT_LBTC_29MAY2025
+
 ## 0.5.26
 
 ### Patch Changes
