@@ -211,6 +211,7 @@ export const createEnvironmentConfig = <
   chain: Chain;
   transport: Transport;
   indexerUrl: string;
+  governanceIndexerUrl: string;
   tokens: TokensConfig<tokens>;
   markets: MarketsConfig<markets, tokens>;
   vaults: VaultsConfig<vaults, tokens>;
@@ -460,6 +461,7 @@ export const createEnvironmentConfig = <
     chainId: config.chain.id,
     chain: config.chain,
     indexerUrl: config.indexerUrl,
+    governanceIndexerUrl: config.governanceIndexerUrl,
     tokens: tokenContracts,
     markets: marketContracts,
     vaults: vaultsContracts,
@@ -496,6 +498,7 @@ export type Environment<
   chainId: number;
   chain: Chain;
   indexerUrl: string;
+  governanceIndexerUrl: string;
   tokens: {
     [name in keyof tokens]: TokenContractReturnType;
   };

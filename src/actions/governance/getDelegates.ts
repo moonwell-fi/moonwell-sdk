@@ -186,7 +186,7 @@ const getDelegatesExtendedData = async (params: {
         }[];
       };
     };
-  }>(publicEnvironments.moonbeam.indexerUrl, {
+  }>(publicEnvironments.moonbeam.governanceIndexerUrl, {
     query: `
       query {
         proposers(where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}) {
