@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.6.0
+
+### Minor Changes
+
+- [#92](https://github.com/moonwell-fi/moonwell-sdk/pull/92) [`1f88517766cb5d04da8887c4fc8efb1e8437e02e`](https://github.com/moonwell-fi/moonwell-sdk/commit/1f88517766cb5d04da8887c4fc8efb1e8437e02e) Thanks [@x0s0l](https://github.com/x0s0l)! - Separate indexer url for governance
+
 ## 0.5.27
 
 ### Patch Changes
