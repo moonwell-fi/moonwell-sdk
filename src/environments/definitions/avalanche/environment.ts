@@ -9,6 +9,7 @@ import { tokens } from "./tokens.js";
 const createEnvironment = (
   rpcUrls?: string[],
   indexerUrl?: string,
+  governanceIndexerUrl?: string,
 ): Environment<typeof tokens, {}, {}, {}, {}> =>
   createEnvironmentConfig({
     key: "avalanche",
@@ -18,6 +19,7 @@ const createEnvironment = (
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(avalanche.rpcUrls.default.http[0]),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
+    governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
     tokens,
     markets: {},
     vaults: {},

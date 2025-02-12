@@ -413,7 +413,7 @@ export const getExtendedProposalData = async (params: {
           }[];
         };
       };
-    }>(params.environment.indexerUrl, {
+    }>(params.environment.governanceIndexerUrl, {
       query: `
           query {
             proposals(

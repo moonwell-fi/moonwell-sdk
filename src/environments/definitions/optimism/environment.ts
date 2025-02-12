@@ -8,7 +8,11 @@ import { tokens } from "./tokens.js";
 
 const optimism = defineChain({ ...optimismChain, testnet: false });
 
-const createEnvironment = (rpcUrls?: string[], indexerUrl?: string) =>
+const createEnvironment = (
+  rpcUrls?: string[],
+  indexerUrl?: string,
+  governanceIndexerUrl?: string,
+) =>
   createEnvironmentConfig({
     key: "optimism",
     name: "Optimism",
@@ -17,6 +21,7 @@ const createEnvironment = (rpcUrls?: string[], indexerUrl?: string) =>
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(optimism.rpcUrls.default.http[0]),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
+    governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
     tokens,
     markets,
     vaults: {},

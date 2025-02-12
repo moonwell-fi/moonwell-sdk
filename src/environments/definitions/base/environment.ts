@@ -16,6 +16,7 @@ const base = defineChain({ ...baseChain, testnet: false });
 const createEnvironment = (
   rpcUrls?: string[],
   indexerUrl?: string,
+  governanceIndexerUrl?: string,
 ): Environment<
   typeof tokens,
   typeof markets,
@@ -31,6 +32,7 @@ const createEnvironment = (
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(base.rpcUrls.default.http[0]),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
+    governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
     tokens,
     markets,
     vaults,
