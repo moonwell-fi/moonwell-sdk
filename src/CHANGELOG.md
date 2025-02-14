@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.6.1
+
+### Patch Changes
+
+- [#95](https://github.com/moonwell-fi/moonwell-sdk/pull/95) [`cf55ae56d910262a9a2ee6db713536add7e8a798`](https://github.com/moonwell-fi/moonwell-sdk/commit/cf55ae56d910262a9a2ee6db713536add7e8a798) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Renamed Optimism network
+
 ## 0.6.0
 
 ### Minor Changes
