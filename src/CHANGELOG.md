@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.6.2
+
+### Patch Changes
+
+- [#97](https://github.com/moonwell-fi/moonwell-sdk/pull/97) [`e7dbd9f1a84d97cba47420cc0db9a99740312be4`](https://github.com/moonwell-fi/moonwell-sdk/commit/e7dbd9f1a84d97cba47420cc0db9a99740312be4) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Bumped viem package version
+
 ## 0.6.1
 
 ### Patch Changes
