@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.6.3
+
+### Patch Changes
+
+- [#99](https://github.com/moonwell-fi/moonwell-sdk/pull/99) [`db7153526c2c72a4dfe8f8bd023d8869fff43c06`](https://github.com/moonwell-fi/moonwell-sdk/commit/db7153526c2c72a4dfe8f8bd023d8869fff43c06) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fixed site build
+
 ## 0.6.2
 
 ### Patch Changes
