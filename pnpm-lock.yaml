@@ -6089,7 +6089,7 @@ snapshots:
 
   eval@0.1.8:
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 22.13.10
       require-like: 0.1.2
 
   eventemitter3@4.0.7: {}
