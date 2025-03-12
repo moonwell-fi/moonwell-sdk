@@ -10,164 +10,170 @@ export async function getUserMorphoRewardsData(params: {
   environment: Environment;
   account: `0x${string}`;
 }): Promise<MorphoUserReward[]> {
-  const rewards = await getMorphoRewardsData(
-    params.environment.chainId,
-    params.account,
-  );
-
-  const assets = await getMorphoAssetsData(rewards.map((r) => r.asset.address));
-
-  const result: (MorphoUserReward | undefined)[] = rewards.map((r) => {
-    const asset = assets.find(
-      (a) => a.address.toLowerCase() === r.asset.address.toLowerCase(),
+  if (params.environment.custom.morpho?.minimalDeployment === false) {
+    const rewards = await getMorphoRewardsData(
+      params.environment.chainId,
+      params.account,
     );
 
-    if (!asset) {
-      return undefined;
-    }
+    const assets = await getMorphoAssetsData(
+      rewards.map((r) => r.asset.address),
+    );
 
-    const rewardToken: TokenConfig = {
-      address: asset.address,
-      decimals: asset.decimals,
-      symbol: asset.symbol,
-      name: asset.name,
-    };
+    const result: (MorphoUserReward | undefined)[] = rewards.map((r) => {
+      const asset = assets.find(
+        (a) => a.address.toLowerCase() === r.asset.address.toLowerCase(),
+      );
 
-    switch (r.type) {
-      case "uniform-reward": {
-        const claimableNow = new Amount(
-          BigInt(r.amount?.claimable_now || 0),
-          rewardToken.decimals,
-        );
-        const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
-        const claimableFuture = new Amount(
-          BigInt(r.amount?.claimable_next || 0),
-          rewardToken.decimals,
-        );
-        const claimableFutureUsd =
-          claimableFuture.value * (asset.priceUsd || 0);
-
-        const uniformReward: MorphoUserReward = {
-          type: "uniform-reward",
-          chainId: r.asset.chain_id,
-          account: r.user,
-          rewardToken,
-          claimableNow,
-          claimableNowUsd,
-          claimableFuture,
-          claimableFutureUsd,
-        };
-        return uniformReward;
+      if (!asset) {
+        return undefined;
       }
 
-      case "market-reward": {
-        const claimableNow = new Amount(
-          BigInt(r.for_supply?.claimable_now || 0),
-          rewardToken.decimals,
-        );
-        const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+      const rewardToken: TokenConfig = {
+        address: asset.address,
+        decimals: asset.decimals,
+        symbol: asset.symbol,
+        name: asset.name,
+      };
 
-        const claimableFuture = new Amount(
-          BigInt(r.for_supply?.claimable_next || 0),
-          rewardToken.decimals,
-        );
-        const claimableFutureUsd =
-          claimableFuture.value * (asset.priceUsd || 0);
+      switch (r.type) {
+        case "uniform-reward": {
+          const claimableNow = new Amount(
+            BigInt(r.amount?.claimable_now || 0),
+            rewardToken.decimals,
+          );
+          const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+          const claimableFuture = new Amount(
+            BigInt(r.amount?.claimable_next || 0),
+            rewardToken.decimals,
+          );
+          const claimableFutureUsd =
+            claimableFuture.value * (asset.priceUsd || 0);
 
-        const collateralClaimableNow = new Amount(
-          BigInt(r.for_collateral?.claimable_now || 0),
-          rewardToken.decimals,
-        );
-        const collateralClaimableNowUsd =
-          collateralClaimableNow.value * (asset.priceUsd || 0);
-        const collateralClaimableFuture = new Amount(
-          BigInt(r.for_collateral?.claimable_next || 0),
-          rewardToken.decimals,
-        );
-        const collateralClaimableFutureUsd =
-          collateralClaimableFuture.value * (asset.priceUsd || 0);
-
-        const borrowClaimableNow = new Amount(
-          BigInt(r.for_borrow?.claimable_now || 0),
-          rewardToken.decimals,
-        );
-        const borrowClaimableNowUsd =
-          borrowClaimableNow.value * (asset.priceUsd || 0);
-        const borrowClaimableFuture = new Amount(
-          BigInt(r.for_borrow?.claimable_next || 0),
-          rewardToken.decimals,
-        );
-        const borrowClaimableFutureUsd =
-          borrowClaimableFuture.value * (asset.priceUsd || 0);
-
-        //Rewards reallocated to vaults are reported as vault rewards
-        if (r.reallocated_from) {
-          const vaultReward: MorphoUserReward = {
-            type: "vault-reward",
-            chainId: r.program.chain_id,
+          const uniformReward: MorphoUserReward = {
+            type: "uniform-reward",
+            chainId: r.asset.chain_id,
             account: r.user,
-            vaultId: r.reallocated_from,
             rewardToken,
             claimableNow,
             claimableNowUsd,
             claimableFuture,
             claimableFutureUsd,
           };
-          return vaultReward;
-        } else {
-          const marketReward: MorphoUserReward = {
-            type: "market-reward",
+          return uniformReward;
+        }
+
+        case "market-reward": {
+          const claimableNow = new Amount(
+            BigInt(r.for_supply?.claimable_now || 0),
+            rewardToken.decimals,
+          );
+          const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+
+          const claimableFuture = new Amount(
+            BigInt(r.for_supply?.claimable_next || 0),
+            rewardToken.decimals,
+          );
+          const claimableFutureUsd =
+            claimableFuture.value * (asset.priceUsd || 0);
+
+          const collateralClaimableNow = new Amount(
+            BigInt(r.for_collateral?.claimable_now || 0),
+            rewardToken.decimals,
+          );
+          const collateralClaimableNowUsd =
+            collateralClaimableNow.value * (asset.priceUsd || 0);
+          const collateralClaimableFuture = new Amount(
+            BigInt(r.for_collateral?.claimable_next || 0),
+            rewardToken.decimals,
+          );
+          const collateralClaimableFutureUsd =
+            collateralClaimableFuture.value * (asset.priceUsd || 0);
+
+          const borrowClaimableNow = new Amount(
+            BigInt(r.for_borrow?.claimable_now || 0),
+            rewardToken.decimals,
+          );
+          const borrowClaimableNowUsd =
+            borrowClaimableNow.value * (asset.priceUsd || 0);
+          const borrowClaimableFuture = new Amount(
+            BigInt(r.for_borrow?.claimable_next || 0),
+            rewardToken.decimals,
+          );
+          const borrowClaimableFutureUsd =
+            borrowClaimableFuture.value * (asset.priceUsd || 0);
+
+          //Rewards reallocated to vaults are reported as vault rewards
+          if (r.reallocated_from) {
+            const vaultReward: MorphoUserReward = {
+              type: "vault-reward",
+              chainId: r.program.chain_id,
+              account: r.user,
+              vaultId: r.reallocated_from,
+              rewardToken,
+              claimableNow,
+              claimableNowUsd,
+              claimableFuture,
+              claimableFutureUsd,
+            };
+            return vaultReward;
+          } else {
+            const marketReward: MorphoUserReward = {
+              type: "market-reward",
+              chainId: r.program.chain_id,
+              account: r.user,
+              marketId: r.program.market_id || "",
+              rewardToken,
+              collateralRewards: {
+                claimableNow: collateralClaimableNow,
+                claimableNowUsd: collateralClaimableNowUsd,
+                claimableFuture: collateralClaimableFuture,
+                claimableFutureUsd: collateralClaimableFutureUsd,
+              },
+              borrowRewards: {
+                claimableNow: borrowClaimableNow,
+                claimableNowUsd: borrowClaimableNowUsd,
+                claimableFuture: borrowClaimableFuture,
+                claimableFutureUsd: borrowClaimableFutureUsd,
+              },
+            };
+            return marketReward;
+          }
+        }
+        case "vault-reward": {
+          const claimableNow = new Amount(
+            BigInt(r.for_supply?.claimable_now || 0),
+            rewardToken.decimals,
+          );
+          const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+          const claimableFuture = new Amount(
+            BigInt(r.for_supply?.claimable_next || 0),
+            rewardToken.decimals,
+          );
+          const claimableFutureUsd =
+            claimableFuture.value * (asset.priceUsd || 0);
+
+          const vaultReward: MorphoUserReward = {
+            type: "vault-reward",
             chainId: r.program.chain_id,
             account: r.user,
-            marketId: r.program.market_id || "",
+            vaultId: r.program.vault,
             rewardToken,
-            collateralRewards: {
-              claimableNow: collateralClaimableNow,
-              claimableNowUsd: collateralClaimableNowUsd,
-              claimableFuture: collateralClaimableFuture,
-              claimableFutureUsd: collateralClaimableFutureUsd,
-            },
-            borrowRewards: {
-              claimableNow: borrowClaimableNow,
-              claimableNowUsd: borrowClaimableNowUsd,
-              claimableFuture: borrowClaimableFuture,
-              claimableFutureUsd: borrowClaimableFutureUsd,
-            },
+            claimableNow,
+            claimableNowUsd,
+            claimableFuture,
+            claimableFutureUsd,
           };
-          return marketReward;
+
+          return vaultReward;
         }
       }
-      case "vault-reward": {
-        const claimableNow = new Amount(
-          BigInt(r.for_supply?.claimable_now || 0),
-          rewardToken.decimals,
-        );
-        const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
-        const claimableFuture = new Amount(
-          BigInt(r.for_supply?.claimable_next || 0),
-          rewardToken.decimals,
-        );
-        const claimableFutureUsd =
-          claimableFuture.value * (asset.priceUsd || 0);
+    });
 
-        const vaultReward: MorphoUserReward = {
-          type: "vault-reward",
-          chainId: r.program.chain_id,
-          account: r.user,
-          vaultId: r.program.vault,
-          rewardToken,
-          claimableNow,
-          claimableNowUsd,
-          claimableFuture,
-          claimableFutureUsd,
-        };
+    return result.filter((r) => r !== undefined) as MorphoUserReward[];
+  }
 
-        return vaultReward;
-      }
-    }
-  });
-
-  return result.filter((r) => r !== undefined) as MorphoUserReward[];
+  return [];
 }
 
 type MorphoRewardsResponse = {

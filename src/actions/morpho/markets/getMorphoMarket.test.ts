@@ -1,17 +1,16 @@
+import { base } from "viem/chains";
 import { describe, expect, test } from "vitest";
 import { testClient } from "../../../../test/client.js";
-import type { base } from "../../../environments/index.js";
 
-describe("Testing morpho market", () => {
+describe("Testing Morpho Subgraph", () => {
   test("Get morpho market", async () => {
-    const morphoMarket = await testClient.getMorphoMarket<typeof base>({
-      network: "base",
-      market: "PT_LBTC_29MAY2025-cbBTC",
-      includeRewards: true,
+    const morphoMarket = await testClient.getMorphoMarket({
+      chainId: base.id,
+      marketId:
+        "0x1c21c59df9db44bf6f645d854ee710a8ca17b479451447e9f56758aee10a2fad",
     });
 
     expect(morphoMarket).toBeDefined();
-    expect(morphoMarket?.rewards).toBeDefined();
   });
 
   // Object.entries(testClient.environments).forEach(

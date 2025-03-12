@@ -1,6 +1,11 @@
 import { createCustomConfig } from "../../types/config.js";
 
 export const custom = createCustomConfig({
+  morpho: {
+    minimalDeployment: false,
+    subgraphUrl:
+      "https://api.goldsky.com/api/public/project_cm7wv7gztiq1e01vv7uco1h1y/subgraphs/moonwell-morpho-blue-base-no-prices/1.0.0/gn",
+  },
   governance: {
     token: "WELL",
     chainIds: [],

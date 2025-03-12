@@ -101,6 +101,7 @@ export type ContractConfig<tokens> = {
   oracle?: Address;
   router?: Address;
   morphoBlue?: Address;
+  morphoBaseBundler?: Address;
   morphoBundler?: Address;
   morphoPublicAllocator?: Address;
 };
@@ -122,11 +123,16 @@ export type ContractsConfigReturnType = {
   oracle: ChainLinkOracleContractReturnType;
   router: CoreRouterContractReturnType;
   morphoBlue: MorphoBlueContractReturnType;
+  morphoBaseBundler: MorphoBundlerContractReturnType;
   morphoBundler: MorphoBundlerContractReturnType;
   morphoPublicAllocator: MorphoPublicAllocatorContractReturnType;
 };
 
 export type CustomConfigType = {
+  morpho?: {
+    minimalDeployment?: boolean;
+    subgraphUrl?: string;
+  };
   governance?: {
     token: GovernanceToken;
     chainIds: number[];
@@ -450,6 +456,11 @@ export const createEnvironmentConfig = <
     } & {
       [name in keyof contracts as Extract<
         name,
+        "morphoBaseBundler"
+      >]: MorphoBundlerContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
         "morphoPublicAllocator"
       >]: MorphoPublicAllocatorContractReturnType;
     }
@@ -593,6 +604,11 @@ export type Environment<
       [name in keyof contracts as Extract<
         name,
         "morphoBundler"
+      >]: MorphoBundlerContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
+        "morphoBaseBundler"
       >]: MorphoBundlerContractReturnType;
     } & {
       [name in keyof contracts as Extract<
