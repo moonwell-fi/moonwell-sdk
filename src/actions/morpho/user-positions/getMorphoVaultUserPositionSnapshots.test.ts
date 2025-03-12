@@ -11,7 +11,6 @@ describe("Testing Morpho Vault User Positions Snapshots", async () => {
         userAddress: "0xd7854FC91f16a58D67EC3644981160B6ca9C41B8",
       });
 
-    console.log(userPositionData);
     expect(userPositionData).toBeDefined();
   });
 });

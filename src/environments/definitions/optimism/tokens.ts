@@ -164,4 +164,10 @@ export const tokens = createTokenConfig({
     name: "stkWELL",
     symbol: "stkWELL",
   },
+  mwUSDC: {
+    address: "0x3520e1a10038131a3c00bf2158835a75e929642d",
+    decimals: 18,
+    name: "Moonwell Flagship USDC",
+    symbol: "mwUSDC",
+  },
 });

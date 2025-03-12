@@ -42,7 +42,7 @@ export type MorphoMarketParamsType = {
 };
 
 export type PublicAllocatorSharedLiquidityType = {
-  assets: string;
+  assets: number;
   vault: {
     address: string;
     name: string;
@@ -52,12 +52,12 @@ export type PublicAllocatorSharedLiquidityType = {
         market: {
           uniqueKey: string;
         };
-        maxIn: string;
-        maxOut: string;
+        maxIn: number;
+        maxOut: number;
       }[];
     };
   };
-  allocationMarket: {
+  allocationMarket?: {
     uniqueKey: string;
     loanAsset: {
       address: string;

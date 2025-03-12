@@ -4,8 +4,9 @@ import { createEnvironmentConfig } from "../../types/config.js";
 import { contracts } from "./contracts.js";
 import { markets } from "./core-markets.js";
 import { custom } from "./custom.js";
+import { morphoMarkets } from "./morpho-markets.js";
+import { vaults } from "./morpho-vaults.js";
 import { tokens } from "./tokens.js";
-
 const optimism = defineChain({ ...optimismChain, testnet: false });
 
 const createEnvironment = (
@@ -24,10 +25,18 @@ const createEnvironment = (
     governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
     tokens,
     markets,
-    vaults: {},
-    morphoMarkets: {},
+    vaults,
+    morphoMarkets,
     contracts,
     custom,
   });
 
-export { createEnvironment, markets, tokens };
+export {
+  createEnvironment,
+  markets,
+  tokens,
+  vaults,
+  morphoMarkets,
+  contracts,
+  custom,
+};

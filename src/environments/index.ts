@@ -30,7 +30,9 @@ import {
 import {
   createEnvironment as createOptimismEnvironment,
   type markets as optimismMarkets,
+  type morphoMarkets as optimismMorphoMarkets,
   type tokens as optimismTokens,
+  type vaults as optimismVaults,
 } from "./definitions/optimism/environment.js";
 
 import {
@@ -234,8 +236,12 @@ export type MarketsType<environment> = environment extends BaseEnvironment
 
 export type VaultsType<environment> = environment extends BaseEnvironment
   ? typeof baseVaults
-  : undefined;
+  : environment extends OptimismEnvironment
+    ? typeof optimismVaults
+    : undefined;
 
 export type MorphoMarketsType<environment> = environment extends BaseEnvironment
   ? typeof baseMorphoMarkets
-  : undefined;
+  : environment extends OptimismEnvironment
+    ? typeof optimismMorphoMarkets
+    : undefined;

@@ -10,6 +10,7 @@ import {
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { MarketSnapshot } from "../../../types/market.js";
+import { getSubgraph } from "../../morpho/utils/graphql.js";
 
 dayjs.extend(utc);
 
@@ -39,7 +40,11 @@ export async function getMarketSnapshots<
   if (args?.type === "core") {
     return fetchCoreMarketSnapshots(args.marketId, environment);
   } else {
-    return fetchIsolatedMarketSnapshots(args.marketId, environment);
+    if (environment.custom.morpho?.minimalDeployment === false) {
+      return fetchIsolatedMarketSnapshots(args.marketId, environment);
+    } else {
+      return fetchIsolatedMarketSnapshotsSubgraph(args.marketId, environment);
+    }
   }
 }
 
@@ -322,6 +327,95 @@ async function fetchIsolatedMarketSnapshots(
             };
           },
         );
+
+      return markets;
+    } catch (ex) {
+      return [];
+    }
+  } else {
+    return [];
+  }
+}
+
+async function fetchIsolatedMarketSnapshotsSubgraph(
+  marketAddress: string,
+  environment: Environment,
+): Promise<MarketSnapshot[]> {
+  const query = `    
+    {
+      marketDailySnapshots (where:{market:"${marketAddress.toLowerCase()}"}, orderBy:timestamp, orderDirection:desc, first: 365) {
+        market {
+          inputToken {
+            decimals
+          }
+          borrowedToken {
+            decimals
+          }
+        }
+        variableBorrowedTokenBalance
+        inputTokenBalance
+        timestamp      
+      }
+    }
+`;
+
+  const result = await getSubgraph<{
+    marketDailySnapshots: Array<{
+      market: {
+        inputToken: {
+          symbol: string;
+          decimals: number;
+        };
+        borrowedToken: {
+          symbol: string;
+          decimals: number;
+        };
+      };
+      variableBorrowedTokenBalance: string;
+      inputTokenBalance: string;
+      timestamp: number;
+    }>;
+  }>(environment, query);
+
+  if (result) {
+    try {
+      const markets: MarketSnapshot[] = result.marketDailySnapshots.map(
+        (item) => {
+          const supplyDecimals = item.market.borrowedToken.decimals;
+
+          const supplyAssets = item.inputTokenBalance;
+
+          const totalSupply = new Amount(
+            BigInt(supplyAssets),
+            Number(supplyDecimals),
+          ).value;
+
+          const borrowAssets = item.variableBorrowedTokenBalance;
+
+          const totalBorrows = new Amount(
+            BigInt(borrowAssets),
+            Number(supplyDecimals),
+          ).value;
+
+          const totalLiquidity = totalSupply - totalBorrows;
+
+          return {
+            chainId: environment.chainId,
+            timestamp: item.timestamp * 1000,
+            marketId: marketAddress.toLowerCase(),
+            totalBorrows,
+            totalBorrowsUsd: 0,
+            totalSupply,
+            totalSupplyUsd: 0,
+            totalLiquidity,
+            totalLiquidityUsd: 0,
+            baseSupplyApy: 0,
+            baseBorrowApy: 0,
+            loanTokenPrice: 0,
+            collateralTokenPrice: 0,
+          };
+        },
+      );
 
       return markets;
     } catch (ex) {

@@ -132,6 +132,7 @@ export async function getMorphoVaultsData(params: {
           ),
           underlyingToken.decimals,
         );
+
         let totalLiquidityUsd = markets.reduce(
           (acc, curr) => acc + curr.marketLiquidityUsd,
           0,
@@ -176,7 +177,15 @@ export async function getMorphoVaultsData(params: {
 
   // Add rewards to vaults
   if (params.includeRewards === true) {
-    const vaults = Object.values(result).flat();
+    const vaults = Object.values(result)
+      .flat()
+      .filter((vault) => {
+        const environment = params.environments.find(
+          (environment) => environment.chainId === vault.chainId,
+        );
+        return environment?.custom.morpho?.minimalDeployment === false;
+      });
+
     const rewards = await getMorphoVaultsRewards(vaults);
 
     vaults.forEach((vault) => {
@@ -273,8 +282,8 @@ export async function getMorphoVaultsRewards(
           rewards {
             asset {
               address
-              symbol,
-                decimals
+              symbol
+              decimals
               name
             }
             supplyApr
