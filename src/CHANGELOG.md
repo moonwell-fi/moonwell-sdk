@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.0
+
+### Minor Changes
+
+- [#101](https://github.com/moonwell-fi/moonwell-sdk/pull/101) [`da8578932115644ca5e61e6310c23116b50cf842`](https://github.com/moonwell-fi/moonwell-sdk/commit/da8578932115644ca5e61e6310c23116b50cf842) Thanks [@x0s0l](https://github.com/x0s0l)! - Add support for multichain Morpho Markets and Vaults
+
 ## 0.6.2
 
 ### Patch Changes
