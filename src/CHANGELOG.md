@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.1
+
+### Patch Changes
+
+- [#103](https://github.com/moonwell-fi/moonwell-sdk/pull/103) [`8d6299bcacea48bf2b36bbd0cf4e935e277c1bdd`](https://github.com/moonwell-fi/moonwell-sdk/commit/8d6299bcacea48bf2b36bbd0cf4e935e277c1bdd) Thanks [@x0s0l](https://github.com/x0s0l)! - Add USD values in Isolated Markets Snapshots
+
 ## 0.7.0
 
 ### Minor Changes
