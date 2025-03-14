@@ -406,11 +406,13 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
             Number(supplyDecimals),
           ).value;
 
-          const totalLiquidity = Math.max(
-            totalSupplyInLoanToken * Number(item.market.maximumLTV) -
-              totalBorrows,
+          const totalLiquidityInLoanToken = Math.max(
+            totalSupplyInLoanToken - totalBorrows,
             0,
           );
+
+          const totalLiquidity =
+            totalLiquidityInLoanToken / Number(item.inputTokenPriceUSD);
 
           return {
             chainId: environment.chainId,
@@ -422,7 +424,7 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
             totalSupplyUsd: Number(item.inputTokenPriceUSD) * totalSupply,
             totalLiquidity,
             totalLiquidityUsd:
-              Number(item.outputTokenPriceUSD) * totalLiquidity,
+              Number(item.outputTokenPriceUSD) * totalLiquidityInLoanToken,
             baseSupplyApy: 0,
             baseBorrowApy: 0,
             loanTokenPrice: Number(item.outputTokenPriceUSD),
