@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.2
+
+### Patch Changes
+
+- Fix liquidity logic on isolated market snapshots
+
 ## 0.7.1
 
 ### Patch Changes
