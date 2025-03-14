@@ -345,6 +345,7 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
     {
       marketDailySnapshots (where:{market:"${marketAddress.toLowerCase()}"}, orderBy:timestamp, orderDirection:desc, first: 365) {
         market {
+          maximumLTV
           inputToken {
             decimals
           }
@@ -353,6 +354,8 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
           }
         }
         variableBorrowedTokenBalance
+        outputTokenPriceUSD
+        inputTokenPriceUSD
         inputTokenBalance
         timestamp      
       }
@@ -362,6 +365,7 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
   const result = await getSubgraph<{
     marketDailySnapshots: Array<{
       market: {
+        maximumLTV: string;
         inputToken: {
           symbol: string;
           decimals: number;
@@ -372,6 +376,8 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
         };
       };
       variableBorrowedTokenBalance: string;
+      outputTokenPriceUSD: string;
+      inputTokenPriceUSD: string;
       inputTokenBalance: string;
       timestamp: number;
     }>;
@@ -385,10 +391,13 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
 
           const supplyAssets = item.inputTokenBalance;
 
-          const totalSupply = new Amount(
+          const totalSupplyInLoanToken = new Amount(
             BigInt(supplyAssets),
             Number(supplyDecimals),
           ).value;
+
+          const totalSupply =
+            totalSupplyInLoanToken / Number(item.inputTokenPriceUSD);
 
           const borrowAssets = item.variableBorrowedTokenBalance;
 
@@ -397,22 +406,27 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
             Number(supplyDecimals),
           ).value;
 
-          const totalLiquidity = totalSupply - totalBorrows;
+          const totalLiquidity = Math.max(
+            totalSupplyInLoanToken * Number(item.market.maximumLTV) -
+              totalBorrows,
+            0,
+          );
 
           return {
             chainId: environment.chainId,
             timestamp: item.timestamp * 1000,
             marketId: marketAddress.toLowerCase(),
             totalBorrows,
-            totalBorrowsUsd: 0,
+            totalBorrowsUsd: Number(item.outputTokenPriceUSD) * totalBorrows,
             totalSupply,
-            totalSupplyUsd: 0,
+            totalSupplyUsd: Number(item.inputTokenPriceUSD) * totalSupply,
             totalLiquidity,
-            totalLiquidityUsd: 0,
+            totalLiquidityUsd:
+              Number(item.outputTokenPriceUSD) * totalLiquidity,
             baseSupplyApy: 0,
             baseBorrowApy: 0,
-            loanTokenPrice: 0,
-            collateralTokenPrice: 0,
+            loanTokenPrice: Number(item.outputTokenPriceUSD),
+            collateralTokenPrice: Number(item.inputTokenPriceUSD),
           };
         },
       );
