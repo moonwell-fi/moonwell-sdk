@@ -7,49 +7,11 @@ describe("Testing Morpho Subgraph", () => {
     const morphoMarket = await testClient.getMarketSnapshots({
       chainId: optimism.id,
       marketId:
-        "0x173b66359f0741b1c7f1963075cd271c739b6dc73b658e108a54ce6febeb279b",
+        "0xc7ae57c1998c67a4c21804df606db1309b68a518ba5acc8b1dc3ffcb1b26b071",
       type: "isolated",
     });
 
     expect(morphoMarket).toBeDefined();
-
-    //BASE
-    /*
-    {
-      chainId: 8453,
-      timestamp: 1741964400000,
-      marketId: '0x8793cf302b8ffd655ab97bd1c695dbd967807e8367a65cb2f4edaf1380ba1bda',
-      totalBorrows: 2738715.066881,
-      totalBorrowsUsd: 2738434.1294894395,
-      totalSupply: 1715.2201419433072,
-      totalSupplyUsd: 3251443.8701034687,
-      totalLiquidity: 270.6258127981439,
-      totalLiquidityUsd: 513009.7406140291,
-      baseSupplyApy: 0.050968256004740406,
-      baseBorrowApy: 0.06080130043285137,
-      loanTokenPrice: 0.99988998,
-      collateralTokenPrice: 1895.62820385
-    }
-    */
-
-    //OPTIMISM
-    /*
-    {
-      chainId: 10,
-      timestamp: 1741964987000,
-      marketId: '0x173b66359f0741b1c7f1963075cd271c739b6dc73b658e108a54ce6febeb279b',
-      totalBorrows: 0.992177,
-      totalBorrowsUsd: 1919.4777160694562,
-      totalSupply: 1.103291,
-      totalSupplyUsd: 1.10312550635,
-      totalLiquidity: 0.11111400000000005,
-      totalLiquidityUsd: 0.11109733290000005,
-      baseSupplyApy: 0,
-      baseBorrowApy: 0,
-      loanTokenPrice: 0.99985,
-        collateralTokenPrice: 1934.61218721,
-    }
-    */
   });
 
   // Object.entries(testClient.environments).forEach(
