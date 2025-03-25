@@ -18,7 +18,7 @@ export const tokens = createTokenConfig({
     address: "0x091608f4e4a15335145be0A279483C0f8E4c7955",
     decimals: 8,
     name: "Moonwell GLMR",
-    symbol: "GLMR",
+    symbol: "mGLMR",
   },
   xcDOT: {
     address: "0xffffffff1fcacbd218edc0eba20fc2308c778080",
@@ -30,7 +30,7 @@ export const tokens = createTokenConfig({
     address: "0xD22Da948c0aB3A27f5570b604f3ADef5F68211C3",
     decimals: 8,
     name: "Moonwell xcDOT",
-    symbol: "mxcDOT",
+    symbol: "mDOT",
   },
   FRAX: {
     address: "0x322e86852e492a7ee17f28a78c663da38fb33bfb",
@@ -66,7 +66,7 @@ export const tokens = createTokenConfig({
     address: "0x42A96C0681B74838eC525AdbD13c37f66388f289",
     decimals: 8,
     name: "Moonwell xcUSDT",
-    symbol: "xcUSDT",
+    symbol: "mxcUSDT",
   },
   ETH_NOMAD: {
     address: "0x30d2a9f5fdf90ace8c17952cbb4ee48a55d916a7",
@@ -90,7 +90,7 @@ export const tokens = createTokenConfig({
     address: "0x24A9d8f1f350d59cB0368D3d52A77dB29c833D1D",
     decimals: 8,
     name: "Moonwell BTC",
-    symbol: "mBTC",
+    symbol: "mWBTC",
   },
   USDC_NOMAD: {
     address: "0x8f552a71efe5eefc207bf75485b356a0b3f01ec9",

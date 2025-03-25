@@ -12,7 +12,7 @@ export const tokens = createTokenConfig({
     address: "0x8E08617b0d66359D73Aa11E11017834C29155525",
     decimals: 8,
     name: "Moonwell USDC",
-    symbol: "USDC",
+    symbol: "mUSDC",
   },
   ETH: {
     address: zeroAddress,
@@ -30,7 +30,7 @@ export const tokens = createTokenConfig({
     address: "0xb4104C02BBf4E9be85AAa41a62974E4e28D59A33",
     decimals: 8,
     name: "Moonwell ETH",
-    symbol: "ETH",
+    symbol: "mWETH",
   },
   cbETH: {
     address: "0xadDb6A0412DE1BA0F936DCaeb8Aaa24578dcF3B2",
@@ -42,7 +42,7 @@ export const tokens = createTokenConfig({
     address: "0x95C84F369bd0251ca903052600A3C96838D78bA1",
     decimals: 8,
     name: "Moonwell cbETH",
-    symbol: "cbETH",
+    symbol: "mcbETH",
   },
   wstETH: {
     address: "0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb",
@@ -54,7 +54,7 @@ export const tokens = createTokenConfig({
     address: "0xbb3b1aB66eFB43B10923b87460c0106643B83f9d",
     decimals: 8,
     name: "Moonwell wstETH",
-    symbol: "wstETH",
+    symbol: "mwstETH",
   },
   rETH: {
     address: "0x9Bcef72be871e61ED4fBbc7630889beE758eb81D",
@@ -66,7 +66,7 @@ export const tokens = createTokenConfig({
     address: "0x4c2E35E3eC4A0C82849637BC04A4609Dbe53d321",
     decimals: 8,
     name: "Moonwell rETH",
-    symbol: "rETH",
+    symbol: "mrETH",
   },
   weETH: {
     address: "0x5A7fACB970D094B6C7FF1df0eA68D99E6e73CBFF",
@@ -78,7 +78,7 @@ export const tokens = createTokenConfig({
     address: "0xb8051464C8c92209C92F3a4CD9C73746C4c3CFb3",
     decimals: 8,
     name: "Moonwell weETH",
-    symbol: "weETH",
+    symbol: "mweETH",
   },
   WBTC: {
     address: "0x68f180fcCe6836688e9084f035309E29Bf0A2095",
@@ -90,7 +90,7 @@ export const tokens = createTokenConfig({
     address: "0x6e6CA598A06E609c913551B729a228B023f06fDB",
     decimals: 8,
     name: "Moonwell WBTC",
-    symbol: "WBTC",
+    symbol: "mWBTC",
   },
   USDT: {
     address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
@@ -102,7 +102,7 @@ export const tokens = createTokenConfig({
     address: "0xa3A53899EE8f9f6E963437C5B3f805FEc538BF84",
     decimals: 8,
     name: "Moonwell USDT",
-    symbol: "USDT",
+    symbol: "mUSDT",
   },
   VELO: {
     address: "0x9560e827af36c94d2ac33a39bce1fe78631088db",
@@ -114,7 +114,7 @@ export const tokens = createTokenConfig({
     address: "0x866b838b97Ee43F2c818B3cb5Cc77A0dc22003Fc",
     decimals: 8,
     name: "Moonwell VELO",
-    symbol: "VELO",
+    symbol: "mVELO",
   },
   DAI: {
     address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
@@ -126,7 +126,7 @@ export const tokens = createTokenConfig({
     address: "0x3FE782C2Fe7668C2F1Eb313ACf3022a31feaD6B2",
     decimals: 8,
     name: "Moonwell DAI",
-    symbol: "DAI",
+    symbol: "mDAI",
   },
   OP: {
     address: "0x4200000000000000000000000000000000000042",
@@ -138,7 +138,7 @@ export const tokens = createTokenConfig({
     address: "0x9fc345a20541Bf8773988515c5950eD69aF01847",
     decimals: 8,
     name: "Moonwell OP",
-    symbol: "OP",
+    symbol: "mOP",
   },
   wrsETH: {
     address: "0x87eEE96D50Fb761AD85B1c982d28A042169d61b1",
@@ -150,7 +150,7 @@ export const tokens = createTokenConfig({
     address: "0x181bA797ccF779D8aB339721ED6ee827E758668e",
     decimals: 8,
     name: "Moonwell wrsETH",
-    symbol: "wrsETH",
+    symbol: "mwrsETH",
   },
   WELL: {
     address: "0xA88594D404727625A9437C3f886C7643872296AE",
