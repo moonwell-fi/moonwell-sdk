@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.3
+
+### Patch Changes
+
+- [#107](https://github.com/moonwell-fi/moonwell-sdk/pull/107) [`8a0d15acc529a01cda92d67ad8e8304d2b54aa49`](https://github.com/moonwell-fi/moonwell-sdk/commit/8a0d15acc529a01cda92d67ad8e8304d2b54aa49) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fixed symbols for Moonwell tokens
+
+- [#109](https://github.com/moonwell-fi/moonwell-sdk/pull/109) [`00b3779bfbaae066b24da48fc9e7ff1bc57f44e7`](https://github.com/moonwell-fi/moonwell-sdk/commit/00b3779bfbaae066b24da48fc9e7ff1bc57f44e7) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added Morpho market
+
 ## 0.7.2
 
 ### Patch Changes
