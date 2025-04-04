@@ -254,4 +254,16 @@ export const tokens = createTokenConfig({
     name: "Moonwell Virtual",
     symbol: "mVIRTUAL",
   },
+  MORPHO: {
+    address: "0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842",
+    decimals: 18,
+    name: "Morpho",
+    symbol: "MORPHO",
+  },
+  MOONWELL_MORPHO: {
+    address: "0x6308204872BdB7432dF97b04B42443c714904F3E",
+    decimals: 8,
+    name: "Moonwell MORPHO",
+    symbol: "mMORPHO",
+  },
 });
