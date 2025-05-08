@@ -68,6 +68,7 @@ export type TokenConfig = {
 export type VaultConfig<tokens> = {
   vaultToken: keyof tokens;
   underlyingToken: keyof tokens;
+  multiReward?: Address;
 };
 
 export type MarketConfig<tokens> = {
@@ -139,6 +140,9 @@ export type CustomConfigType = {
     proposalIdOffset?: number;
     snapshotEnsName?: string;
   };
+  multiRewarder?: {
+    rewardToken: string;
+  }[];
   wormhole?: {
     chainId: number;
     tokenBridge?: ChainContract | undefined;

@@ -1,4 +1,4 @@
-import { type Address, zeroAddress } from "viem";
+import { type Address, getContract, parseAbi, zeroAddress } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";
@@ -8,7 +8,7 @@ import type {
   MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
 import { getGraphQL } from "../utils/graphql.js";
-import { WAD, mulDivDown, wMulDown } from "../utils/math.js";
+import { SECONDS_PER_YEAR, WAD, mulDivDown, wMulDown } from "../utils/math.js";
 
 export async function getMorphoVaultsData(params: {
   environments: Environment[];
@@ -162,6 +162,7 @@ export async function getMorphoVaultsData(params: {
           vaultSupply,
           markets: markets,
           rewards: [],
+          stakingRewards: [],
         };
 
         return mapping;
@@ -177,6 +178,44 @@ export async function getMorphoVaultsData(params: {
 
   // Add rewards to vaults
   if (params.includeRewards === true) {
+    // add stake rewards
+    Object.values(result)
+      .flat()
+      .forEach(async (vault) => {
+        const environment = params.environments.find(
+          (environment) => environment.chainId === vault.chainId,
+        );
+
+        const vaultConfig = environment?.config.vaults[vault.vaultKey];
+        if (!environment || !vaultConfig || !vaultConfig.multiReward) {
+          return;
+        }
+        const rewards = await getRewardsData(
+          environment,
+          vaultConfig.multiReward,
+        );
+
+        const totalSupply = await getTotalSupplyData(
+          environment,
+          vaultConfig.multiReward,
+        );
+
+        const underlyingPrice = new Amount(vault.underlyingPrice, 18);
+
+        rewards.forEach((reward) => {
+          if (!reward?.token || !reward?.rewardRate) return;
+          const rewardsPerYear =
+            Number(reward.rewardRate) *
+            SECONDS_PER_YEAR *
+            underlyingPrice.value;
+          vault.stakingRewards.push({
+            apr: (rewardsPerYear / Number(totalSupply)) * 100,
+            token: vault.underlyingToken,
+          });
+        });
+      });
+
+    // add morpho rewards
     const vaults = Object.values(result)
       .flat()
       .filter((vault) => {
@@ -254,6 +293,72 @@ export async function getMorphoVaultsData(params: {
     return result[environment.chainId] || [];
   });
 }
+
+const getRewardsData = async (
+  environment: Environment,
+  multiRewardsAddress: Address,
+) => {
+  if (!environment.custom.multiRewarder) {
+    return [];
+  }
+
+  const multiRewardAbi = parseAbi([
+    "function rewardData(address token) view returns (address, uint256, uint256, uint256, uint256, uint256)",
+  ]);
+
+  const multiRewardContract = getContract({
+    address: multiRewardsAddress,
+    abi: multiRewardAbi,
+    client: environment.publicClient,
+  });
+
+  const rewards = await Promise.all(
+    environment.custom.multiRewarder.map(async (multiRewarder) => {
+      const tokenAddress =
+        environment.tokens[multiRewarder.rewardToken].address;
+
+      if (!tokenAddress) {
+        return;
+      }
+
+      try {
+        const rewardData = await multiRewardContract.read.rewardData([
+          tokenAddress,
+        ]);
+        return { rewardRate: BigInt(rewardData[3]), token: tokenAddress };
+      } catch {
+        return { rewardRate: 0n, token: tokenAddress };
+      }
+    }),
+  );
+
+  return rewards.filter(Boolean);
+};
+
+const getTotalSupplyData = async (
+  environment: Environment,
+  multiRewardsAddress: Address,
+) => {
+  if (!environment.custom.multiRewarder) {
+    return [];
+  }
+
+  const multiRewardAbi = parseAbi([
+    "function totalSupply() view returns (uint256)",
+  ]);
+
+  const multiRewardContract = getContract({
+    address: multiRewardsAddress,
+    abi: multiRewardAbi,
+    client: environment.publicClient,
+  });
+  try {
+    const totalSupply = await multiRewardContract.read.totalSupply();
+    return BigInt(totalSupply);
+  } catch {
+    return 0n;
+  }
+};
 
 type GetMorphoVaultsRewardsResult = {
   chainId: number;

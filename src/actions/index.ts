@@ -142,6 +142,11 @@ export {
   type GetMorphoUserRewardsReturnType,
 } from "./morpho/user-rewards/getMorphoUserRewards.js";
 export {
+  getMorphoUserStakingRewards,
+  type GetMorphoUserStakingRewardsParameters,
+  type GetMorphoUserStakingRewardsReturnType,
+} from "./morpho/user-rewards/getMorphoUserStakingRewards.js";
+export {
   getMorphoVault,
   type GetMorphoVaultParameters,
   type GetMorphoVaultReturnType,

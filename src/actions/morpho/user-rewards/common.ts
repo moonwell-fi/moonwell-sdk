@@ -1,9 +1,10 @@
 import lodash from "lodash";
 const { uniq } = lodash;
-import type { Address } from "viem";
+import { type Address, getContract, parseAbi } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
+import type { MorphoUserStakingReward } from "../../../types/morphoUserStakingReward.js";
 import { getGraphQL } from "../utils/graphql.js";
 
 export async function getUserMorphoRewardsData(params: {
@@ -175,6 +176,96 @@ export async function getUserMorphoRewardsData(params: {
 
   return [];
 }
+
+export async function getUserMorphoStakingRewardsData(params: {
+  environment: Environment;
+  account: `0x${string}`;
+}): Promise<MorphoUserStakingReward[]> {
+  const vaultsWithStaking = Object.values(
+    params.environment.config.vaults,
+  ).filter((vault) => Boolean(vault.multiReward));
+
+  if (!vaultsWithStaking.length) {
+    return [];
+  }
+
+  const viewsContract = params.environment.contracts.views;
+
+  const allMarkets = await viewsContract?.read.getAllMarketsInfo();
+
+  const rewards = await Promise.all(
+    vaultsWithStaking.map(async (vault) => {
+      if (!vault.multiReward) return [];
+
+      const vaultRewards = await getRewardsEarnedData(
+        params.environment,
+        params.account,
+        vault.multiReward,
+      );
+
+      return vaultRewards
+        .filter((reward): reward is { amount: Amount; token: TokenConfig } => {
+          return reward !== undefined && reward.amount.value > 0;
+        })
+        .map((reward) => {
+          const market = allMarkets?.find(
+            (m) => m.market === reward.token.address,
+          );
+          const priceUsd = market?.underlyingPrice ?? 0n;
+
+          return {
+            ...reward,
+            chainId: params.environment.chainId,
+            amountUsd: reward.amount.value * Number(priceUsd),
+          };
+        });
+    }),
+  );
+
+  return rewards.flat();
+}
+
+const getRewardsEarnedData = async (
+  environment: Environment,
+  userAddress: Address,
+  multiRewardsAddress: Address,
+) => {
+  if (!environment.custom.multiRewarder) {
+    return [];
+  }
+
+  const multiRewardAbi = parseAbi([
+    "function earned(address account, address token) view returns (uint256)",
+  ]);
+
+  const multiRewardContract = getContract({
+    address: multiRewardsAddress,
+    abi: multiRewardAbi,
+    client: environment.publicClient,
+  });
+
+  const rewards = await Promise.all(
+    environment.custom.multiRewarder.map(async (multiRewarder) => {
+      const token = environment.config.tokens[multiRewarder.rewardToken];
+
+      if (!token) {
+        return;
+      }
+
+      try {
+        const earned = await multiRewardContract.read.earned([
+          userAddress,
+          token.address,
+        ]);
+        return { amount: new Amount(BigInt(earned), token.decimals), token };
+      } catch {
+        return { amount: new Amount(0n, token.decimals), token };
+      }
+    }),
+  );
+
+  return rewards.filter(Boolean);
+};
 
 type MorphoRewardsResponse = {
   user: Address;

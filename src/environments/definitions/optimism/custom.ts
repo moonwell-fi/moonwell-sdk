@@ -10,4 +10,5 @@ export const custom = createCustomConfig({
     token: "WELL",
     chainIds: [],
   },
+  multiRewarder: [{ rewardToken: "WELL" }, { rewardToken: "OP" }],
 });
