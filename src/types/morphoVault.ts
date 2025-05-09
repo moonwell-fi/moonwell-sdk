@@ -17,6 +17,8 @@ export type MorphoVault = {
   baseApy: number;
   rewardsApy: number;
   totalApy: number;
+  stakingRewardsApr: number;
+  totalStakingApr: number;
   performanceFee: number;
   curators: string[];
   timelock: number;

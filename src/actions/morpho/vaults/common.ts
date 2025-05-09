@@ -152,6 +152,8 @@ export async function getMorphoVaultsData(params: {
           baseApy,
           totalApy: baseApy,
           rewardsApy: 0,
+          stakingRewardsApr: 0,
+          totalStakingApr: baseApy,
           curators: [],
           performanceFee,
           timelock,
@@ -194,25 +196,37 @@ export async function getMorphoVaultsData(params: {
           environment,
           vaultConfig.multiReward,
         );
-
         const totalSupply = await getTotalSupplyData(
           environment,
           vaultConfig.multiReward,
         );
 
-        const underlyingPrice = new Amount(vault.underlyingPrice, 18);
-
         rewards.forEach((reward) => {
-          if (!reward?.token || !reward?.rewardRate) return;
+          const token = Object.values(environment.config.tokens).find(
+            (token) => token.address === reward?.token,
+          );
+          if (!token || !reward?.rewardRate) return;
+          // TODO: review this, should we use reward token price instead?
           const rewardsPerYear =
             Number(reward.rewardRate) *
             SECONDS_PER_YEAR *
-            underlyingPrice.value;
+            vault.underlyingPrice;
+
           vault.stakingRewards.push({
-            apr: (rewardsPerYear / Number(totalSupply)) * 100,
-            token: vault.underlyingToken,
+            apr:
+              (rewardsPerYear /
+                new Amount(Number(totalSupply), vault.vaultToken.decimals)
+                  .value) *
+              100,
+            token: token,
           });
         });
+
+        vault.stakingRewardsApr = vault.stakingRewards.reduce(
+          (acc, curr) => acc + curr.apr,
+          0,
+        );
+        vault.totalStakingApr = vault.stakingRewardsApr + vault.baseApy;
       });
 
     // add morpho rewards
