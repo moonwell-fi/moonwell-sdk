@@ -1,14 +1,22 @@
-import { type Address, zeroAddress } from "viem";
+import { type Address, getContract, parseAbi, zeroAddress } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
-import type { Environment, TokenConfig } from "../../../environments/index.js";
+import {
+  type Environment,
+  type TokenConfig,
+  publicEnvironments,
+} from "../../../environments/index.js";
+import {
+  findMarketByAddress,
+  findTokenByAddress,
+} from "../../../environments/utils/index.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
 import type {
   MorphoVault,
   MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
 import { getGraphQL } from "../utils/graphql.js";
-import { WAD, mulDivDown, wMulDown } from "../utils/math.js";
+import { SECONDS_PER_YEAR, WAD, mulDivDown, wMulDown } from "../utils/math.js";
 
 export async function getMorphoVaultsData(params: {
   environments: Environment[];
@@ -152,6 +160,8 @@ export async function getMorphoVaultsData(params: {
           baseApy,
           totalApy: baseApy,
           rewardsApy: 0,
+          stakingRewardsApr: 0,
+          totalStakingApr: baseApy,
           curators: [],
           performanceFee,
           timelock,
@@ -162,6 +172,7 @@ export async function getMorphoVaultsData(params: {
           vaultSupply,
           markets: markets,
           rewards: [],
+          stakingRewards: [],
         };
 
         return mapping;
@@ -177,6 +188,131 @@ export async function getMorphoVaultsData(params: {
 
   // Add rewards to vaults
   if (params.includeRewards === true) {
+    // add stake rewards
+    Object.values(result)
+      .flat()
+      .forEach(async (vault) => {
+        const environment = params.environments.find(
+          (environment) => environment.chainId === vault.chainId,
+        );
+
+        if (!environment) {
+          return;
+        }
+
+        // Fetch market prices from the views contract to calculate rewards
+        const homeEnvironment =
+          (Object.values(publicEnvironments) as Environment[]).find((e) =>
+            e.custom?.governance?.chainIds?.includes(environment.chainId),
+          ) || environment;
+
+        const viewsContract = environment.contracts.views;
+        const homeViewsContract = homeEnvironment.contracts.views;
+
+        const data = await Promise.all([
+          viewsContract?.read.getAllMarketsInfo(),
+          homeViewsContract?.read.getNativeTokenPrice(),
+          homeViewsContract?.read.getGovernanceTokenPrice(),
+        ]);
+
+        const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
+
+        const governanceTokenPrice = new Amount(
+          governanceTokenPriceRaw || 0n,
+          18,
+        );
+        const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+
+        let tokenPrices =
+          allMarkets
+            ?.map((marketInfo) => {
+              const marketFound = findMarketByAddress(
+                environment,
+                marketInfo.market,
+              );
+              if (marketFound) {
+                return {
+                  token: marketFound.underlyingToken,
+                  tokenPrice: new Amount(
+                    marketInfo.underlyingPrice,
+                    36 - marketFound.underlyingToken.decimals,
+                  ),
+                };
+              } else {
+                return;
+              }
+            })
+            .filter((token) => !!token) || [];
+
+        // Add governance token to token prices
+        if (environment.custom?.governance?.token) {
+          tokenPrices = [
+            ...tokenPrices,
+            {
+              token:
+                environment.config.tokens[environment.custom.governance.token]!,
+              tokenPrice: governanceTokenPrice,
+            },
+          ];
+        }
+
+        // Add native token to token prices
+        tokenPrices = [
+          ...tokenPrices,
+          {
+            token: findTokenByAddress(environment, zeroAddress)!,
+            tokenPrice: nativeTokenPrice,
+          },
+        ];
+
+        const vaultConfig = environment?.config.vaults[vault.vaultKey];
+        if (!environment || !vaultConfig || !vaultConfig.multiReward) {
+          return;
+        }
+        const rewards = await getRewardsData(
+          environment,
+          vaultConfig.multiReward,
+        );
+        const totalSupply = await getTotalSupplyData(
+          environment,
+          vaultConfig.multiReward,
+        );
+
+        rewards.forEach((reward) => {
+          const token = Object.values(environment.config.tokens).find(
+            (token) => token.address === reward?.token,
+          );
+          if (!token || !reward?.rewardRate) return;
+
+          const market = tokenPrices.find(
+            (m) => m?.token.address === reward.token,
+          );
+
+          const rewardPriceUsd = market?.tokenPrice.value ?? 0;
+
+          const rewardsPerYear =
+            new Amount(reward.rewardRate, market?.token.decimals ?? 18).value *
+            SECONDS_PER_YEAR *
+            rewardPriceUsd;
+
+          vault.stakingRewards.push({
+            apr:
+              (rewardsPerYear /
+                (new Amount(totalSupply, vault.vaultToken.decimals).value *
+                  vault.underlyingPrice)) *
+              100,
+            token: token,
+          });
+        });
+
+        vault.stakingRewardsApr = vault.stakingRewards.reduce(
+          (acc, curr) => acc + curr.apr,
+          0,
+        );
+        vault.totalStakingApr = vault.stakingRewardsApr + vault.baseApy;
+      });
+
+    // add morpho rewards
     const vaults = Object.values(result)
       .flat()
       .filter((vault) => {
@@ -254,6 +390,72 @@ export async function getMorphoVaultsData(params: {
     return result[environment.chainId] || [];
   });
 }
+
+const getRewardsData = async (
+  environment: Environment,
+  multiRewardsAddress: Address,
+) => {
+  if (!environment.custom.multiRewarder) {
+    return [];
+  }
+
+  const multiRewardAbi = parseAbi([
+    "function rewardData(address token) view returns (address, uint256, uint256, uint256, uint256, uint256)",
+  ]);
+
+  const multiRewardContract = getContract({
+    address: multiRewardsAddress,
+    abi: multiRewardAbi,
+    client: environment.publicClient,
+  });
+
+  const rewards = await Promise.all(
+    environment.custom.multiRewarder.map(async (multiRewarder) => {
+      const tokenAddress =
+        environment.tokens[multiRewarder.rewardToken].address;
+
+      if (!tokenAddress) {
+        return;
+      }
+
+      try {
+        const rewardData = await multiRewardContract.read.rewardData([
+          tokenAddress,
+        ]);
+        return { rewardRate: BigInt(rewardData[3]), token: tokenAddress };
+      } catch {
+        return { rewardRate: 0n, token: tokenAddress };
+      }
+    }),
+  );
+
+  return rewards.filter(Boolean);
+};
+
+const getTotalSupplyData = async (
+  environment: Environment,
+  multiRewardsAddress: Address,
+) => {
+  if (!environment.custom.multiRewarder) {
+    return 0n;
+  }
+
+  const multiRewardAbi = parseAbi([
+    "function totalSupply() view returns (uint256)",
+  ]);
+
+  const multiRewardContract = getContract({
+    address: multiRewardsAddress,
+    abi: multiRewardAbi,
+    client: environment.publicClient,
+  });
+  try {
+    const totalSupply = await multiRewardContract.read.totalSupply();
+    return BigInt(totalSupply);
+  } catch {
+    return 0n;
+  }
+};
 
 type GetMorphoVaultsRewardsResult = {
   chainId: number;

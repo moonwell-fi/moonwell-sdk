@@ -97,13 +97,15 @@ async function fetchVaultSnapshots(
         `,
     });
 
-    dailyData.push(
-      ...result.data.data.vaultDailySnapshots.items.filter(
-        (f: { timestamp: number }) => isStartOfDay(f.timestamp),
-      ),
-    );
-    hasNextPage = result.data.data.vaultDailySnapshots.pageInfo.hasNextPage;
-    endCursor = result.data.data.vaultDailySnapshots.pageInfo.endCursor;
+    if (result.data.data.vaultDailySnapshots) {
+      dailyData.push(
+        ...result.data.data.vaultDailySnapshots.items.filter(
+          (f: { timestamp: number }) => isStartOfDay(f.timestamp),
+        ),
+      );
+      hasNextPage = result.data.data.vaultDailySnapshots.pageInfo.hasNextPage;
+      endCursor = result.data.data.vaultDailySnapshots.pageInfo.endCursor;
+    }
   }
 
   if (dailyData.length > 0) {

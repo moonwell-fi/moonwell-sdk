@@ -153,6 +153,11 @@ import {
   getMorphoUserRewards,
 } from "../actions/morpho/user-rewards/getMorphoUserRewards.js";
 import {
+  type GetMorphoUserStakingRewardsParameters,
+  type GetMorphoUserStakingRewardsReturnType,
+  getMorphoUserStakingRewards,
+} from "../actions/morpho/user-rewards/getMorphoUserStakingRewards.js";
+import {
   type GetMorphoVaultParameters,
   type GetMorphoVaultReturnType,
   getMorphoVault,
@@ -280,6 +285,12 @@ export type Actions<
     args: GetMorphoUserRewardsParameters<environments, chain>,
   ) => GetMorphoUserRewardsReturnType;
 
+  getMorphoUserStakingRewards: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoUserStakingRewardsParameters<environments, chain>,
+  ) => GetMorphoUserStakingRewardsReturnType;
+
   getMorphoVault: <chain extends Chain | undefined = Chain | undefined>(
     args: GetMorphoVaultParameters<environments, chain>,
   ) => GetMorphoVaultReturnType;
@@ -357,6 +368,8 @@ export const actions = <
     getMorphoVaultUserPositions: (args) =>
       getMorphoVaultUserPositions(client, args),
     getMorphoUserRewards: (args) => getMorphoUserRewards(client, args),
+    getMorphoUserStakingRewards: (args) =>
+      getMorphoUserStakingRewards(client, args),
     getMorphoVault: (args) => getMorphoVault(client, args),
     getMorphoVaults: (args) => getMorphoVaults(client, args),
     getMorphoUserBalances: (args) => getMorphoUserBalances(client, args),

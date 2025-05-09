@@ -1,6 +1,7 @@
 import type { Amount } from "../common/amount.js";
 import type { TokenConfig } from "../environments/index.js";
 import type { MorphoReward } from "./morphoReward.js";
+import type { MorphoStakingReward } from "./morphoStakingReward.js";
 
 export type MorphoVault = {
   chainId: number;
@@ -16,11 +17,14 @@ export type MorphoVault = {
   baseApy: number;
   rewardsApy: number;
   totalApy: number;
+  stakingRewardsApr: number;
+  totalStakingApr: number;
   performanceFee: number;
   curators: string[];
   timelock: number;
   markets: MorphoVaultMarket[];
   rewards: Omit<MorphoReward, "marketId">[];
+  stakingRewards: MorphoStakingReward[];
 };
 
 export type MorphoVaultMarket = {

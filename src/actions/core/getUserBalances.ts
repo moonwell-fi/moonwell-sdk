@@ -102,12 +102,39 @@ export async function getUserBalances<
     }),
   );
 
+  // Fetch morpho staking balances
+  await Promise.all(
+    environments.map(async (env, index) => {
+      if (!env.config.vaults) return;
+
+      const vaultBalances = await Promise.all(
+        Object.values(env.config.vaults)
+          .filter((vault) => vault.multiReward)
+          .map((vault) =>
+            getTokenBalance(env, userAddress, vault.multiReward!),
+          ),
+      );
+
+      const envBalances = environmentsTokensBalances[index]?.[0];
+      if (envBalances) {
+        environmentsTokensBalances[index]![0] = [
+          ...envBalances,
+          ...vaultBalances,
+        ];
+      }
+    }),
+  );
+
   const result = environments.flatMap((env, index) => {
     const balances = environmentsTokensBalances[index]![0]!;
 
     const userBalances = balances
       .map((balance) => {
         const token = findTokenByAddress(env, balance.token);
+        const vault = Object.values(env.config.vaults || {}).find(
+          (v) => v.multiReward === balance.token,
+        );
+
         if (token) {
           const result: UserBalance = {
             chainId: env.chainId,
@@ -116,11 +143,26 @@ export async function getUserBalances<
             tokenBalance: new Amount(balance.amount, token.decimals),
           };
           return result;
-        } else {
-          return;
         }
+        if (vault?.multiReward) {
+          const vaultToken = env.config.tokens[vault.vaultToken];
+          const result: UserBalance = {
+            chainId: env.chainId,
+            account: userAddress,
+            token: {
+              address: vault.multiReward,
+              decimals: vaultToken.decimals,
+              name: `stk${vaultToken.symbol}`,
+              symbol: `stk${vaultToken.symbol}`,
+            },
+            tokenBalance: new Amount(balance.amount, vaultToken.decimals),
+          };
+          return result;
+        }
+
+        return undefined;
       })
-      .filter((item) => item !== undefined) as UserBalance[];
+      .filter((balance): balance is UserBalance => balance !== undefined);
 
     return userBalances;
   });
