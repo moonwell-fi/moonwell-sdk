@@ -1,7 +1,15 @@
 import { type Address, getContract, parseAbi, zeroAddress } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
-import type { Environment, TokenConfig } from "../../../environments/index.js";
+import {
+  type Environment,
+  type TokenConfig,
+  publicEnvironments,
+} from "../../../environments/index.js";
+import {
+  findMarketByAddress,
+  findTokenByAddress,
+} from "../../../environments/utils/index.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
 import type {
   MorphoVault,
@@ -188,6 +196,75 @@ export async function getMorphoVaultsData(params: {
           (environment) => environment.chainId === vault.chainId,
         );
 
+        if (!environment) {
+          return;
+        }
+
+        // Fetch market prices from the views contract to calculate rewards
+        const homeEnvironment =
+          (Object.values(publicEnvironments) as Environment[]).find((e) =>
+            e.custom?.governance?.chainIds?.includes(environment.chainId),
+          ) || environment;
+
+        const viewsContract = environment.contracts.views;
+        const homeViewsContract = homeEnvironment.contracts.views;
+
+        const data = await Promise.all([
+          viewsContract?.read.getAllMarketsInfo(),
+          homeViewsContract?.read.getNativeTokenPrice(),
+          homeViewsContract?.read.getGovernanceTokenPrice(),
+        ]);
+
+        const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
+
+        const governanceTokenPrice = new Amount(
+          governanceTokenPriceRaw || 0n,
+          18,
+        );
+        const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+
+        let tokenPrices =
+          allMarkets
+            ?.map((marketInfo) => {
+              const marketFound = findMarketByAddress(
+                environment,
+                marketInfo.market,
+              );
+              if (marketFound) {
+                return {
+                  token: marketFound.underlyingToken,
+                  tokenPrice: new Amount(
+                    marketInfo.underlyingPrice,
+                    36 - marketFound.underlyingToken.decimals,
+                  ),
+                };
+              } else {
+                return;
+              }
+            })
+            .filter((token) => !!token) || [];
+
+        // Add governance token to token prices
+        if (environment.custom?.governance?.token) {
+          tokenPrices = [
+            ...tokenPrices,
+            {
+              token:
+                environment.config.tokens[environment.custom.governance.token]!,
+              tokenPrice: governanceTokenPrice,
+            },
+          ];
+        }
+
+        // Add native token to token prices
+        tokenPrices = [
+          ...tokenPrices,
+          {
+            token: findTokenByAddress(environment, zeroAddress)!,
+            tokenPrice: nativeTokenPrice,
+          },
+        ];
+
         const vaultConfig = environment?.config.vaults[vault.vaultKey];
         if (!environment || !vaultConfig || !vaultConfig.multiReward) {
           return;
@@ -206,17 +283,23 @@ export async function getMorphoVaultsData(params: {
             (token) => token.address === reward?.token,
           );
           if (!token || !reward?.rewardRate) return;
-          // TODO: review this, should we use reward token price instead?
+
+          const market = tokenPrices.find(
+            (m) => m?.token.address === reward.token,
+          );
+
+          const rewardPriceUsd = market?.tokenPrice.value ?? 0;
+
           const rewardsPerYear =
-            Number(reward.rewardRate) *
+            new Amount(reward.rewardRate, market?.token.decimals ?? 18).value *
             SECONDS_PER_YEAR *
-            vault.underlyingPrice;
+            rewardPriceUsd;
 
           vault.stakingRewards.push({
             apr:
               (rewardsPerYear /
-                new Amount(Number(totalSupply), vault.vaultToken.decimals)
-                  .value) *
+                (new Amount(totalSupply, vault.vaultToken.decimals).value *
+                  vault.underlyingPrice)) *
               100,
             token: token,
           });
@@ -354,7 +437,7 @@ const getTotalSupplyData = async (
   multiRewardsAddress: Address,
 ) => {
   if (!environment.custom.multiRewarder) {
-    return [];
+    return 0n;
   }
 
   const multiRewardAbi = parseAbi([
