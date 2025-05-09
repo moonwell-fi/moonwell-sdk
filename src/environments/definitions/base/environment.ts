@@ -30,7 +30,12 @@ const createEnvironment = (
     chain: base,
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(base.rpcUrls.default.http[0]),
+      : fallback([
+          http(base.rpcUrls.default.http[0]),
+          http("https://base.llamarpc.com"),
+          http("https://base-mainnet.public.blastapi.io"),
+          http("https://base.lava.build"),
+        ]),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
     tokens,
