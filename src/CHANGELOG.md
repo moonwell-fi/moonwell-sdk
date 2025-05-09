@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.4
+
+### Patch Changes
+
+- [#110](https://github.com/moonwell-fi/moonwell-sdk/pull/110) [`dbb26f897a9b6a74a15d71e1d05880813175d30b`](https://github.com/moonwell-fi/moonwell-sdk/commit/dbb26f897a9b6a74a15d71e1d05880813175d30b) Thanks [@x0s0l](https://github.com/x0s0l)! - Add vault staking balance, rewards, and APR
+
 ## 0.7.3
 
 ### Patch Changes
