@@ -170,6 +170,12 @@ export {
 } from "./morpho/vaults/getMorphoVaultSnapshots.js";
 
 export {
+  getMorphoVaultStakingSnapshots,
+  type GetMorphoVaultStakingSnapshotsParameters,
+  type GetMorphoVaultStakingSnapshotsReturnType,
+} from "./morpho/vaults/getMorphoVaultStakingSnapshots.js";
+
+export {
   getMorphoVaultUserPositionSnapshots,
   type GetMorphoVaultUserPositionSnapshotsParameters,
   type GetMorphoVaultUserPositionSnapshotsReturnType,

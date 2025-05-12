@@ -31,6 +31,7 @@ export type {
   MorphoVault,
   MorphoVaultMarket,
   MorphoVaultSnapshot,
+  MorphoVaultStakingSnapshot,
 } from "./types/morphoVault.js";
 export {
   MultichainProposalState,
