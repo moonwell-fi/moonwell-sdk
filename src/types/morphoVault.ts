@@ -13,6 +13,8 @@ export type MorphoVault = {
   totalSupplyUsd: number;
   totalLiquidity: Amount;
   totalLiquidityUsd: number;
+  totalStaked: Amount;
+  totalStakedUsd: number;
   underlyingPrice: number;
   baseApy: number;
   rewardsApy: number;
@@ -49,5 +51,13 @@ export type MorphoVaultSnapshot = {
   totalBorrowsUsd: number;
   totalLiquidity: number;
   totalLiquidityUsd: number;
+  timestamp: number;
+};
+
+export type MorphoVaultStakingSnapshot = {
+  chainId: number;
+  vaultAddress: string;
+  totalStaked: number;
+  totalStakedUsd: number;
   timestamp: number;
 };

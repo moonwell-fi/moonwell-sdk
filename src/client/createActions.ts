@@ -168,6 +168,11 @@ import {
   getMorphoVaultSnapshots,
 } from "../actions/morpho/vaults/getMorphoVaultSnapshots.js";
 import {
+  type GetMorphoVaultStakingSnapshotsParameters,
+  type GetMorphoVaultStakingSnapshotsReturnType,
+  getMorphoVaultStakingSnapshots,
+} from "../actions/morpho/vaults/getMorphoVaultStakingSnapshots.js";
+import {
   type GetMorphoVaultsParameters,
   type GetMorphoVaultsReturnType,
   getMorphoVaults,
@@ -319,6 +324,12 @@ export type Actions<
     args: GetMorphoVaultSnapshotsParameters<environments, chain>,
   ) => GetMorphoVaultSnapshotsReturnType;
 
+  getMorphoVaultStakingSnapshots: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoVaultStakingSnapshotsParameters<environments, chain>,
+  ) => GetMorphoVaultStakingSnapshotsReturnType;
+
   getUserPositionSnapshots: <
     chain extends Chain | undefined = Chain | undefined,
   >(
@@ -377,6 +388,8 @@ export const actions = <
       getCirculatingSupplySnapshots(client, args),
     getMarketSnapshots: (args) => getMarketSnapshots(client, args),
     getMorphoVaultSnapshots: (args) => getMorphoVaultSnapshots(client, args),
+    getMorphoVaultStakingSnapshots: (args) =>
+      getMorphoVaultStakingSnapshots(client, args),
     getUserPositionSnapshots: (args) => getUserPositionSnapshots(client, args),
     getMorphoVaultUserPositionSnapshots: (args) =>
       getMorphoVaultUserPositionSnapshots(client, args),
