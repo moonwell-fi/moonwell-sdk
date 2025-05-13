@@ -216,7 +216,7 @@ export async function getMorphoVaultsData(params: {
       );
 
       return {
-        ...aggregator,
+        ...(await aggregator),
         [environment.chainId]: vaults,
       };
     },
@@ -226,131 +226,134 @@ export async function getMorphoVaultsData(params: {
   // Add rewards to vaults
   if (params.includeRewards === true) {
     // add stake rewards
-    Object.values(result)
-      .flat()
-      .forEach(async (vault) => {
-        const environment = params.environments.find(
-          (environment) => environment.chainId === vault.chainId,
-        );
 
-        if (!environment) {
-          return;
-        }
+    const flatList = Object.values(result).flat();
 
-        // Fetch market prices from the views contract to calculate rewards
-        const homeEnvironment =
-          (Object.values(publicEnvironments) as Environment[]).find((e) =>
-            e.custom?.governance?.chainIds?.includes(environment.chainId),
-          ) || environment;
+    for (const vault of flatList) {
+      const environment = params.environments.find(
+        (environment) => environment.chainId === vault.chainId,
+      );
 
-        const viewsContract = environment.contracts.views;
-        const homeViewsContract = homeEnvironment.contracts.views;
+      if (!environment) {
+        continue;
+      }
 
-        const data = await Promise.all([
-          viewsContract?.read.getAllMarketsInfo(),
-          homeViewsContract?.read.getNativeTokenPrice(),
-          homeViewsContract?.read.getGovernanceTokenPrice(),
-        ]);
+      // Fetch market prices from the views contract to calculate rewards
+      const homeEnvironment =
+        (Object.values(publicEnvironments) as Environment[]).find((e) =>
+          e.custom?.governance?.chainIds?.includes(environment.chainId),
+        ) || environment;
 
-        const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
+      const viewsContract = environment.contracts.views;
+      const homeViewsContract = homeEnvironment.contracts.views;
 
-        const governanceTokenPrice = new Amount(
-          governanceTokenPriceRaw || 0n,
-          18,
-        );
-        const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+      const data = await Promise.all([
+        viewsContract?.read.getAllMarketsInfo(),
+        homeViewsContract?.read.getNativeTokenPrice(),
+        homeViewsContract?.read.getGovernanceTokenPrice(),
+      ]);
 
-        let tokenPrices =
-          allMarkets
-            ?.map((marketInfo) => {
-              const marketFound = findMarketByAddress(
-                environment,
-                marketInfo.market,
-              );
-              if (marketFound) {
-                return {
-                  token: marketFound.underlyingToken,
-                  tokenPrice: new Amount(
-                    marketInfo.underlyingPrice,
-                    36 - marketFound.underlyingToken.decimals,
-                  ),
-                };
-              } else {
-                return;
-              }
-            })
-            .filter((token) => !!token) || [];
+      const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
 
-        // Add governance token to token prices
-        if (environment.custom?.governance?.token) {
-          tokenPrices = [
-            ...tokenPrices,
-            {
-              token:
-                environment.config.tokens[environment.custom.governance.token]!,
-              tokenPrice: governanceTokenPrice,
-            },
-          ];
-        }
+      const governanceTokenPrice = new Amount(
+        governanceTokenPriceRaw || 0n,
+        18,
+      );
+      const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
 
-        // Add native token to token prices
+      let tokenPrices =
+        allMarkets
+          ?.map((marketInfo) => {
+            const marketFound = findMarketByAddress(
+              environment,
+              marketInfo.market,
+            );
+            if (marketFound) {
+              return {
+                token: marketFound.underlyingToken,
+                tokenPrice: new Amount(
+                  marketInfo.underlyingPrice,
+                  36 - marketFound.underlyingToken.decimals,
+                ),
+              };
+            } else {
+              return;
+            }
+          })
+          .filter((token) => !!token) || [];
+
+      // Add governance token to token prices
+      if (environment.custom?.governance?.token) {
         tokenPrices = [
           ...tokenPrices,
           {
-            token: findTokenByAddress(environment, zeroAddress)!,
-            tokenPrice: nativeTokenPrice,
+            token:
+              environment.config.tokens[environment.custom.governance.token]!,
+            tokenPrice: governanceTokenPrice,
           },
         ];
+      }
 
-        const vaultConfig = environment?.config.vaults[vault.vaultKey];
-        if (!environment || !vaultConfig || !vaultConfig.multiReward) {
-          return;
-        }
-        const rewards = await getRewardsData(
-          environment,
-          vaultConfig.multiReward,
+      // Add native token to token prices
+      tokenPrices = [
+        ...tokenPrices,
+        {
+          token: findTokenByAddress(environment, zeroAddress)!,
+          tokenPrice: nativeTokenPrice,
+        },
+      ];
+
+      const vaultConfig = environment?.config.vaults[vault.vaultKey];
+
+      if (!environment || !vaultConfig || !vaultConfig.multiReward) {
+        continue;
+      }
+
+      const rewards = await getRewardsData(
+        environment,
+        vaultConfig.multiReward,
+      );
+
+      const distributorTotalSupply = await getTotalSupplyData(
+        environment,
+        vaultConfig.multiReward,
+      );
+
+      rewards.forEach((reward) => {
+        const token = Object.values(environment.config.tokens).find(
+          (token) => token.address === reward?.token,
         );
-        const distributorTotalSupply = await getTotalSupplyData(
-          environment,
-          vaultConfig.multiReward,
+        if (!token || !reward?.rewardRate) return;
+
+        const market = tokenPrices.find(
+          (m) => m?.token.address === reward.token,
         );
 
-        rewards.forEach((reward) => {
-          const token = Object.values(environment.config.tokens).find(
-            (token) => token.address === reward?.token,
-          );
-          if (!token || !reward?.rewardRate) return;
+        const rewardPriceUsd = market?.tokenPrice.value ?? 0;
 
-          const market = tokenPrices.find(
-            (m) => m?.token.address === reward.token,
-          );
+        const rewardsPerYear =
+          new Amount(reward.rewardRate, market?.token.decimals ?? 18).value *
+          SECONDS_PER_YEAR *
+          rewardPriceUsd;
 
-          const rewardPriceUsd = market?.tokenPrice.value ?? 0;
-
-          const rewardsPerYear =
-            new Amount(reward.rewardRate, market?.token.decimals ?? 18).value *
-            SECONDS_PER_YEAR *
-            rewardPriceUsd;
-
-          vault.stakingRewards.push({
-            apr:
-              (rewardsPerYear /
-                (new Amount(distributorTotalSupply, vault.vaultToken.decimals)
-                  .value *
-                  vault.underlyingPrice)) *
-              100,
-            token: token,
-          });
+        vault.stakingRewards.push({
+          apr:
+            (rewardsPerYear /
+              (new Amount(distributorTotalSupply, vault.vaultToken.decimals)
+                .value *
+                vault.underlyingPrice)) *
+            100,
+          token: token,
         });
-
-        vault.stakingRewardsApr = vault.stakingRewards.reduce(
-          (acc, curr) => acc + curr.apr,
-          0,
-        );
-        vault.totalStakingApr = vault.stakingRewardsApr + vault.baseApy;
       });
 
-    // add morpho rewards
+      vault.stakingRewardsApr = vault.stakingRewards.reduce(
+        (acc, curr) => acc + curr.apr,
+        0,
+      );
+      vault.totalStakingApr = vault.stakingRewardsApr + vault.baseApy;
+    }
+
     const vaults = Object.values(result)
       .flat()
       .filter((vault) => {

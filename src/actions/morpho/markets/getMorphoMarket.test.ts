@@ -4,6 +4,11 @@ import { testClient } from "../../../../test/client.js";
 
 describe("Testing Morpho Subgraph", () => {
   test("Get morpho market", async () => {
+    const vaults = await testClient.getMorphoVaults({
+      chainId: 10,
+      includeRewards: true,
+    });
+    console.log(vaults);
     const morphoMarket = await testClient.getMarketSnapshots({
       chainId: optimism.id,
       marketId:
