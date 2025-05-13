@@ -170,11 +170,11 @@ export const tokens = createTokenConfig({
     name: "Moonwell Flagship USDC",
     symbol: "mwUSDC",
   },
-  "USD₮0": {
+  USDT0: {
     address: "0x01bFF41798a0BcF287b996046Ca68b395DbC1071",
     decimals: 6,
-    name: "USD₮0",
-    symbol: "USD₮0",
+    name: "USDT0",
+    symbol: "USDT0",
   },
   MOONWELL_USDT0: {
     address: "0xed37cD7872c6fe4020982d35104bE7919b8f8b33",
