@@ -57,7 +57,8 @@ export async function getMorphoVaultsData(params: {
   const result = await environmentsWithVaults.reduce<
     Promise<MultichainReturnType<MorphoVault[]>>
   >(
-    async (aggregator, environment, environmentIndex) => {
+    async (aggregatorPromise, environment, environmentIndex) => {
+      const aggregator = await aggregatorPromise;
       const environmentVaultsInfo = environmentsVaultsInfo[environmentIndex]!;
 
       const vaults = await Promise.all(
