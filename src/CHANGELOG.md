@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.7
+
+### Patch Changes
+
+- [#116](https://github.com/moonwell-fi/moonwell-sdk/pull/116) [`3caa1747d82ef4763514b0fe93c9b7908c0cbd20`](https://github.com/moonwell-fi/moonwell-sdk/commit/3caa1747d82ef4763514b0fe93c9b7908c0cbd20) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fixed getMorphoVaults
+
 ## 0.7.6
 
 ### Patch Changes
