@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.5
+
+### Patch Changes
+
+- [#112](https://github.com/moonwell-fi/moonwell-sdk/pull/112) [`5b2c32412c53ed1654117619291cbb8b7c6dbc5f`](https://github.com/moonwell-fi/moonwell-sdk/commit/5b2c32412c53ed1654117619291cbb8b7c6dbc5f) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added getMorphoVaultStakingSnapshots and total staked amount in vault
+
 ## 0.7.4
 
 ### Patch Changes
