@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.8
+
+### Patch Changes
+
+- [#118](https://github.com/moonwell-fi/moonwell-sdk/pull/118) [`86e6571b5a2ef1080941020174658e28b4ced27e`](https://github.com/moonwell-fi/moonwell-sdk/commit/86e6571b5a2ef1080941020174658e28b4ced27e) Thanks [@lyoungblood](https://github.com/lyoungblood)! - Fix Staking APR
+
 ## 0.7.7
 
 ### Patch Changes
