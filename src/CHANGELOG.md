@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.6
+
+### Patch Changes
+
+- [#114](https://github.com/moonwell-fi/moonwell-sdk/pull/114) [`2b031407cd7a113c6766c3af6c58844c101d81b5`](https://github.com/moonwell-fi/moonwell-sdk/commit/2b031407cd7a113c6766c3af6c58844c101d81b5) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added USDT0
+
 ## 0.7.5
 
 ### Patch Changes
