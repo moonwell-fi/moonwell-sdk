@@ -52,5 +52,9 @@ export const markets = createMarketConfig({
       marketToken: "MOONWELL_wrsETH",
       underlyingToken: "wrsETH",
     },
+    MOONWELL_USDT0: {
+      marketToken: "MOONWELL_USDT0",
+      underlyingToken: "USDT0",
+    },
   },
 });
