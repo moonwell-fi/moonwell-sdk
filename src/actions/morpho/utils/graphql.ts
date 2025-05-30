@@ -1,3 +1,4 @@
+import { MOONWELL_FETCH_JSON_HEADERS } from "../../../common/fetch-headers.js";
 import type { Environment } from "../../../environments/index.js";
 
 export async function getGraphQL<T>(
@@ -8,7 +9,7 @@ export async function getGraphQL<T>(
   try {
     const response = await fetch("https://blue-api.morpho.org/graphql", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: MOONWELL_FETCH_JSON_HEADERS,
       body: JSON.stringify({ query: query, operationName, variables }),
       signal: AbortSignal.timeout(10000),
     });
@@ -47,7 +48,7 @@ export async function getSubgraph<T>(
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: MOONWELL_FETCH_JSON_HEADERS,
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10000),
     });
