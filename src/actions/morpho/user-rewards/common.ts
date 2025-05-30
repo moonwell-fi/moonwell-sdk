@@ -2,6 +2,7 @@ import lodash from "lodash";
 const { uniq } = lodash;
 import { type Address, getContract, parseAbi, zeroAddress } from "viem";
 import { Amount } from "../../../common/amount.js";
+import { MOONWELL_FETCH_JSON_HEADERS } from "../../../common/fetch-headers.js";
 import {
   type Environment,
   type TokenConfig,
@@ -384,6 +385,9 @@ async function getMorphoRewardsData(
 ): Promise<MorphoRewardsResponse[]> {
   const rewardsRequest = await fetch(
     `https://rewards.morpho.org/v1/users/${account}/rewards?chain_id=${chainId}`,
+    {
+      headers: MOONWELL_FETCH_JSON_HEADERS,
+    },
   );
   const rewards = await rewardsRequest.json();
   return (rewards.data || []) as MorphoRewardsResponse[];

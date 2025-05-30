@@ -7,6 +7,7 @@ import {
   perDay,
 } from "../../../common/index.js";
 
+import { MOONWELL_FETCH_JSON_HEADERS } from "../../../common/fetch-headers.js";
 import {
   type Environment,
   publicEnvironments,
@@ -241,6 +242,7 @@ const fetchFromGenericCacheApi = async <T>(uri: string): Promise<T> => {
     {
       method: "POST",
       body: `{"uri":"${uri}","cacheDuration":"300"}`,
+      headers: MOONWELL_FETCH_JSON_HEADERS,
     },
   );
 
