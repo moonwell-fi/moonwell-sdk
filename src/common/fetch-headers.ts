@@ -2,9 +2,9 @@
 let sdkVersion = "1.0.0";
 try {
   // @ts-ignore
-  sdkVersion =
-    (await import("../../package.json", { assert: { type: "json" } })).default
-      .version || "1.0.0";
+  // Importing package.json synchronously (requires --resolveJsonModule in tsconfig)
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  sdkVersion = require("../../package.json").version || "1.0.0";
 } catch (e) {
   // fallback to default
 }
