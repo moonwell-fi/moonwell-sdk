@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.9
+
+### Patch Changes
+
+- [#120](https://github.com/moonwell-fi/moonwell-sdk/pull/120) [`4b801d3275fa20e5ef224cd71bf7ee5c4bdd7255`](https://github.com/moonwell-fi/moonwell-sdk/commit/4b801d3275fa20e5ef224cd71bf7ee5c4bdd7255) Thanks [@hishboy](https://github.com/hishboy)! - Fix morpho useragent/cloudflare issue
+
+- [#122](https://github.com/moonwell-fi/moonwell-sdk/pull/122) [`ed5bb01d9853dec6f24ca127443089eed7b838cd`](https://github.com/moonwell-fi/moonwell-sdk/commit/ed5bb01d9853dec6f24ca127443089eed7b838cd) Thanks [@hishboy](https://github.com/hishboy)! - fix build
+
 ## 0.7.8
 
 ### Patch Changes
