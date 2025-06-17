@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.10
+
+### Patch Changes
+
+- [#123](https://github.com/moonwell-fi/moonwell-sdk/pull/123) [`d93eba0e28b66c4e65bd28dfcf69d3f1a473365f`](https://github.com/moonwell-fi/moonwell-sdk/commit/d93eba0e28b66c4e65bd28dfcf69d3f1a473365f) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Added core market cbXRP
+
 ## 0.7.9
 
 ### Patch Changes
