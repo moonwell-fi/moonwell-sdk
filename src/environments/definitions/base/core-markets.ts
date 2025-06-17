@@ -77,5 +77,9 @@ export const markets = createMarketConfig({
       marketToken: "MOONWELL_MORPHO",
       underlyingToken: "MORPHO",
     },
+    MOONWELL_cbXRP: {
+      marketToken: "MOONWELL_cbXRP",
+      underlyingToken: "cbXRP",
+    },
   },
 });

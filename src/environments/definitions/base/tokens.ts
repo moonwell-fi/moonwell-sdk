@@ -266,4 +266,16 @@ export const tokens = createTokenConfig({
     name: "Moonwell MORPHO",
     symbol: "mMORPHO",
   },
+  cbXRP: {
+    address: "0xcb585250f852C6c6bf90434AB21A00f02833a4af",
+    decimals: 6,
+    name: "Coinbase XRP",
+    symbol: "cbXRP",
+  },
+  MOONWELL_cbXRP: {
+    address: "0xb4fb8fed5b3AaA8434f0B19b1b623d977e07e86d",
+    decimals: 8,
+    name: "Moonwell cbXRP",
+    symbol: "mcbXRP",
+  },
 });
