@@ -9,8 +9,11 @@ try {
   // fallback to default
 }
 
+const isBrowser =
+  typeof window !== "undefined" && typeof window.document !== "undefined";
+
 export const MOONWELL_FETCH_JSON_HEADERS: Record<string, string> = {
   Accept: "application/json",
   "Content-Type": "application/json",
-  "User-Agent": `moonwell-sdk/${sdkVersion}`,
+  ...(isBrowser ? {} : { "User-Agent": `moonwell-sdk/${sdkVersion}` }),
 };
