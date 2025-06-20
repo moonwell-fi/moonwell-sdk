@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.7.11
+
+### Patch Changes
+
+- [#125](https://github.com/moonwell-fi/moonwell-sdk/pull/125) [`90bd92a22dc78f396617971d3b0c4de363382391`](https://github.com/moonwell-fi/moonwell-sdk/commit/90bd92a22dc78f396617971d3b0c4de363382391) Thanks [@hishboy](https://github.com/hishboy)! - Include User-Agent for only non-browser environment
+
 ## 0.7.10
 
 ### Patch Changes
