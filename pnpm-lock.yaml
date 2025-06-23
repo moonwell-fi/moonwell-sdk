@@ -68,7 +68,7 @@ importers:
     devDependencies:
       '@moonwell-fi/moonwell-sdk':
         specifier: file:../src
-        version: file:src(typescript@5.8.3)(zod@3.23.8)
+        version: link:../src
       '@types/react':
         specifier: latest
         version: 19.1.8
@@ -94,7 +94,7 @@ importers:
         specifier: ^1.0.18
         version: 1.0.18(@rhinestone/module-sdk@0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8)))(typescript@5.8.3)(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
       '@rhinestone/module-sdk':
-        specifier: ^0.2.7
+        specifier: 0.2.7
         version: 0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
       '@types/lodash':
         specifier: ^4.17.9
@@ -773,14 +773,6 @@ packages:
 
   '@mermaid-js/parser@0.4.0':
     resolution: {integrity: sha512-wla8XOWvQAwuqy+gxiZqY+c7FokraOTHRWMsbB4AgRx9Sy7zKslNyejy7E+a77qHfey5GXw/ik3IXv/NHMJgaA==}
-
-  '@moonwell-fi/moonwell-sdk@file:src':
-    resolution: {directory: src, type: directory}
-    peerDependencies:
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   '@noble/curves@1.8.1':
     resolution: {integrity: sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ==}
@@ -1502,11 +1494,6 @@ packages:
 
   '@rhinestone/module-sdk@0.2.7':
     resolution: {integrity: sha512-clZVB6erRdkDpaYodFsRVhU+Sj4immytLWK76jL9MsjnBg9vDEEMK3izUpsGax6YLDI0/QTrn0sW0qyhLz8fBQ==}
-    peerDependencies:
-      viem: ^2.0.0
-
-  '@rhinestone/module-sdk@0.2.9':
-    resolution: {integrity: sha512-6C2YruxroNn+51HKI9J5OP/Xy2geIJVf14eu5ViLC68A4uN8mgLMJDFjE6Ror+MGK6V4ON/i+X7RLKH8rz6WbA==}
     peerDependencies:
       viem: ^2.0.0
 
@@ -5331,12 +5318,6 @@ snapshots:
       typescript: 5.8.3
       viem: 2.26.2(typescript@5.8.3)(zod@3.23.8)
 
-  '@biconomy/abstractjs@1.0.18(@rhinestone/module-sdk@0.2.9(viem@2.26.2(typescript@5.8.3)(zod@3.23.8)))(typescript@5.8.3)(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))':
-    dependencies:
-      '@rhinestone/module-sdk': 0.2.9(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
-      typescript: 5.8.3
-      viem: 2.26.2(typescript@5.8.3)(zod@3.23.8)
-
   '@biomejs/biome@1.9.3':
     optionalDependencies:
       '@biomejs/cli-darwin-arm64': 1.9.3
@@ -5852,25 +5833,6 @@ snapshots:
   '@mermaid-js/parser@0.4.0':
     dependencies:
       langium: 3.3.1
-
-  '@moonwell-fi/moonwell-sdk@file:src(typescript@5.8.3)(zod@3.23.8)':
-    dependencies:
-      '@across-protocol/app-sdk': 0.2.3(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
-      '@biconomy/abstractjs': 1.0.18(@rhinestone/module-sdk@0.2.9(viem@2.26.2(typescript@5.8.3)(zod@3.23.8)))(typescript@5.8.3)(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
-      '@rhinestone/module-sdk': 0.2.9(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
-      '@types/lodash': 4.17.10
-      '@types/node': 22.13.10
-      axios: 1.7.7
-      dayjs: 1.11.13
-      lodash: 4.17.21
-      viem: 2.26.2(typescript@5.8.3)(zod@3.23.8)
-    optionalDependencies:
-      typescript: 5.8.3
-    transitivePeerDependencies:
-      - bufferutil
-      - debug
-      - utf-8-validate
-      - zod
 
   '@noble/curves@1.8.1':
     dependencies:
@@ -6579,12 +6541,6 @@ snapshots:
   '@radix-ui/rect@1.1.0': {}
 
   '@rhinestone/module-sdk@0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))':
-    dependencies:
-      solady: 0.0.235
-      tslib: 2.8.1
-      viem: 2.26.2(typescript@5.8.3)(zod@3.23.8)
-
-  '@rhinestone/module-sdk@0.2.9(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))':
     dependencies:
       solady: 0.0.235
       tslib: 2.8.1

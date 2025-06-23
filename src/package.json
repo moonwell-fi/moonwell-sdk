@@ -63,7 +63,7 @@
   "dependencies": {
     "@across-protocol/app-sdk": "^0.2.3",
     "@biconomy/abstractjs": "^1.0.18",
-    "@rhinestone/module-sdk": "^0.2.7",
+    "@rhinestone/module-sdk": "0.2.7",
     "@types/lodash": "^4.17.9",
     "@types/node": "^22.13.10",
     "axios": "^1.7.7",
