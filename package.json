@@ -38,7 +38,7 @@
     "publint": "^0.2.11",
     "sherif": "^1.0.0",
     "simple-git-hooks": "^2.9.0",
-    "typescript": "5.0.4",
+    "typescript": "5.5.2",
     "vitest": "^2.1.2"
   },
   "lint-staged": {
