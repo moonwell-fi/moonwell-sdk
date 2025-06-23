@@ -5,7 +5,7 @@ import { createMoonwellClient } from "@moonwell-fi/moonwell-sdk";
 export const moonwellClient = createMoonwellClient({
   networks: {
     base: {
-      rpcUrls: ["https://base.llamarpc.com"],
+      rpcUrls: ["https://base-rpc.publicnode.com"],
     },
     moonbeam: {
       rpcUrls: ["https://moonbeam.public.blastapi.io"],

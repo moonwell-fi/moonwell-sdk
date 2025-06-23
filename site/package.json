@@ -12,6 +12,7 @@
     "@types/react": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "tailwindcss": "^4.1.10",
     "typescript": "latest",
     "vocs": "latest"
   }
