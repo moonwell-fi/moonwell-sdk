@@ -14,7 +14,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "moonbeam",
     name: "Moonbeam",
-    chain: moonbeam,
+    chain: {
+      ...moonbeam,
+      rpcUrls: {
+        default: { http: rpcUrls || moonbeam.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(moonbeam.rpcUrls.default.http[0]),

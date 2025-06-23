@@ -14,7 +14,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "arbitrum",
     name: "Arbitrum",
-    chain: arbitrum,
+    chain: {
+      ...arbitrum,
+      rpcUrls: {
+        default: { http: rpcUrls || arbitrum.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(arbitrum.rpcUrls.default.http[0]),

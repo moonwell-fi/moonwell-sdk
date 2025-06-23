@@ -5,10 +5,14 @@ import { createMoonwellClient } from "@moonwell-fi/moonwell-sdk";
 export const moonwellClient = createMoonwellClient({
   networks: {
     base: {
-      rpcUrls: ["https://base.llamarpc.com"],
+      rpcUrls: [
+        "https://lb.drpc.org/ogrpc?network=base&dkey=ArZpyASIn0ebhYYuxCc42yE2a4V5UDQR8JJvrqRhf0fE",
+      ],
     },
     moonbeam: {
-      rpcUrls: ["https://moonbeam.public.blastapi.io"],
+      rpcUrls: [
+        "https://lb.drpc.org/ogrpc?network=moonbeam&dkey=ArZpyASIn0ebhYYuxCc42yE2a4V5UDQR8JJvrqRhf0fE",
+      ],
     },
   },
 });

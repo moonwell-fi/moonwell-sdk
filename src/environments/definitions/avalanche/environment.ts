@@ -14,7 +14,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "avalanche",
     name: "Avalanche",
-    chain: avalanche,
+    chain: {
+      ...avalanche,
+      rpcUrls: {
+        default: { http: rpcUrls || avalanche.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(avalanche.rpcUrls.default.http[0]),
