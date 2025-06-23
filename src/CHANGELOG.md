@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.0
+
+### Minor Changes
+
+- [#127](https://github.com/moonwell-fi/moonwell-sdk/pull/127) [`e1af835cf9e8984d58e2ebc22a4246004e21cda0`](https://github.com/moonwell-fi/moonwell-sdk/commit/e1af835cf9e8984d58e2ebc22a4246004e21cda0) Thanks [@x0s0l](https://github.com/x0s0l)! - Moonwell Beam - Deposit / Supply from multiple chains using Biconomy MEE and Across
+
 ## 0.7.11
 
 ### Patch Changes
