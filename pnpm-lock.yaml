@@ -58,7 +58,7 @@ importers:
     devDependencies:
       '@moonwell-fi/moonwell-sdk':
         specifier: file:../src
-        version: link:../src
+        version: file:src(typescript@5.8.3)(zod@3.23.8)
       '@types/react':
         specifier: latest
         version: 19.1.6
@@ -77,6 +77,15 @@ importers:
 
   src:
     dependencies:
+      '@across-protocol/app-sdk':
+        specifier: ^0.2.3
+        version: 0.2.3(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
+      '@biconomy/abstractjs':
+        specifier: ^1.0.18
+        version: 1.0.18(@rhinestone/module-sdk@0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8)))(typescript@5.8.3)(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
+      '@rhinestone/module-sdk':
+        specifier: ^0.2.7
+        version: 0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
       '@types/lodash':
         specifier: ^4.17.9
         version: 4.17.10
@@ -93,12 +102,18 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       viem:
-        specifier: ^2.23.6
-        version: 2.23.6(typescript@5.8.3)(zod@3.23.8)
+        specifier: ^2.26.2
+        version: 2.26.2(typescript@5.8.3)(zod@3.23.8)
 
   test: {}
 
 packages:
+
+  '@across-protocol/app-sdk@0.2.3':
+    resolution: {integrity: sha512-fxKYy0fKS5jbcq66gKtRYo1TWFvzeAYYPNBubrssCu7ECKFgOTT5dolPUj4Y+UwAJtVItFMvvkxO4OvMGbK7Dw==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      viem: ^2.20.1
 
   '@adraffy/ens-normalize@1.11.0':
     resolution: {integrity: sha512-/3DDPKHqqIqxUULp8yP4zODUY1i+2xvVWsv8A79xGWdCAG+8sb0hRh0Rk2QyOJUnnbyPUAZYcpBuRe3nS2OIUg==}
@@ -213,6 +228,13 @@ packages:
   '@babel/types@7.26.0':
     resolution: {integrity: sha512-Z/yiTPj+lDVnF7lWeKCIJzaIkI0vYO87dMpZ4bg4TDrFe4XXLFWL1TbXU27gBP3QccxV9mZICCrnjnYlJjXHOA==}
     engines: {node: '>=6.9.0'}
+
+  '@biconomy/abstractjs@1.0.18':
+    resolution: {integrity: sha512-dKB5hDjhWX7+eY4UC5RH18A1d6K6o5bf34xQRAmh6BjhNmxjq3kqk31ORcGrLgY196pTa5TX7GV/flRHFNQsDg==}
+    peerDependencies:
+      '@rhinestone/module-sdk': 0.2.7
+      typescript: ^5.8.2
+      viem: ^2.26.2
 
   '@biomejs/biome@1.9.3':
     resolution: {integrity: sha512-POjAPz0APAmX33WOQFGQrwLvlu7WLV4CFJMlB12b6ZSg+2q6fYu9kZwLCOA+x83zXfcPd1RpuWOKJW0GbBwLIQ==}
@@ -737,6 +759,14 @@ packages:
 
   '@mermaid-js/parser@0.4.0':
     resolution: {integrity: sha512-wla8XOWvQAwuqy+gxiZqY+c7FokraOTHRWMsbB4AgRx9Sy7zKslNyejy7E+a77qHfey5GXw/ik3IXv/NHMJgaA==}
+
+  '@moonwell-fi/moonwell-sdk@file:src':
+    resolution: {directory: src, type: directory}
+    peerDependencies:
+      typescript: '>=5.0.4'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@noble/curves@1.8.1':
     resolution: {integrity: sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ==}
@@ -1455,6 +1485,16 @@ packages:
 
   '@radix-ui/rect@1.1.0':
     resolution: {integrity: sha512-A9+lCBZoaMJlVKcRBz2YByCG+Cp2t6nAnMnNba+XiWxnj6r4JUFqfsgwocMBZU9LPtdxC6wB56ySYpc7LQIoJg==}
+
+  '@rhinestone/module-sdk@0.2.7':
+    resolution: {integrity: sha512-clZVB6erRdkDpaYodFsRVhU+Sj4immytLWK76jL9MsjnBg9vDEEMK3izUpsGax6YLDI0/QTrn0sW0qyhLz8fBQ==}
+    peerDependencies:
+      viem: ^2.0.0
+
+  '@rhinestone/module-sdk@0.2.9':
+    resolution: {integrity: sha512-6C2YruxroNn+51HKI9J5OP/Xy2geIJVf14eu5ViLC68A4uN8mgLMJDFjE6Ror+MGK6V4ON/i+X7RLKH8rz6WbA==}
+    peerDependencies:
+      viem: ^2.0.0
 
   '@rollup/pluginutils@5.1.3':
     resolution: {integrity: sha512-Pnsb6f32CD2W3uCaLZIzDmeFyQ2b8UWMFI7xtwUezpcGBDVDW6y9XgAWIlARiGAo6eNF5FK5aQTr0LFyNyqq5A==}
@@ -3770,6 +3810,14 @@ packages:
       typescript:
         optional: true
 
+  ox@0.6.9:
+    resolution: {integrity: sha512-wi5ShvzE4eOcTwQVsIPdFr+8ycyX+5le/96iAJutaZAvCes1J0+RvpEPg5QDPDiaR0XQQAvZVl7AwqQcINuUug==}
+    peerDependencies:
+      typescript: '>=5.4.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   p-filter@2.1.0:
     resolution: {integrity: sha512-ZBxxZ5sL2HghephhpGAQdoskxplTwr7ICaehZwLIlfL6acuVgZPm8yBNuRAFBGEqtD/hmUeq9eqLg2ys9Xr/yw==}
     engines: {node: '>=8'}
@@ -4326,6 +4374,9 @@ packages:
     resolution: {integrity: sha512-tWpi2TsODPScmi48b/OQZGi2lgUmBCHy6SZrhi/FdnnHiU1GwebbCfuQuxsC3nHaLwtYeJGPrDZDIeodDOc4pA==}
     engines: {node: '>= 18'}
 
+  solady@0.0.235:
+    resolution: {integrity: sha512-JUEXLDG7ag3HmqUnrDG7ilhafH6R9bFPpwV63O2kH4UbnS2+gRGEOqqy4k01O7tHjo3MWkDD0cpG+UY9pjy/fQ==}
+
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -4663,6 +4714,14 @@ packages:
       typescript:
         optional: true
 
+  viem@2.26.2:
+    resolution: {integrity: sha512-+yXSl1n+jV/Kn/zpETiNq0WOcINXti29nxdPIONvvNh+Es0VfeusW8bb2okVfa55pmuc8kOCOpB5wq3ZIUCTSA==}
+    peerDependencies:
+      typescript: '>=5.0.4'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   vite-node@2.1.2:
     resolution: {integrity: sha512-HPcGNN5g/7I2OtPjLqgOtCRu/qhVvBxTUD3qzitmL0SrG1cWFzxzhMDWussxSbrRYWqnKf8P2jiNhPMSN+ymsQ==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -4869,6 +4928,18 @@ packages:
       utf-8-validate:
         optional: true
 
+  ws@8.18.1:
+    resolution: {integrity: sha512-RKW2aJZMXeMxVpnZ6bck+RswznaxmzdULiBr6KY7XkTnW8uvt0iT9H5DkHUChXrc+uurzwa0rVI16n/Xzjdz1w==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xml-name-validator@5.0.0:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
     engines: {node: '>=18'}
@@ -4928,6 +4999,14 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
+
+  '@across-protocol/app-sdk@0.2.3(viem@2.23.6(typescript@5.8.3)(zod@3.23.8))':
+    dependencies:
+      viem: 2.23.6(typescript@5.8.3)(zod@3.23.8)
+
+  '@across-protocol/app-sdk@0.2.3(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))':
+    dependencies:
+      viem: 2.26.2(typescript@5.8.3)(zod@3.23.8)
 
   '@adraffy/ens-normalize@1.11.0': {}
 
@@ -5083,6 +5162,18 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
+
+  '@biconomy/abstractjs@1.0.18(@rhinestone/module-sdk@0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8)))(typescript@5.8.3)(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))':
+    dependencies:
+      '@rhinestone/module-sdk': 0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))
+      typescript: 5.8.3
+      viem: 2.26.2(typescript@5.8.3)(zod@3.23.8)
+
+  '@biconomy/abstractjs@1.0.18(@rhinestone/module-sdk@0.2.9(viem@2.23.6(typescript@5.8.3)(zod@3.23.8)))(typescript@5.8.3)(viem@2.23.6(typescript@5.8.3)(zod@3.23.8))':
+    dependencies:
+      '@rhinestone/module-sdk': 0.2.9(viem@2.23.6(typescript@5.8.3)(zod@3.23.8))
+      typescript: 5.8.3
+      viem: 2.23.6(typescript@5.8.3)(zod@3.23.8)
 
   '@biomejs/biome@1.9.3':
     optionalDependencies:
@@ -5599,6 +5690,25 @@ snapshots:
   '@mermaid-js/parser@0.4.0':
     dependencies:
       langium: 3.3.1
+
+  '@moonwell-fi/moonwell-sdk@file:src(typescript@5.8.3)(zod@3.23.8)':
+    dependencies:
+      '@across-protocol/app-sdk': 0.2.3(viem@2.23.6(typescript@5.8.3)(zod@3.23.8))
+      '@biconomy/abstractjs': 1.0.18(@rhinestone/module-sdk@0.2.9(viem@2.23.6(typescript@5.8.3)(zod@3.23.8)))(typescript@5.8.3)(viem@2.23.6(typescript@5.8.3)(zod@3.23.8))
+      '@rhinestone/module-sdk': 0.2.9(viem@2.23.6(typescript@5.8.3)(zod@3.23.8))
+      '@types/lodash': 4.17.10
+      '@types/node': 22.13.10
+      axios: 1.7.7
+      dayjs: 1.11.13
+      lodash: 4.17.21
+      viem: 2.23.6(typescript@5.8.3)(zod@3.23.8)
+    optionalDependencies:
+      typescript: 5.8.3
+    transitivePeerDependencies:
+      - bufferutil
+      - debug
+      - utf-8-validate
+      - zod
 
   '@noble/curves@1.8.1':
     dependencies:
@@ -6305,6 +6415,18 @@ snapshots:
       '@types/react': 19.1.6
 
   '@radix-ui/rect@1.1.0': {}
+
+  '@rhinestone/module-sdk@0.2.7(viem@2.26.2(typescript@5.8.3)(zod@3.23.8))':
+    dependencies:
+      solady: 0.0.235
+      tslib: 2.8.1
+      viem: 2.26.2(typescript@5.8.3)(zod@3.23.8)
+
+  '@rhinestone/module-sdk@0.2.9(viem@2.23.6(typescript@5.8.3)(zod@3.23.8))':
+    dependencies:
+      solady: 0.0.235
+      tslib: 2.8.1
+      viem: 2.23.6(typescript@5.8.3)(zod@3.23.8)
 
   '@rollup/pluginutils@5.1.3(rollup@4.34.9)':
     dependencies:
@@ -8157,6 +8279,10 @@ snapshots:
     dependencies:
       ws: 8.18.0
 
+  isows@1.0.6(ws@8.18.1):
+    dependencies:
+      ws: 8.18.1
+
   jackspeak@3.4.3:
     dependencies:
       '@isaacs/cliui': 8.0.2
@@ -9102,6 +9228,20 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
+  ox@0.6.9(typescript@5.8.3)(zod@3.23.8):
+    dependencies:
+      '@adraffy/ens-normalize': 1.11.0
+      '@noble/curves': 1.8.1
+      '@noble/hashes': 1.7.1
+      '@scure/bip32': 1.6.2
+      '@scure/bip39': 1.5.4
+      abitype: 1.0.8(typescript@5.8.3)(zod@3.23.8)
+      eventemitter3: 5.0.1
+    optionalDependencies:
+      typescript: 5.8.3
+    transitivePeerDependencies:
+      - zod
+
   p-filter@2.1.0:
     dependencies:
       p-map: 2.1.0
@@ -9785,6 +9925,8 @@ snapshots:
 
   smol-toml@1.3.0: {}
 
+  solady@0.0.235: {}
+
   source-map-js@1.2.1: {}
 
   source-map@0.7.4: {}
@@ -10097,6 +10239,23 @@ snapshots:
       - utf-8-validate
       - zod
 
+  viem@2.26.2(typescript@5.8.3)(zod@3.23.8):
+    dependencies:
+      '@noble/curves': 1.8.1
+      '@noble/hashes': 1.7.1
+      '@scure/bip32': 1.6.2
+      '@scure/bip39': 1.5.4
+      abitype: 1.0.8(typescript@5.8.3)(zod@3.23.8)
+      isows: 1.0.6(ws@8.18.1)
+      ox: 0.6.9(typescript@5.8.3)(zod@3.23.8)
+      ws: 8.18.1
+    optionalDependencies:
+      typescript: 5.8.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+
   vite-node@2.1.2(@types/node@22.13.10)(lightningcss@1.29.1):
     dependencies:
       cac: 6.7.14
@@ -10366,6 +10525,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.18.0: {}
+
+  ws@8.18.1: {}
 
   xml-name-validator@5.0.0: {}
 

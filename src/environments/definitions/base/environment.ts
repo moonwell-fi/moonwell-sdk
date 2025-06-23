@@ -27,7 +27,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "base",
     name: "Base",
-    chain: base,
+    chain: {
+      ...base,
+      rpcUrls: {
+        default: { http: rpcUrls || base.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : fallback([

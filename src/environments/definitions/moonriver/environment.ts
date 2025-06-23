@@ -14,7 +14,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "moonriver",
     name: "Moonriver",
-    chain: moonriver,
+    chain: {
+      ...moonriver,
+      rpcUrls: {
+        default: { http: rpcUrls || moonriver.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(moonriver.rpcUrls.default.http[0]),

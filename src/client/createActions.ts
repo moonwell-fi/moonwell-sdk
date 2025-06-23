@@ -1,5 +1,16 @@
 import type { Chain } from "viem";
 import {
+  type GetBeamTokenRoutesReturnType,
+  getBeamTokenRoutes,
+} from "../actions/beam/getBeamTokenRoutes.js";
+
+import {
+  type GetBeamQuoteParameters,
+  type GetBeamQuoteReturnType,
+  getBeamQuote,
+} from "../actions/beam/getBeamQuote.js";
+
+import {
   type GetMarketParameters,
   type GetMarketReturnType,
   getMarket,
@@ -11,6 +22,11 @@ import {
 } from "../actions/core/markets/getMarkets.js";
 import type { MoonwellClient } from "./createMoonwellClient.js";
 
+import {
+  type GetBeamTokenLimitsArgs,
+  type GetBeamTokenLimitsReturnType,
+  getBeamTokenLimits,
+} from "../actions/beam/getBeamTokenLimits.js";
 import {
   type GetUserBalancesParameters,
   type GetUserBalancesReturnType,
@@ -182,6 +198,16 @@ import type { Environment, SupportedChains } from "../environments/index.js";
 export type Actions<
   environments extends { [name in SupportedChains]?: Environment },
 > = {
+  getBeamQuote: <chain extends Chain | undefined = Chain | undefined>(
+    args: GetBeamQuoteParameters<environments, chain>,
+  ) => GetBeamQuoteReturnType;
+
+  getBeamTokenRoutes: () => GetBeamTokenRoutesReturnType;
+
+  getBeamTokenLimits: (
+    args: GetBeamTokenLimitsArgs,
+  ) => GetBeamTokenLimitsReturnType;
+
   getMarket: <chain extends Chain | undefined = Chain | undefined>(
     args: GetMarketParameters<environments, chain>,
   ) => GetMarketReturnType;
@@ -349,6 +375,9 @@ export const actions = <
   client: MoonwellClient<environments>,
 ): Actions<environments> => {
   return {
+    getBeamTokenLimits: (args) => getBeamTokenLimits(args),
+    getBeamQuote: (args) => getBeamQuote(client, args),
+    getBeamTokenRoutes: () => getBeamTokenRoutes(client),
     getMarket: (args) => getMarket(client, args),
     getMarkets: (args) => getMarkets(client, args),
     getUserPosition: (args) => getUserPosition(client, args),

@@ -17,7 +17,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "optimism",
     name: "OP Mainnet",
-    chain: optimism,
+    chain: {
+      ...optimism,
+      rpcUrls: {
+        default: { http: rpcUrls || optimism.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(optimism.rpcUrls.default.http[0]),

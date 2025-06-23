@@ -14,7 +14,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "ethereum",
     name: "Ethereum",
-    chain: ethereum,
+    chain: {
+      ...ethereum,
+      rpcUrls: {
+        default: { http: rpcUrls || ethereum.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(ethereum.rpcUrls.default.http[0]),

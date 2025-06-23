@@ -14,7 +14,12 @@ const createEnvironment = (
   createEnvironmentConfig({
     key: "polygon",
     name: "Polygon",
-    chain: polygon,
+    chain: {
+      ...polygon,
+      rpcUrls: {
+        default: { http: rpcUrls || polygon.rpcUrls.default.http },
+      },
+    },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http(polygon.rpcUrls.default.http[0]),
