@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.1
+
+### Patch Changes
+
+- [#130](https://github.com/moonwell-fi/moonwell-sdk/pull/130) [`47dce3aae3c916288d08c272fb5466bc288c2690`](https://github.com/moonwell-fi/moonwell-sdk/commit/47dce3aae3c916288d08c272fb5466bc288c2690) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Updated content-type header in generic API cache request
+
+- [#130](https://github.com/moonwell-fi/moonwell-sdk/pull/130) [`0bb80b0411565c531ce25f4db5954eda03bd9919`](https://github.com/moonwell-fi/moonwell-sdk/commit/0bb80b0411565c531ce25f4db5954eda03bd9919) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Updated RPC URL
+
 ## 0.8.0
 
 ### Minor Changes
