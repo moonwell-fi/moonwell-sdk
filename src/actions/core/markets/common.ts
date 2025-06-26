@@ -242,7 +242,10 @@ const fetchFromGenericCacheApi = async <T>(uri: string): Promise<T> => {
     {
       method: "POST",
       body: `{"uri":"${uri}","cacheDuration":"300"}`,
-      headers: MOONWELL_FETCH_JSON_HEADERS,
+      headers: {
+        ...MOONWELL_FETCH_JSON_HEADERS,
+        "Content-Type": "text/plain",
+      },
     },
   );
 
