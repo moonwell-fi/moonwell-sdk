@@ -6,12 +6,12 @@ export const moonwellClient = createMoonwellClient({
   networks: {
     base: {
       rpcUrls: [
-        "https://lb.drpc.org/ogrpc?network=base&dkey=ArZpyASIn0ebhYYuxCc42yE2a4V5UDQR8JJvrqRhf0fE",
+        "https://api-base-mainnet-archive.n.dwellir.com/5f017d19-2181-4eac-97c9-0f7574323e35",
       ],
     },
     moonbeam: {
       rpcUrls: [
-        "https://lb.drpc.org/ogrpc?network=moonbeam&dkey=ArZpyASIn0ebhYYuxCc42yE2a4V5UDQR8JJvrqRhf0fE",
+        "https://api-moonbeam.dwellir.com/5f017d19-2181-4eac-97c9-0f7574323e35",
       ],
     },
   },
