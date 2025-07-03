@@ -160,7 +160,7 @@ export async function getDelegates(
 const getDelegatesExtendedData = async (params: {
   users: string[];
 }) => {
-  const response = await axios.post<{
+  type ResponseType = {
     data: {
       proposers: {
         items: {
@@ -172,72 +172,223 @@ const getDelegatesExtendedData = async (params: {
             }[];
           };
         }[];
+        pageInfo: {
+          hasNextPage: boolean;
+          endCursor: string;
+        };
       };
-      voters: {
+      votes: {
         items: {
           id: string;
-          votes: {
-            items: {
-              proposal: {
-                chainId: number;
-              };
-            }[];
+          voter: string;
+          proposalId: string;
+          proposal: {
+            chainId: number;
           };
         }[];
+        pageInfo: {
+          hasNextPage: boolean;
+          endCursor: string;
+        };
+      };
+      collectorVotes: {
+        items: {
+          id: string;
+          voter: string;
+          proposalId: string;
+          proposal: {
+            chainId: number;
+          };
+        }[];
+        pageInfo: {
+          hasNextPage: boolean;
+          endCursor: string;
+        };
       };
     };
-  }>(publicEnvironments.moonbeam.governanceIndexerUrl, {
-    query: `
-      query {
-        proposers(where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}) {
-          items {
-            id
-            proposals(limit: 1000) {
-              items {
-                chainId
-                proposalId
-              }
-            }
-          }
-        }
-        voters(where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}) {
-          items {
-            id
-            votes(limit: 1000) {
-              items {
-                voter
-                proposal {
+  };
+
+  let hasNextPageVotes = true;
+  let hasNextPageCollectorVotes = true;
+  let hasNextPageProposers = true;
+  let endCursorVotes: string | undefined;
+  let endCursorCollectorVotes: string | undefined;
+  let endCursorProposers: string | undefined;
+  const MAX_PAGES = 8;
+  let pageCount = 0;
+
+  const votes: ResponseType["data"]["votes"]["items"] = [];
+  const collectorVotes: ResponseType["data"]["collectorVotes"]["items"] = [];
+  const proposers: ResponseType["data"]["proposers"]["items"] = [];
+
+  while (
+    (hasNextPageVotes || hasNextPageCollectorVotes || hasNextPageProposers) &&
+    pageCount < MAX_PAGES
+  ) {
+    pageCount++;
+    const response: { data: ResponseType } = await axios.post(
+      publicEnvironments.moonbeam.governanceIndexerUrl,
+      {
+        query: `
+        query {
+          ${
+            hasNextPageProposers
+              ? `
+          proposers(
+            where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}
+            limit: 1000
+            ${endCursorProposers ? `after: "${endCursorProposers}"` : ""}
+          ) {
+            items {
+              id
+              proposals(limit: 1000) {
+                items {
                   chainId
+                  proposalId
                 }
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+          `
+              : ""
+          }
+          ${
+            hasNextPageVotes
+              ? `
+          votes(
+            where: {voter_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}
+            limit: 1000
+            ${endCursorVotes ? `after: "${endCursorVotes}"` : ""}
+          ) {
+            items {
+              id
+              voter
+              proposalId
+              proposal {
+                chainId
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+          `
+              : ""
+          }
+          ${
+            hasNextPageCollectorVotes
+              ? `
+          collectorVotes(
+            where: {voter_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}
+            limit: 1000
+            ${endCursorCollectorVotes ? `after: "${endCursorCollectorVotes}"` : ""}
+          ) {
+            items {
+              id
+              voter
+              proposalId
+              proposal {
+                chainId
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+          `
+              : ""
           }
         }
-      }
-    `,
-  });
+      `,
+      },
+    );
 
-  if (response.status === 200 && response.data?.data?.voters) {
-    const voters = response?.data?.data?.voters?.items.reduce(
-      (prev, curr) => {
+    if (hasNextPageProposers && response.data?.data?.proposers) {
+      proposers.push(...response.data.data.proposers.items);
+      hasNextPageProposers = response.data.data.proposers.pageInfo.hasNextPage;
+      endCursorProposers = response.data.data.proposers.pageInfo.endCursor;
+    }
+
+    if (hasNextPageVotes && response.data?.data?.votes) {
+      votes.push(...response.data.data.votes.items);
+      hasNextPageVotes = response.data.data.votes.pageInfo.hasNextPage;
+      endCursorVotes = response.data.data.votes.pageInfo.endCursor;
+    }
+
+    if (hasNextPageCollectorVotes && response.data?.data?.collectorVotes) {
+      collectorVotes.push(...response.data.data.collectorVotes.items);
+      hasNextPageCollectorVotes =
+        response.data.data.collectorVotes.pageInfo.hasNextPage;
+      endCursorCollectorVotes =
+        response.data.data.collectorVotes.pageInfo.endCursor;
+    }
+  }
+
+  const response: ResponseType = {
+    data: {
+      proposers: {
+        items: proposers,
+        pageInfo: {
+          hasNextPage: false,
+          endCursor: "",
+        },
+      },
+      votes: {
+        items: votes,
+        pageInfo: {
+          hasNextPage: false,
+          endCursor: "",
+        },
+      },
+      collectorVotes: {
+        items: collectorVotes,
+        pageInfo: {
+          hasNextPage: false,
+          endCursor: "",
+        },
+      },
+    },
+  };
+
+  if (response.data?.votes) {
+    const allVotes = [
+      ...(response.data?.votes?.items || []),
+      ...(response.data?.collectorVotes?.items || []),
+    ];
+
+    // Group votes by voter and proposalId
+    const uniqueVotesByProposal = allVotes.reduce((acc, vote) => {
+      const key = `${vote.voter.toLowerCase()}-${vote.proposalId}`;
+      if (!acc.has(key)) {
+        acc.set(key, vote);
+      }
+      return acc;
+    }, new Map<string, (typeof allVotes)[0]>());
+
+    const voters = Array.from(uniqueVotesByProposal.values()).reduce(
+      (prevVotes, currVotes) => {
+        const previousVotes =
+          prevVotes[currVotes.voter.toLowerCase()]?.[
+            currVotes.proposal.chainId
+          ] || 0;
         return {
-          ...prev,
-          [curr.id.toLowerCase()]: curr.votes.items.reduce(
-            (prevVotes, currVotes) => {
-              const previousVotes = prevVotes[currVotes.proposal.chainId] || 0;
-              return {
-                ...prevVotes,
-                [currVotes.proposal.chainId]: previousVotes + 1,
-              };
-            },
-            {} as { [chainId: string]: number },
-          ),
+          ...prevVotes,
+          [currVotes.voter.toLowerCase()]: {
+            ...(prevVotes[currVotes.voter.toLowerCase()] || {}),
+            [currVotes.proposal.chainId]: previousVotes + 1,
+          },
         };
       },
       {} as { [voter: string]: { [chainId: string]: number } },
     );
 
-    const proposers = response?.data?.data?.proposers?.items.reduce(
+    const proposers = response?.data?.proposers?.items.reduce(
       (prev, curr) => {
         return {
           ...prev,

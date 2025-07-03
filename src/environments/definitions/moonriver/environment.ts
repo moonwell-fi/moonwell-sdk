@@ -22,7 +22,8 @@ const createEnvironment = (
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(moonriver.rpcUrls.default.http[0]),
+      : // : http(moonriver.rpcUrls.default.http[0]), // Blastapi discontinued support for moonriver
+        http("https://moonriver.drpc.org"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
     tokens,
