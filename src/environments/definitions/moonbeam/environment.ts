@@ -22,7 +22,7 @@ const createEnvironment = (
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(moonbeam.rpcUrls.default.http[0]),
+      : http("https://rpc.api.moonbeam.network"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
     tokens,
