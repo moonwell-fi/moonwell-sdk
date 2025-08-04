@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.2
+
+### Patch Changes
+
+- [#132](https://github.com/moonwell-fi/moonwell-sdk/pull/132) [`97f076894a9ee6e0754fa37f628ee4192c0b0480`](https://github.com/moonwell-fi/moonwell-sdk/commit/97f076894a9ee6e0754fa37f628ee4192c0b0480) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Change moonbeam rpc
+
 ## 0.8.1
 
 ### Patch Changes
