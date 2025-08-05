@@ -220,7 +220,7 @@ export async function getUserMorphoRewardsData(params: {
           (morphoAsset?.priceUsd ?? reward.token.price ?? 0);
 
         const merklReward: MorphoUserReward = {
-          type: "uniform-reward",
+          type: "merkl-reward",
           chainId: chainData.chain.id,
           account: params.account,
           rewardToken,
@@ -267,7 +267,7 @@ export async function getUserMorphoRewardsData(params: {
         claimableFuture.value * (reward.token.price ?? 0);
 
       const merklReward: MorphoUserReward = {
-        type: "uniform-reward",
+        type: "merkl-reward",
         chainId: chainData.chain.id,
         account: params.account,
         rewardToken,
