@@ -17,6 +17,7 @@ export type GetMorphoVaultParameters<
 > = NetworkParameterType<environments, network> &
   MorphoVaultParameterType<network> & {
     includeRewards?: boolean | undefined;
+    currentChainRewardsOnly?: boolean | undefined;
   };
 
 export type GetMorphoVaultReturnType = Promise<MorphoVault | undefined>;
@@ -47,6 +48,7 @@ export async function getMorphoVault<
     environments: [environment],
     vaults: [vaultAddress],
     includeRewards: args.includeRewards ?? false,
+    currentChainRewardsOnly: args.currentChainRewardsOnly ?? false,
   });
 
   return first(results);
