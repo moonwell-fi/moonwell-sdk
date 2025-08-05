@@ -1,5 +1,15 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.3
+
+### Patch Changes
+
+- [#134](https://github.com/moonwell-fi/moonwell-sdk/pull/134) [`e219440dea62cbf805e7a141e2199f29d24a67a2`](https://github.com/moonwell-fi/moonwell-sdk/commit/e219440dea62cbf805e7a141e2199f29d24a67a2) Thanks [@Leoakin43](https://github.com/Leoakin43)! - add parameter to filter rewards by current chain
+
+- [#134](https://github.com/moonwell-fi/moonwell-sdk/pull/134) [`3ea1dd5ada18ae25a5319e0cb33341c0c9385321`](https://github.com/moonwell-fi/moonwell-sdk/commit/3ea1dd5ada18ae25a5319e0cb33341c0c9385321) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fetch rewards from Merkl API
+
+- [#134](https://github.com/moonwell-fi/moonwell-sdk/pull/134) [`36478bdca8e3011c0f6370622abb28fe08154085`](https://github.com/moonwell-fi/moonwell-sdk/commit/36478bdca8e3011c0f6370622abb28fe08154085) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fix chain filter for rewards
+
 ## 0.8.2
 
 ### Patch Changes
