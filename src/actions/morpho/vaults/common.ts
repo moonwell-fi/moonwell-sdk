@@ -28,6 +28,7 @@ export async function getMorphoVaultsData(params: {
   environments: Environment[];
   vaults?: string[];
   includeRewards?: boolean;
+  currentChainRewardsOnly?: boolean;
 }): Promise<MorphoVault[]> {
   const { environments } = params;
 
@@ -363,7 +364,10 @@ export async function getMorphoVaultsData(params: {
         return environment?.custom.morpho?.minimalDeployment === false;
       });
 
-    const rewards = await getMorphoVaultsRewards(vaults);
+    const rewards = await getMorphoVaultsRewards(
+      vaults,
+      params.currentChainRewardsOnly,
+    );
 
     vaults.forEach((vault) => {
       const vaultRewards = rewards.find(
@@ -531,6 +535,7 @@ type GetMorphoVaultsRewardsResult = {
 
 export async function getMorphoVaultsRewards(
   vaults: MorphoVault[],
+  currentChainRewardsOnly?: boolean,
 ): Promise<GetMorphoVaultsRewardsResult[]> {
   const query = `
   {
@@ -553,6 +558,9 @@ export async function getMorphoVaultsRewards(
               symbol
               decimals
               name
+              chain {
+                id
+              }
             }
             supplyApr
             amountPerSuppliedToken
@@ -584,6 +592,9 @@ export async function getMorphoVaultsRewards(
                 symbol
                 decimals
                 name
+                chain {
+                  id
+                }
               }
               supplyApr
               amountPerSuppliedToken
@@ -612,6 +623,9 @@ export async function getMorphoVaultsRewards(
               symbol: string;
               decimals: number;
               name: string;
+              chain: {
+                id: number;
+              };
             };
             supplyApr: number;
             amountPerSuppliedToken: string;
@@ -641,6 +655,9 @@ export async function getMorphoVaultsRewards(
                 symbol: string;
                 decimals: number;
                 name: string;
+                chain: {
+                  id: number;
+                };
               };
               supplyApr: number;
               amountPerSuppliedToken: string;
@@ -663,7 +680,7 @@ export async function getMorphoVaultsRewards(
           const amount = Number(tokenAmountPer1000) / tokenDecimals;
 
           return {
-            chainId: item.market.morphoBlue.chain.id,
+            chainId: reward.asset.chain.id,
             vaultId: item.user.address,
             marketId: item.market.uniqueKey,
             asset: reward.asset,
@@ -686,7 +703,7 @@ export async function getMorphoVaultsRewards(
           const amount = Number(tokenAmountPer1000) / tokenDecimals;
 
           return {
-            chainId: item.chain.id,
+            chainId: reward.asset.chain.id,
             vaultId: item.address,
             marketId: undefined,
             asset: reward.asset,
@@ -708,7 +725,7 @@ export async function getMorphoVaultsRewards(
             .filter(
               (reward) =>
                 reward.vaultId === vault.vaultToken.address &&
-                reward.chainId === vault.chainId,
+                (reward.chainId === vault.chainId || !currentChainRewardsOnly),
             )
             .map((reward) => {
               return {

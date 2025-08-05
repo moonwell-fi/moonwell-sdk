@@ -11,6 +11,7 @@ export type GetMorphoVaultsParameters<
   network extends Chain | undefined,
 > = OptionalNetworkParameterType<environments, network> & {
   includeRewards?: boolean | undefined;
+  currentChainRewardsOnly?: boolean | undefined;
 };
 
 export type GetMorphoVaultsReturnType = Promise<MorphoVault[]>;
@@ -29,6 +30,7 @@ export async function getMorphoVaults<
   const result = await getMorphoVaultsData({
     environments: environments,
     includeRewards: args?.includeRewards ?? false,
+    currentChainRewardsOnly: args?.currentChainRewardsOnly ?? false,
   });
 
   logger.end(logId);
