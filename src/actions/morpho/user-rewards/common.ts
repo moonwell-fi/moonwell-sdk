@@ -20,13 +20,16 @@ export async function getUserMorphoRewardsData(params: {
   environment: Environment;
   account: `0x${string}`;
 }): Promise<MorphoUserReward[]> {
-  if (params.environment.custom.morpho?.minimalDeployment === false) {
-    // Fetch both Morpho and Merkl rewards
-    const [morphoRewards, merklRewards] = await Promise.all([
-      getMorphoRewardsData(params.environment.chainId, params.account),
-      getMerklRewardsData(params.environment, params.account),
-    ]);
+  const merklRewards = await getMerklRewardsData(
+    params.environment,
+    params.account,
+  );
 
+  if (params.environment.custom.morpho?.minimalDeployment === false) {
+    const morphoRewards = await getMorphoRewardsData(
+      params.environment.chainId,
+      params.account,
+    );
     // Process Morpho rewards
     const morphoAssets = await getMorphoAssetsData(
       morphoRewards.map((r) => r.asset.address),
@@ -217,7 +220,7 @@ export async function getUserMorphoRewardsData(params: {
           (morphoAsset?.priceUsd ?? reward.token.price ?? 0);
 
         const merklReward: MorphoUserReward = {
-          type: "merkl-reward",
+          type: "uniform-reward",
           chainId: chainData.chain.id,
           account: params.account,
           rewardToken,
@@ -240,7 +243,45 @@ export async function getUserMorphoRewardsData(params: {
     return allResults;
   }
 
-  return [];
+  const merklResult: MorphoUserReward[] = [];
+
+  for (const chainData of merklRewards) {
+    for (const reward of chainData.rewards) {
+      const rewardToken: TokenConfig = {
+        address: reward.token.address as Address,
+        decimals: reward.token.decimals,
+        symbol: reward.token.symbol,
+        name: reward.token.symbol,
+      };
+
+      const claimableNow = new Amount(
+        BigInt(reward.amount),
+        rewardToken.decimals,
+      );
+      const claimableNowUsd = claimableNow.value * (reward.token.price ?? 0);
+      const claimableFuture = new Amount(
+        BigInt(reward.pending),
+        rewardToken.decimals,
+      );
+      const claimableFutureUsd =
+        claimableFuture.value * (reward.token.price ?? 0);
+
+      const merklReward: MorphoUserReward = {
+        type: "uniform-reward",
+        chainId: chainData.chain.id,
+        account: params.account,
+        rewardToken,
+        claimableNow,
+        claimableNowUsd,
+        claimableFuture,
+        claimableFutureUsd,
+      };
+
+      merklResult.push(merklReward);
+    }
+  }
+
+  return merklResult;
 }
 
 export async function getUserMorphoStakingRewardsData(params: {
