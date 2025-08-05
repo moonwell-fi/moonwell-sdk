@@ -15,6 +15,16 @@ export type MorphoUserReward =
       claimableFutureUsd: number;
     }
   | {
+      type: "merkl-reward";
+      chainId: number;
+      account: Address;
+      rewardToken: TokenConfig;
+      claimableNow: Amount;
+      claimableNowUsd: number;
+      claimableFuture: Amount;
+      claimableFutureUsd: number;
+    }
+  | {
       type: "market-reward";
       chainId: number;
       account: Address;

@@ -21,166 +21,223 @@ export async function getUserMorphoRewardsData(params: {
   account: `0x${string}`;
 }): Promise<MorphoUserReward[]> {
   if (params.environment.custom.morpho?.minimalDeployment === false) {
-    const rewards = await getMorphoRewardsData(
-      params.environment.chainId,
-      params.account,
+    // Fetch both Morpho and Merkl rewards
+    const [morphoRewards, merklRewards] = await Promise.all([
+      getMorphoRewardsData(params.environment.chainId, params.account),
+      getMerklRewardsData(params.environment, params.account),
+    ]);
+
+    // Process Morpho rewards
+    const morphoAssets = await getMorphoAssetsData(
+      morphoRewards.map((r) => r.asset.address),
     );
 
-    const assets = await getMorphoAssetsData(
-      rewards.map((r) => r.asset.address),
-    );
+    const morphoResult: (MorphoUserReward | undefined)[] = morphoRewards.map(
+      (r) => {
+        const asset = morphoAssets.find(
+          (a) => a.address.toLowerCase() === r.asset.address.toLowerCase(),
+        );
 
-    const result: (MorphoUserReward | undefined)[] = rewards.map((r) => {
-      const asset = assets.find(
-        (a) => a.address.toLowerCase() === r.asset.address.toLowerCase(),
-      );
-
-      if (!asset) {
-        return undefined;
-      }
-
-      const rewardToken: TokenConfig = {
-        address: asset.address,
-        decimals: asset.decimals,
-        symbol: asset.symbol,
-        name: asset.name,
-      };
-
-      switch (r.type) {
-        case "uniform-reward": {
-          const claimableNow = new Amount(
-            BigInt(r.amount?.claimable_now || 0),
-            rewardToken.decimals,
-          );
-          const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
-          const claimableFuture = new Amount(
-            BigInt(r.amount?.claimable_next || 0),
-            rewardToken.decimals,
-          );
-          const claimableFutureUsd =
-            claimableFuture.value * (asset.priceUsd || 0);
-
-          const uniformReward: MorphoUserReward = {
-            type: "uniform-reward",
-            chainId: r.asset.chain_id,
-            account: r.user,
-            rewardToken,
-            claimableNow,
-            claimableNowUsd,
-            claimableFuture,
-            claimableFutureUsd,
-          };
-          return uniformReward;
+        if (!asset) {
+          return undefined;
         }
 
-        case "market-reward": {
-          const claimableNow = new Amount(
-            BigInt(r.for_supply?.claimable_now || 0),
-            rewardToken.decimals,
-          );
-          const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+        const rewardToken: TokenConfig = {
+          address: asset.address,
+          decimals: asset.decimals,
+          symbol: asset.symbol,
+          name: asset.name,
+        };
 
-          const claimableFuture = new Amount(
-            BigInt(r.for_supply?.claimable_next || 0),
-            rewardToken.decimals,
-          );
-          const claimableFutureUsd =
-            claimableFuture.value * (asset.priceUsd || 0);
+        switch (r.type) {
+          case "uniform-reward": {
+            const claimableNow = new Amount(
+              BigInt(r.amount?.claimable_now || 0),
+              rewardToken.decimals,
+            );
+            const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+            const claimableFuture = new Amount(
+              BigInt(r.amount?.claimable_next || 0),
+              rewardToken.decimals,
+            );
+            const claimableFutureUsd =
+              claimableFuture.value * (asset.priceUsd || 0);
 
-          const collateralClaimableNow = new Amount(
-            BigInt(r.for_collateral?.claimable_now || 0),
-            rewardToken.decimals,
-          );
-          const collateralClaimableNowUsd =
-            collateralClaimableNow.value * (asset.priceUsd || 0);
-          const collateralClaimableFuture = new Amount(
-            BigInt(r.for_collateral?.claimable_next || 0),
-            rewardToken.decimals,
-          );
-          const collateralClaimableFutureUsd =
-            collateralClaimableFuture.value * (asset.priceUsd || 0);
-
-          const borrowClaimableNow = new Amount(
-            BigInt(r.for_borrow?.claimable_now || 0),
-            rewardToken.decimals,
-          );
-          const borrowClaimableNowUsd =
-            borrowClaimableNow.value * (asset.priceUsd || 0);
-          const borrowClaimableFuture = new Amount(
-            BigInt(r.for_borrow?.claimable_next || 0),
-            rewardToken.decimals,
-          );
-          const borrowClaimableFutureUsd =
-            borrowClaimableFuture.value * (asset.priceUsd || 0);
-
-          //Rewards reallocated to vaults are reported as vault rewards
-          if (r.reallocated_from) {
-            const vaultReward: MorphoUserReward = {
-              type: "vault-reward",
-              chainId: r.program.chain_id,
+            const uniformReward: MorphoUserReward = {
+              type: "uniform-reward",
+              chainId: r.asset.chain_id,
               account: r.user,
-              vaultId: r.reallocated_from,
               rewardToken,
               claimableNow,
               claimableNowUsd,
               claimableFuture,
               claimableFutureUsd,
             };
-            return vaultReward;
-          } else {
-            const marketReward: MorphoUserReward = {
-              type: "market-reward",
+            return uniformReward;
+          }
+
+          case "market-reward": {
+            const claimableNow = new Amount(
+              BigInt(r.for_supply?.claimable_now || 0),
+              rewardToken.decimals,
+            );
+            const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+
+            const claimableFuture = new Amount(
+              BigInt(r.for_supply?.claimable_next || 0),
+              rewardToken.decimals,
+            );
+            const claimableFutureUsd =
+              claimableFuture.value * (asset.priceUsd || 0);
+
+            const collateralClaimableNow = new Amount(
+              BigInt(r.for_collateral?.claimable_now || 0),
+              rewardToken.decimals,
+            );
+            const collateralClaimableNowUsd =
+              collateralClaimableNow.value * (asset.priceUsd || 0);
+            const collateralClaimableFuture = new Amount(
+              BigInt(r.for_collateral?.claimable_next || 0),
+              rewardToken.decimals,
+            );
+            const collateralClaimableFutureUsd =
+              collateralClaimableFuture.value * (asset.priceUsd || 0);
+
+            const borrowClaimableNow = new Amount(
+              BigInt(r.for_borrow?.claimable_now || 0),
+              rewardToken.decimals,
+            );
+            const borrowClaimableNowUsd =
+              borrowClaimableNow.value * (asset.priceUsd || 0);
+            const borrowClaimableFuture = new Amount(
+              BigInt(r.for_borrow?.claimable_next || 0),
+              rewardToken.decimals,
+            );
+            const borrowClaimableFutureUsd =
+              borrowClaimableFuture.value * (asset.priceUsd || 0);
+
+            //Rewards reallocated to vaults are reported as vault rewards
+            if (r.reallocated_from) {
+              const vaultReward: MorphoUserReward = {
+                type: "vault-reward",
+                chainId: r.program.chain_id,
+                account: r.user,
+                vaultId: r.reallocated_from,
+                rewardToken,
+                claimableNow,
+                claimableNowUsd,
+                claimableFuture,
+                claimableFutureUsd,
+              };
+              return vaultReward;
+            } else {
+              const marketReward: MorphoUserReward = {
+                type: "market-reward",
+                chainId: r.program.chain_id,
+                account: r.user,
+                marketId: r.program.market_id || "",
+                rewardToken,
+                collateralRewards: {
+                  claimableNow: collateralClaimableNow,
+                  claimableNowUsd: collateralClaimableNowUsd,
+                  claimableFuture: collateralClaimableFuture,
+                  claimableFutureUsd: collateralClaimableFutureUsd,
+                },
+                borrowRewards: {
+                  claimableNow: borrowClaimableNow,
+                  claimableNowUsd: borrowClaimableNowUsd,
+                  claimableFuture: borrowClaimableFuture,
+                  claimableFutureUsd: borrowClaimableFutureUsd,
+                },
+              };
+              return marketReward;
+            }
+          }
+          case "vault-reward": {
+            const claimableNow = new Amount(
+              BigInt(r.for_supply?.claimable_now || 0),
+              rewardToken.decimals,
+            );
+            const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
+            const claimableFuture = new Amount(
+              BigInt(r.for_supply?.claimable_next || 0),
+              rewardToken.decimals,
+            );
+            const claimableFutureUsd =
+              claimableFuture.value * (asset.priceUsd || 0);
+
+            const vaultReward: MorphoUserReward = {
+              type: "vault-reward",
               chainId: r.program.chain_id,
               account: r.user,
-              marketId: r.program.market_id || "",
+              vaultId: r.program.vault,
               rewardToken,
-              collateralRewards: {
-                claimableNow: collateralClaimableNow,
-                claimableNowUsd: collateralClaimableNowUsd,
-                claimableFuture: collateralClaimableFuture,
-                claimableFutureUsd: collateralClaimableFutureUsd,
-              },
-              borrowRewards: {
-                claimableNow: borrowClaimableNow,
-                claimableNowUsd: borrowClaimableNowUsd,
-                claimableFuture: borrowClaimableFuture,
-                claimableFutureUsd: borrowClaimableFutureUsd,
-              },
+              claimableNow,
+              claimableNowUsd,
+              claimableFuture,
+              claimableFutureUsd,
             };
-            return marketReward;
+
+            return vaultReward;
           }
         }
-        case "vault-reward": {
-          const claimableNow = new Amount(
-            BigInt(r.for_supply?.claimable_now || 0),
-            rewardToken.decimals,
-          );
-          const claimableNowUsd = claimableNow.value * (asset.priceUsd || 0);
-          const claimableFuture = new Amount(
-            BigInt(r.for_supply?.claimable_next || 0),
-            rewardToken.decimals,
-          );
-          const claimableFutureUsd =
-            claimableFuture.value * (asset.priceUsd || 0);
+      },
+    );
 
-          const vaultReward: MorphoUserReward = {
-            type: "vault-reward",
-            chainId: r.program.chain_id,
-            account: r.user,
-            vaultId: r.program.vault,
-            rewardToken,
-            claimableNow,
-            claimableNowUsd,
-            claimableFuture,
-            claimableFutureUsd,
-          };
+    // Process Merkl rewards
+    const merklResult: MorphoUserReward[] = [];
 
-          return vaultReward;
-        }
+    for (const chainData of merklRewards) {
+      for (const reward of chainData.rewards) {
+        // Try to find token info in morphoAssets first
+        const morphoAsset = morphoAssets.find(
+          (a) => a.address.toLowerCase() === reward.token.address.toLowerCase(),
+        );
+
+        const rewardToken: TokenConfig = {
+          address: reward.token.address as Address,
+          decimals: morphoAsset?.decimals ?? reward.token.decimals,
+          symbol: morphoAsset?.symbol ?? reward.token.symbol,
+          name: morphoAsset?.name ?? reward.token.symbol,
+        };
+
+        const claimableNow = new Amount(
+          BigInt(reward.amount),
+          rewardToken.decimals,
+        );
+        const claimableNowUsd =
+          claimableNow.value *
+          (morphoAsset?.priceUsd ?? reward.token.price ?? 0);
+        const claimableFuture = new Amount(
+          BigInt(reward.pending),
+          rewardToken.decimals,
+        );
+        const claimableFutureUsd =
+          claimableFuture.value *
+          (morphoAsset?.priceUsd ?? reward.token.price ?? 0);
+
+        const merklReward: MorphoUserReward = {
+          type: "merkl-reward",
+          chainId: chainData.chain.id,
+          account: params.account,
+          rewardToken,
+          claimableNow,
+          claimableNowUsd,
+          claimableFuture,
+          claimableFutureUsd,
+        };
+
+        merklResult.push(merklReward);
       }
-    });
+    }
 
-    return result.filter((r) => r !== undefined) as MorphoUserReward[];
+    // Combine both results
+    const allResults = [
+      ...(morphoResult.filter((r) => r !== undefined) as MorphoUserReward[]),
+      ...merklResult,
+    ];
+
+    return allResults;
   }
 
   return [];
@@ -384,7 +441,7 @@ async function getMorphoRewardsData(
   account: Address,
 ): Promise<MorphoRewardsResponse[]> {
   const rewardsRequest = await fetch(
-    `https://rewards.morpho.org/v1/users/${account}/rewards?chain_id=${chainId}`,
+    `https://rewards.morpho.org/v1/users/${account}/rewards?chain_id=${chainId}&trusted=true&exclude_merkl_programs=true`,
     {
       headers: MOONWELL_FETCH_JSON_HEADERS,
     },
@@ -419,4 +476,183 @@ async function getMorphoAssetsData(
     return rewardsRequest.assets.items;
   }
   return [];
+}
+
+type MerklRewardsResponse = {
+  chain: {
+    id: number;
+    name: string;
+    icon: string;
+    liveCampaigns: number;
+    endOfDisputePeriod: number;
+    Explorer: Array<{
+      id: string;
+      type: string;
+      url: string;
+      chainId: number;
+    }>;
+  };
+  rewards: Array<{
+    root: string;
+    recipient: string;
+    amount: string;
+    claimed: string;
+    pending: string;
+    proofs: string[];
+    token: {
+      address: string;
+      chainId: number;
+      symbol: string;
+      decimals: number;
+      price: number;
+    };
+    breakdowns: Array<{
+      reason: string;
+      amount: string;
+      claimed: string;
+      pending: string;
+      campaignId: string;
+      subCampaignId?: string;
+    }>;
+  }>;
+};
+
+// Types for Merkl Opportunities API
+type MerklToken = {
+  id: string;
+  name: string;
+  chainId: number;
+  address: string;
+  decimals: number;
+  symbol: string;
+  displaySymbol: string;
+  icon: string;
+  verified: boolean;
+  isTest: boolean;
+  type: string;
+  isNative: boolean;
+  price: number;
+};
+
+type MerklRewardBreakdown = {
+  token: MerklToken;
+  amount: string;
+  value: number;
+  distributionType: string;
+  id: string;
+  timestamp: string;
+  campaignId: string;
+  dailyRewardsRecordId: string;
+};
+
+type MerklOpportunity = {
+  chainId: number;
+  type: string;
+  identifier: string;
+  name: string;
+  description: string;
+  howToSteps: string[];
+  status: string;
+  action: string;
+  tvl: number;
+  apr: number;
+  dailyRewards: number;
+  tags: any[];
+  id: string;
+  depositUrl: string;
+  explorerAddress: string;
+  lastCampaignCreatedAt: number;
+  aprRecord: {
+    cumulated: number;
+    timestamp: string;
+    breakdowns: {
+      distributionType: string;
+      identifier: string;
+      type: string;
+      value: number;
+      timestamp: string;
+    }[];
+  };
+  rewardsRecord: {
+    id: string;
+    total: number;
+    timestamp: string;
+    breakdowns: MerklRewardBreakdown[];
+  };
+};
+
+async function getMerklRewardsData(
+  environment: Environment,
+  account: Address,
+): Promise<MerklRewardsResponse[]> {
+  try {
+    // Get unique chain IDs from vault opportunities
+    const chainIdsPromises = Object.values(environment.config.vaults).map(
+      async (vault) => {
+        try {
+          const response = await fetch(
+            `https://api.merkl.xyz/v4/opportunities?identifier=${environment.config.tokens[vault.vaultToken]?.address}&chainId=${environment.chainId}&status=LIVE`,
+            {
+              headers: MOONWELL_FETCH_JSON_HEADERS,
+            },
+          );
+
+          if (!response.ok) {
+            console.warn(
+              `Failed to fetch opportunities: ${response.status} ${response.statusText}`,
+            );
+            return [];
+          }
+
+          const data: MerklOpportunity[] = await response.json();
+          return data.flatMap((opportunity) =>
+            opportunity.rewardsRecord.breakdowns.map(
+              (breakdown) => breakdown.token.chainId,
+            ),
+          );
+        } catch (error) {
+          console.warn(
+            `Error fetching opportunities for vault ${vault.vaultToken}:`,
+            error,
+          );
+          return [];
+        }
+      },
+    );
+
+    const chainIds = [...new Set((await Promise.all(chainIdsPromises)).flat())];
+
+    // Fetch rewards for each unique chain ID
+    const rewardsPromises = chainIds.map(async (chainId) => {
+      try {
+        const response = await fetch(
+          `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}`,
+          {
+            headers: MOONWELL_FETCH_JSON_HEADERS,
+          },
+        );
+
+        if (!response.ok) {
+          console.warn(
+            `Merkl API request failed: ${response.status} ${response.statusText}`,
+          );
+          return [];
+        }
+
+        return (await response.json()) as MerklRewardsResponse[];
+      } catch (error) {
+        console.warn(
+          `Error fetching Merkl rewards for chain ${chainId}:`,
+          error,
+        );
+        return [];
+      }
+    });
+
+    const allRewards = await Promise.all(rewardsPromises);
+    return allRewards.flat();
+  } catch (error) {
+    console.error("Error in getMerklRewardsData:", error);
+    return [];
+  }
 }
