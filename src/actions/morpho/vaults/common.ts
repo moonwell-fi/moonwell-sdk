@@ -553,6 +553,9 @@ export async function getMorphoVaultsRewards(
               symbol
               decimals
               name
+              chain {
+                id
+              }
             }
             supplyApr
             amountPerSuppliedToken
@@ -584,6 +587,9 @@ export async function getMorphoVaultsRewards(
                 symbol
                 decimals
                 name
+                chain {
+                  id
+                }
               }
               supplyApr
               amountPerSuppliedToken
@@ -612,6 +618,9 @@ export async function getMorphoVaultsRewards(
               symbol: string;
               decimals: number;
               name: string;
+              chain: {
+                id: number;
+              };
             };
             supplyApr: number;
             amountPerSuppliedToken: string;
@@ -641,6 +650,9 @@ export async function getMorphoVaultsRewards(
                 symbol: string;
                 decimals: number;
                 name: string;
+                chain: {
+                  id: number;
+                };
               };
               supplyApr: number;
               amountPerSuppliedToken: string;
@@ -663,7 +675,7 @@ export async function getMorphoVaultsRewards(
           const amount = Number(tokenAmountPer1000) / tokenDecimals;
 
           return {
-            chainId: item.market.morphoBlue.chain.id,
+            chainId: reward.asset.chain.id,
             vaultId: item.user.address,
             marketId: item.market.uniqueKey,
             asset: reward.asset,
@@ -686,7 +698,7 @@ export async function getMorphoVaultsRewards(
           const amount = Number(tokenAmountPer1000) / tokenDecimals;
 
           return {
-            chainId: item.chain.id,
+            chainId: reward.asset.chain.id,
             vaultId: item.address,
             marketId: undefined,
             asset: reward.asset,
