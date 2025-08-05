@@ -1,4 +1,3 @@
-import axios from "axios";
 import { type Address, getContract, parseAbi, zeroAddress } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
@@ -365,7 +364,6 @@ export async function getMorphoVaultsData(params: {
       });
 
     const rewards = await getMorphoVaultsRewards(vaults);
-    const merklRewards = await getMerklRewards(vaults);
 
     vaults.forEach((vault) => {
       const vaultRewards = rewards.find(
@@ -419,16 +417,6 @@ export async function getMorphoVaultsData(params: {
           }
         });
       });
-
-      const merklReward = merklRewards.find(
-        (reward) =>
-          reward.vaultToken.address === vault.vaultToken.address &&
-          reward.chainId === vault.chainId,
-      );
-
-      if (merklReward) {
-        vault.rewards.push(...merklReward.rewards);
-      }
 
       vault.rewardsApy = vault.rewards.reduce(
         (acc, curr) => acc + curr.supplyApr,
@@ -665,28 +653,28 @@ export async function getMorphoVaultsRewards(
 
   if (result) {
     try {
-      // const marketsRewards = result.marketPositions.items.flatMap((item) => {
-      //   const rewards = (item.market.state?.rewards || []).map((reward) => {
-      //     const tokenAmountPer1000 =
-      //       (Number.parseFloat(reward.amountPerSuppliedToken) /
-      //         item.market.loanAsset.priceUsd) *
-      //       1000;
-      //     const tokenDecimals = 10 ** reward.asset.decimals;
-      //     const amount = Number(tokenAmountPer1000) / tokenDecimals;
+      const marketsRewards = result.marketPositions.items.flatMap((item) => {
+        const rewards = (item.market.state?.rewards || []).map((reward) => {
+          const tokenAmountPer1000 =
+            (Number.parseFloat(reward.amountPerSuppliedToken) /
+              item.market.loanAsset.priceUsd) *
+            1000;
+          const tokenDecimals = 10 ** reward.asset.decimals;
+          const amount = Number(tokenAmountPer1000) / tokenDecimals;
 
-      //     return {
-      //       chainId: item.market.morphoBlue.chain.id,
-      //       vaultId: item.user.address,
-      //       marketId: item.market.uniqueKey,
-      //       asset: reward.asset,
-      //       supplyApr: (reward.supplyApr || 0) * 100,
-      //       supplyAmount: amount,
-      //       borrowApr: 0,
-      //       borrowAmount: 0,
-      //     };
-      //   });
-      //   return rewards;
-      // });
+          return {
+            chainId: item.market.morphoBlue.chain.id,
+            vaultId: item.user.address,
+            marketId: item.market.uniqueKey,
+            asset: reward.asset,
+            supplyApr: (reward.supplyApr || 0) * 100,
+            supplyAmount: amount,
+            borrowApr: 0,
+            borrowAmount: 0,
+          };
+        });
+        return rewards;
+      });
 
       const vaultsRewards = result.vaults.items.flatMap((item) => {
         return (item.state?.rewards || []).map((reward) => {
@@ -710,7 +698,7 @@ export async function getMorphoVaultsRewards(
         });
       });
 
-      const rewards = [...vaultsRewards];
+      const rewards = [...marketsRewards, ...vaultsRewards];
 
       return vaults.map((vault) => {
         return {
@@ -751,235 +739,5 @@ export async function getMorphoVaultsRewards(
         rewards: [],
       };
     });
-  }
-}
-
-// Types for Merkl API
-type MerklToken = {
-  id: string;
-  name: string;
-  chainId: number;
-  address: string;
-  decimals: number;
-  symbol: string;
-  displaySymbol: string;
-  icon: string;
-  verified: boolean;
-  isTest: boolean;
-  type: string;
-  isNative: boolean;
-  price: number;
-};
-
-type MerklRewardBreakdown = {
-  token: MerklToken;
-  amount: string;
-  value: number;
-  distributionType: string;
-  id: string;
-  timestamp: string;
-  campaignId: string;
-  dailyRewardsRecordId: string;
-};
-
-type MerklOpportunity = {
-  chainId: number;
-  type: string;
-  identifier: string;
-  name: string;
-  description: string;
-  howToSteps: string[];
-  status: string;
-  action: string;
-  tvl: number;
-  apr: number;
-  dailyRewards: number;
-  tags: any[];
-  id: string;
-  depositUrl: string;
-  explorerAddress: string;
-  lastCampaignCreatedAt: number;
-  aprRecord: {
-    cumulated: number;
-    timestamp: string;
-    breakdowns: {
-      distributionType: string;
-      identifier: string;
-      type: string;
-      value: number;
-      timestamp: string;
-    }[];
-  };
-  rewardsRecord: {
-    id: string;
-    total: number;
-    timestamp: string;
-    breakdowns: MerklRewardBreakdown[];
-  };
-};
-
-type MerklCampaign = {
-  id: string;
-  computeChainId: number;
-  campaignId: string;
-  type: string;
-  distributionType: string;
-  rewardTokenId: string;
-  opportunityId: string;
-  startTimestamp: number;
-  endTimestamp: number;
-  dailyRewards: number;
-  apr: number;
-};
-
-// Helper function to fetch Merkl opportunities
-async function fetchMerklOpportunities(
-  vault: MorphoVault,
-): Promise<MerklOpportunity[]> {
-  try {
-    const response = await axios.get<MerklOpportunity[]>(
-      `https://api.merkl.xyz/v4/opportunities?identifier=${vault.vaultToken.address.toLowerCase()}&chainId=${vault.chainId}&status=LIVE`,
-      {
-        timeout: 10000, // 10 seconds timeout
-        headers: {
-          Accept: "application/json",
-        },
-      },
-    );
-    return response.data;
-  } catch (error) {
-    console.warn(
-      `Failed to fetch Merkl opportunities for vault ${vault.vaultToken.address}:`,
-      error,
-    );
-    return [];
-  }
-}
-
-// Helper function to fetch Merkl campaigns
-async function fetchMerklCampaigns(
-  campaignIds: string[],
-): Promise<Map<string, MerklCampaign>> {
-  if (campaignIds.length === 0) {
-    return new Map();
-  }
-
-  try {
-    const uniqueIds = [...new Set(campaignIds)];
-    const campaignsMap = new Map<string, MerklCampaign>();
-
-    // Fetch campaigns in batches to avoid overwhelming the API
-    const batchSize = 10;
-    for (let i = 0; i < uniqueIds.length; i += batchSize) {
-      const batch = uniqueIds.slice(i, i + batchSize);
-
-      await Promise.all(
-        batch.map(async (campaignId) => {
-          try {
-            const response = await axios.get<MerklCampaign[]>(
-              `https://api.merkl.xyz/v4/campaigns?id=${campaignId}`,
-              {
-                timeout: 10000,
-                headers: {
-                  Accept: "application/json",
-                },
-              },
-            );
-
-            if (response.data.length > 0) {
-              campaignsMap.set(campaignId, response.data[0]);
-            }
-          } catch (error) {
-            console.warn(`Failed to fetch campaign ${campaignId}:`, error);
-          }
-        }),
-      );
-    }
-
-    return campaignsMap;
-  } catch (error) {
-    console.warn("Failed to fetch Merkl campaigns:", error);
-    return new Map();
-  }
-}
-
-// Helper function to process rewards from an opportunity
-function processOpportunityRewards(
-  opportunity: MerklOpportunity,
-  campaignsMap: Map<string, MerklCampaign>,
-): MorphoReward[] {
-  return opportunity.rewardsRecord.breakdowns
-    .map((breakdown) => {
-      const campaign = campaignsMap.get(breakdown.campaignId);
-      if (!campaign) {
-        console.warn(`Campaign ${breakdown.campaignId} not found`);
-        return null;
-      }
-
-      const reward: MorphoReward = {
-        marketId: undefined,
-        asset: {
-          address: breakdown.token.address as `0x${string}`,
-          decimals: breakdown.token.decimals,
-          name: breakdown.token.name,
-          symbol: breakdown.token.symbol,
-        },
-        supplyApr: campaign.apr,
-        supplyAmount: Number(breakdown.amount),
-        borrowApr: 0,
-        borrowAmount: 0,
-      };
-      return reward;
-    })
-    .filter((reward): reward is MorphoReward => reward !== null);
-}
-
-export async function getMerklRewards(
-  vaults: MorphoVault[],
-): Promise<GetMorphoVaultsRewardsResult[]> {
-  if (vaults.length === 0) {
-    return [];
-  }
-
-  try {
-    // Fetch all opportunities in parallel
-    const vaultOpportunities = await Promise.all(
-      vaults.map((vault) => fetchMerklOpportunities(vault)),
-    );
-
-    // Collect all unique campaign IDs
-    const allCampaignIds = vaultOpportunities
-      .flat()
-      .flatMap((opportunity) =>
-        opportunity.rewardsRecord.breakdowns.map(
-          (breakdown) => breakdown.campaignId,
-        ),
-      );
-
-    // Fetch all campaigns at once
-    const campaignsMap = await fetchMerklCampaigns(allCampaignIds);
-
-    // Process rewards for each vault
-    const rewards = vaultOpportunities.map((opportunities, index) => {
-      const vault = vaults[index]!;
-
-      // Process all opportunities for the vault
-      const allRewards = opportunities.flatMap((opportunity) =>
-        processOpportunityRewards(opportunity, campaignsMap),
-      );
-
-      return {
-        chainId: opportunities[0]?.chainId ?? vault.chainId,
-        vaultToken: vault.vaultToken,
-        rewards: allRewards,
-      };
-    });
-
-    return rewards;
-  } catch (error) {
-    console.error("Error fetching Merkl rewards:", error);
-    throw new Error(
-      `Failed to fetch Merkl rewards: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
   }
 }
