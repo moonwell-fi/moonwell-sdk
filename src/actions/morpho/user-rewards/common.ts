@@ -667,7 +667,7 @@ async function getMerklRewardsData(
     const rewardsPromises = chainIds.map(async (chainId) => {
       try {
         const response = await fetch(
-          `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}`,
+          `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&claimableOnly=true&breakdownPage=0&reloadChainId=${chainId}`,
           {
             headers: MOONWELL_FETCH_JSON_HEADERS,
           },
