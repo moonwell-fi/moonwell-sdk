@@ -255,7 +255,7 @@ export async function getUserMorphoRewardsData(params: {
       };
 
       const claimableNow = new Amount(
-        BigInt(reward.amount),
+        BigInt(reward.amount) - BigInt(reward.claimed),
         rewardToken.decimals,
       );
       const claimableNowUsd = claimableNow.value * (reward.token.price ?? 0);
