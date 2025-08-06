@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.4
+
+### Patch Changes
+
+- [#137](https://github.com/moonwell-fi/moonwell-sdk/pull/137) [`ecaed128c5590e7a3ee83fa138a52420a7f964cf`](https://github.com/moonwell-fi/moonwell-sdk/commit/ecaed128c5590e7a3ee83fa138a52420a7f964cf) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Add claimableOnly parameter and reloadChain option to handle cache issues
+
+- [#137](https://github.com/moonwell-fi/moonwell-sdk/pull/137) [`0888e68ef56c3e7807095ddc500b962204ba4865`](https://github.com/moonwell-fi/moonwell-sdk/commit/0888e68ef56c3e7807095ddc500b962204ba4865) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fix Merkl endpoint and calculate claimable rewards
+
 ## 0.8.3
 
 ### Patch Changes
