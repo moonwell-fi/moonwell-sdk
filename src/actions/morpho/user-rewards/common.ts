@@ -205,7 +205,7 @@ export async function getUserMorphoRewardsData(params: {
         };
 
         const claimableNow = new Amount(
-          BigInt(reward.amount),
+          BigInt(reward.amount) - BigInt(reward.claimed),
           rewardToken.decimals,
         );
         const claimableNowUsd =
@@ -667,7 +667,7 @@ async function getMerklRewardsData(
     const rewardsPromises = chainIds.map(async (chainId) => {
       try {
         const response = await fetch(
-          `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&claimableOnly=true&breakdownPage=0&reloadChainId=${chainId}`,
+          `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=0&reloadChainId=${chainId}`,
           {
             headers: MOONWELL_FETCH_JSON_HEADERS,
           },
