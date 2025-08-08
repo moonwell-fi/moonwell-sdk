@@ -1,4 +1,8 @@
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc.js";
 import { type Address, getContract, parseAbi, zeroAddress } from "viem";
+
+dayjs.extend(utc);
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
 import {
@@ -320,33 +324,39 @@ export async function getMorphoVaultsData(params: {
         vaultConfig.multiReward,
       );
 
-      rewards.forEach((reward) => {
-        const token = Object.values(environment.config.tokens).find(
-          (token) => token.address === reward?.token,
-        );
-        if (!token || !reward?.rewardRate) return;
+      rewards
+        .filter(
+          (reward) =>
+            reward?.periodFinish &&
+            dayjs.utc().isBefore(dayjs.unix(Number(reward.periodFinish))),
+        )
+        .forEach((reward) => {
+          const token = Object.values(environment.config.tokens).find(
+            (token) => token.address === reward?.token,
+          );
+          if (!token || !reward?.rewardRate) return;
 
-        const market = tokenPrices.find(
-          (m) => m?.token.address === reward.token,
-        );
+          const market = tokenPrices.find(
+            (m) => m?.token.address === reward.token,
+          );
 
-        const rewardPriceUsd = market?.tokenPrice.value ?? 0;
+          const rewardPriceUsd = market?.tokenPrice.value ?? 0;
 
-        const rewardsPerYear =
-          new Amount(reward.rewardRate, market?.token.decimals ?? 18).value *
-          SECONDS_PER_YEAR *
-          rewardPriceUsd;
+          const rewardsPerYear =
+            new Amount(reward.rewardRate, market?.token.decimals ?? 18).value *
+            SECONDS_PER_YEAR *
+            rewardPriceUsd;
 
-        vault.stakingRewards.push({
-          apr:
-            (rewardsPerYear /
-              (new Amount(distributorTotalSupply, vault.vaultToken.decimals)
-                .value *
-                vault.underlyingPrice)) *
-            100,
-          token: token,
+          vault.stakingRewards.push({
+            apr:
+              (rewardsPerYear /
+                (new Amount(distributorTotalSupply, vault.vaultToken.decimals)
+                  .value *
+                  vault.underlyingPrice)) *
+              100,
+            token: token,
+          });
         });
-      });
 
       vault.stakingRewardsApr = vault.stakingRewards.reduce(
         (acc, curr) => acc + curr.apr,
@@ -467,7 +477,11 @@ const getRewardsData = async (
         const rewardData = await multiRewardContract.read.rewardData([
           tokenAddress,
         ]);
-        return { rewardRate: BigInt(rewardData[3]), token: tokenAddress };
+        return {
+          rewardRate: BigInt(rewardData[3]),
+          token: tokenAddress,
+          periodFinish: BigInt(rewardData[2]),
+        };
       } catch {
         return { rewardRate: 0n, token: tokenAddress };
       }
