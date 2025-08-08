@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.5
+
+### Patch Changes
+
+- [#139](https://github.com/moonwell-fi/moonwell-sdk/pull/139) [`947a94f7b21c294fa484e8a0f6475b424bd1fb61`](https://github.com/moonwell-fi/moonwell-sdk/commit/947a94f7b21c294fa484e8a0f6475b424bd1fb61) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Fix APY for vault staking rewards
+
 ## 0.8.4
 
 ### Patch Changes
