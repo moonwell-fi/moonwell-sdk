@@ -1,5 +1,5 @@
-import type { GetFusionQuotePayload, Instruction } from "@biconomy/abstractjs";
-import type { Account, Address, WalletClient } from "viem";
+import type { GetFusionQuotePayload } from "@biconomy/abstractjs";
+import type { Address, WalletClient } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import type { HttpRequestError } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
@@ -23,25 +23,15 @@ export type BeamQuote =
           amount: bigint;
         }[];
       };
-      account: Account | undefined;
-      instructions: Instruction[][];
-      quote: {
-        hash: `0x${string}`;
-        node: `0x${string}`;
-        commitment: `0x${string}`;
-        fee: {
-          tokenAmount: string;
-          tokenWeiAmount: string;
-          tokenValue: string;
-        };
-        userOps: {
-          sender: `0x${string}`;
-          nonce: string;
-          initCode: `0x${string}`;
-          callData: `0x${string}`;
-        }[];
-        fusionQuote: GetFusionQuotePayload;
-      };
+      estimatedCompletionTimesec: number;
+      deadline: number;
+      meeFee: string;
+      outputAmounts: {
+        tokenAddress: `0x${string}`;
+        chainId: number;
+        amount: bigint;
+      }[];
+      rawQuote: GetFusionQuotePayload;
       execute: () => Promise<{
         hash: `0x${string}`;
         wait: (confirmations: number) => Promise<void>;

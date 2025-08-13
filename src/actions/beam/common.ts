@@ -39,9 +39,9 @@ const ACROSS_ABI = parseAbi([
 
 const WRAP_ABI = parseAbi(["function deposit()"]);
 
-const MEE_CLIENT_API_KEY = "mee_3ZkX3T823ZDfwsNiFsqj5oZS";
+export const MEE_CLIENT_API_KEY = "mee_3ZkX3T823ZDfwsNiFsqj5oZS";
 
-const ACROSS_INTEGRATOR_ID = "0x008e";
+export const ACROSS_INTEGRATOR_ID = "0x008e";
 
 const findMarketToken = (
   environments: Environment[],
@@ -180,6 +180,15 @@ export async function getQuote<environments, Network extends Chain | undefined>(
     chains,
     useTestnet: false,
   });
+
+  let maxEstimatedTimesec = 0;
+  let minDeadline = 0;
+
+  const outputAmounts: {
+    tokenAddress: `0x${string}`;
+    chainId: number;
+    amount: bigint;
+  }[] = [];
 
   if (
     args.type === "supply" ||
@@ -372,6 +381,23 @@ export async function getQuote<environments, Network extends Chain | undefined>(
             ],
           });
 
+          if (acrossQuote.estimatedFillTimeSec > maxEstimatedTimesec) {
+            maxEstimatedTimesec = acrossQuote.estimatedFillTimeSec;
+          }
+
+          if (
+            acrossQuote.deposit.fillDeadline < minDeadline ||
+            minDeadline === 0
+          ) {
+            minDeadline = acrossQuote.deposit.fillDeadline;
+          }
+
+          outputAmounts.push({
+            tokenAddress: acrossQuote.deposit.outputToken,
+            amount: acrossQuote.deposit.outputAmount,
+            chainId: args.destination.chainId,
+          });
+
           totalOutput += acrossQuote.deposit.outputAmount;
 
           const bridgeInstructions = await smartAccount.buildComposable({
@@ -398,6 +424,12 @@ export async function getQuote<environments, Network extends Chain | undefined>(
             }),
           );
         } else {
+          outputAmounts.push({
+            tokenAddress: source.address,
+            amount: source.amount,
+            chainId: source.chainId,
+          });
+
           totalOutput += source.amount;
           instructions.push(transferOrWrapInstruction);
         }
@@ -647,25 +679,14 @@ export async function getQuote<environments, Network extends Chain | undefined>(
           approvals,
           transfers,
         },
-        account: args.wallet.account,
-        instructions,
-        quote: {
-          hash: fusionQuote.quote.hash,
-          node: fusionQuote.quote.node,
-          commitment: fusionQuote.quote.commitment,
-          fee: {
-            tokenAmount: fusionQuote.quote.paymentInfo.tokenAmount,
-            tokenWeiAmount: fusionQuote.quote.paymentInfo.tokenWeiAmount,
-            tokenValue: fusionQuote.quote.paymentInfo.tokenValue,
-          },
-          userOps: fusionQuote.quote.userOps.map((operation) => ({
-            sender: operation.userOp.sender,
-            nonce: operation.userOp.nonce,
-            initCode: operation.userOp.initCode,
-            callData: operation.userOp.callData,
-          })),
-          fusionQuote,
-        },
+        outputAmounts,
+        meeFee: fusionQuote.quote.paymentInfo.tokenValue,
+        estimatedCompletionTimesec: maxEstimatedTimesec,
+        deadline: Math.min(
+          Number.parseFloat(fusionQuote.quote.userOps[0]?.upperBoundTimestamp),
+          minDeadline,
+        ),
+        rawQuote: fusionQuote,
         execute: async () => {
           try {
             const superTx = await meeClient.executeFusionQuote({
