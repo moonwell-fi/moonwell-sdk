@@ -1,4 +1,5 @@
 import type { Address, Chain } from "viem";
+import { base } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
@@ -41,12 +42,26 @@ export async function getUserStakingInfo<
           e.custom?.governance?.chainIds?.includes(environment.chainId),
         ) || environment;
 
-      return Promise.all([
+      const isBase = environment.chainId === base.id;
+
+      const promises = [
         environment.contracts.views?.read.getUserStakingInfo([userAddress]),
         environment.contracts.governanceToken?.read.balanceOf([userAddress]),
         homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
         environment.contracts.views?.read.getStakingInfo(),
-      ]);
+        ...(isBase
+          ? [
+              environment.contracts.views?.read.getUserStakingInfo(
+                [userAddress],
+                {
+                  blockNumber: BigInt(34149941),
+                },
+              ),
+            ]
+          : []),
+      ];
+
+      return Promise.all(promises);
     }),
   );
 
@@ -60,15 +75,29 @@ export async function getUserStakingInfo<
         curr.config.contracts.stakingToken as keyof TokensType<typeof curr>
       ]!;
 
-    const { cooldown, pendingRewards, totalStaked } =
-      envStakingInfo[index]![0]!;
+    const userStakingInfoData = envStakingInfo[index]![0]! as {
+      cooldown: bigint;
+      pendingRewards: bigint;
+      totalStaked: bigint;
+    };
+    const { cooldown, pendingRewards, totalStaked } = userStakingInfoData;
 
-    const tokenBalance = envStakingInfo[index]![1]!;
+    // Pending rewards before the X28 proposal (only for base)
+    const isBase = curr.chainId === base.id;
+    const pendingRewardsBeforeX28Proposal = isBase
+      ? (envStakingInfo[index]![4] as { pendingRewards: bigint })
+          ?.pendingRewards || 0n
+      : 0n;
 
-    const governanceTokenPriceRaw = envStakingInfo[index]?.[2]!;
+    const tokenBalance = envStakingInfo[index]![1]! as bigint;
 
-    const { cooldown: cooldownSeconds, unstakeWindow } =
-      envStakingInfo[index]?.[3]!;
+    const governanceTokenPriceRaw = envStakingInfo[index]?.[2]! as bigint;
+
+    const stakingInfoData = envStakingInfo[index]?.[3] as {
+      cooldown: bigint;
+      unstakeWindow: bigint;
+    };
+    const { cooldown: cooldownSeconds, unstakeWindow } = stakingInfoData;
 
     const cooldownEnding = cooldown > 0n ? cooldown + cooldownSeconds : 0n;
     const unstakingEnding =
@@ -83,7 +112,9 @@ export async function getUserStakingInfo<
       cooldownEnding: Number(cooldownEnding),
       unstakingStart: Number(cooldownEnding),
       unstakingEnding: Number(unstakingEnding),
-      pendingRewards: new Amount(pendingRewards, 18),
+      pendingRewards: isBase
+        ? new Amount(pendingRewardsBeforeX28Proposal, 18)
+        : new Amount(pendingRewards, 18),
       token,
       tokenBalance: new Amount(tokenBalance, 18),
       tokenPrice: governanceTokenPrice.value,
