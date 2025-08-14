@@ -69,6 +69,7 @@ export const morphoMarkets = createMorphoMarketConfig({
       collateralToken: "PT_LBTC_29MAY2025",
       loanToken: "cbBTC",
       id: "0x9a697eb760dd12aaea23699c96ea2ebbfe48b7af64138d92c4d232b9ed380024",
+      deprecated: true,
     },
     "LBTC-cbBTC": {
       collateralToken: "LBTC",
