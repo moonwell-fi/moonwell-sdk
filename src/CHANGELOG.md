@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.6
+
+### Patch Changes
+
+- [#142](https://github.com/moonwell-fi/moonwell-sdk/pull/142) [`048a75a35f1c000f9264e42b6c53385e78d3e902`](https://github.com/moonwell-fi/moonwell-sdk/commit/048a75a35f1c000f9264e42b6c53385e78d3e902) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Return pending staking rewards before execution of proposal x28 on base
+
 ## 0.8.5
 
 ### Patch Changes
