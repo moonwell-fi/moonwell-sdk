@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.7
+
+### Patch Changes
+
+- [#144](https://github.com/moonwell-fi/moonwell-sdk/pull/144) [`5ac34cc34afebb1128a63b10255d80b67407a72c`](https://github.com/moonwell-fi/moonwell-sdk/commit/5ac34cc34afebb1128a63b10255d80b67407a72c) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Deprecate isolated market PT-LBTC-29MAY2025
+
 ## 0.8.6
 
 ### Patch Changes
