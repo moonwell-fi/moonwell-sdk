@@ -1,3 +1,4 @@
+import { base } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   Amount,
@@ -41,10 +42,21 @@ export async function getStakingInfo<
           e.custom?.governance?.chainIds?.includes(environment.chainId),
         ) || environment;
 
-      return Promise.all([
+      const isBase = environment.chainId === base.id;
+
+      const promises = [
         environment.contracts.views?.read.getStakingInfo(),
         homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
-      ]);
+        ...(isBase
+          ? [
+              environment.contracts.views?.read.getStakingInfo({
+                blockNumber: BigInt(34149943),
+              }),
+            ]
+          : []),
+      ];
+
+      return Promise.all(promises);
     }),
   );
 
@@ -64,11 +76,57 @@ export async function getStakingInfo<
       emissionPerSecond: emissionPerSecondRaw,
       totalSupply: totalSupplyRaw,
       unstakeWindow,
-    } = envStakingInfo[index]?.[0]!;
+    } = envStakingInfo[index]?.[0]! as {
+      cooldown: bigint;
+      distributionEnd: bigint;
+      emissionPerSecond: bigint;
+      totalSupply: bigint;
+      unstakeWindow: bigint;
+    };
 
     //Quick workaround to get governance token price from some other environment
     const governanceTokenPriceRaw = envStakingInfo[index]?.[1]!;
-    const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
+    const governanceTokenPrice = new Amount(
+      governanceTokenPriceRaw as bigint,
+      18,
+    );
+
+    const isBase = curr.chainId === base.id;
+    // Pending rewards after the X28 proposal (only for base)
+    const {
+      emissionPerSecond: emissionPerSecondRawAfterX28Proposal,
+      totalSupply: totalSupplyRawAfterX28Proposal,
+    } =
+      isBase && envStakingInfo[index]?.[2]
+        ? (envStakingInfo[index]![2] as {
+            cooldown: bigint;
+            distributionEnd: bigint;
+            emissionPerSecond: bigint;
+            totalSupply: bigint;
+            unstakeWindow: bigint;
+          })
+        : {
+            emissionPerSecond: 0n,
+            totalSupply: 0n,
+          };
+
+    const totalSupplyAfterX28Proposal = new Amount(
+      totalSupplyRawAfterX28Proposal,
+      18,
+    );
+    const emissionPerSecondAfterX28Proposal = new Amount(
+      emissionPerSecondRawAfterX28Proposal,
+      18,
+    );
+
+    const emissionPerYearAfterX28Proposal =
+      emissionPerSecondAfterX28Proposal.value * SECONDS_PER_DAY * DAYS_PER_YEAR;
+
+    const aprAfterX28Proposal =
+      ((emissionPerYearAfterX28Proposal + totalSupplyAfterX28Proposal.value) /
+        totalSupplyAfterX28Proposal.value -
+        1) *
+      100;
 
     const totalSupply = new Amount(totalSupplyRaw, 18);
     const emissionPerSecond = new Amount(emissionPerSecondRaw, 18);
@@ -80,7 +138,7 @@ export async function getStakingInfo<
       ((emissionPerYear + totalSupply.value) / totalSupply.value - 1) * 100;
 
     const stakingInfo: StakingInfo = {
-      apr,
+      apr: isBase ? aprAfterX28Proposal : apr,
       chainId: curr.chainId,
       cooldown: Number(cooldown),
       distributionEnd: Number(distributionEnd),
