@@ -204,17 +204,39 @@ export async function getUserMorphoRewardsData(params: {
           name: morphoAsset?.name ?? reward.token.symbol,
         };
 
-        const claimableNow = new Amount(
-          BigInt(reward.amount) - BigInt(reward.claimed),
-          rewardToken.decimals,
-        );
+        const getVaultRewardAmount = (
+          breakdowns: any[],
+          field: "amount" | "claimed" | "pending",
+        ) => {
+          return breakdowns.reduce((acc, curr) => {
+            // Check if campaign exists in vaults across all chains
+            const isVaultCampaign = Object.values(publicEnvironments).some(
+              (environment) => {
+                // Check if environment has vaults
+                if (
+                  environment.config.vaults &&
+                  Object.keys(environment.config.vaults).length > 0
+                ) {
+                  return Object.values(environment.config.vaults).some(
+                    (vault) => vault.campaignId === curr.campaignId,
+                  );
+                }
+                return false;
+              },
+            );
+            return isVaultCampaign ? acc + BigInt(curr[field]) : acc;
+          }, 0n);
+        };
+
+        const amount = getVaultRewardAmount(reward.breakdowns, "amount");
+        const claimed = getVaultRewardAmount(reward.breakdowns, "claimed");
+        const pending = getVaultRewardAmount(reward.breakdowns, "pending");
+
+        const claimableNow = new Amount(amount - claimed, rewardToken.decimals);
         const claimableNowUsd =
           claimableNow.value *
           (morphoAsset?.priceUsd ?? reward.token.price ?? 0);
-        const claimableFuture = new Amount(
-          BigInt(reward.pending),
-          rewardToken.decimals,
-        );
+        const claimableFuture = new Amount(pending, rewardToken.decimals);
         const claimableFutureUsd =
           claimableFuture.value *
           (morphoAsset?.priceUsd ?? reward.token.price ?? 0);
