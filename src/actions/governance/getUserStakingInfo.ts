@@ -9,6 +9,7 @@ import {
   publicEnvironments,
 } from "../../environments/index.js";
 import type { UserStakingInfo } from "../../types/staking.js";
+import { getMerklRewardsData } from "./common.js";
 
 export type GetUserStakingInfoParameters<
   environments,
@@ -42,27 +43,19 @@ export async function getUserStakingInfo<
           e.custom?.governance?.chainIds?.includes(environment.chainId),
         ) || environment;
 
-      const isBase = environment.chainId === base.id;
-
-      const promises = [
+      return Promise.all([
         environment.contracts.views?.read.getUserStakingInfo([userAddress]),
         environment.contracts.governanceToken?.read.balanceOf([userAddress]),
         homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
         environment.contracts.views?.read.getStakingInfo(),
-        ...(isBase
-          ? [
-              environment.contracts.views?.read.getUserStakingInfo(
-                [userAddress],
-                {
-                  blockNumber: BigInt(34149941),
-                },
-              ),
-            ]
-          : []),
-      ];
-
-      return Promise.all(promises);
+      ]);
     }),
+  );
+  // merkl rewards by campaignId
+  const merklRewards = await getMerklRewardsData(
+    ["0xcd60ff26dc0b43f14c995c494bc5650087eaae68b279bdbe85e0e8eaa11fd513"],
+    base.id,
+    userAddress,
   );
 
   const result = envsWithStaking.flatMap((curr, index) => {
@@ -82,11 +75,11 @@ export async function getUserStakingInfo<
     };
     const { cooldown, pendingRewards, totalStaked } = userStakingInfoData;
 
-    // Pending rewards before the X28 proposal (only for base)
+    // merkl rewards (only for base)
     const isBase = curr.chainId === base.id;
-    const pendingRewardsBeforeX28Proposal = isBase
-      ? (envStakingInfo[index]![4] as { pendingRewards: bigint })
-          ?.pendingRewards || 0n
+    const merklReward = merklRewards.find((r) => r.chain === curr.chainId);
+    const merklPendingRewards = isBase
+      ? BigInt(merklReward?.amount || 0) - BigInt(merklReward?.claimed || 0)
       : 0n;
 
     const tokenBalance = envStakingInfo[index]![1]! as bigint;
@@ -113,7 +106,7 @@ export async function getUserStakingInfo<
       unstakingStart: Number(cooldownEnding),
       unstakingEnding: Number(unstakingEnding),
       pendingRewards: isBase
-        ? new Amount(pendingRewardsBeforeX28Proposal, 18)
+        ? new Amount(merklPendingRewards, merklReward?.token.decimals || 18)
         : new Amount(pendingRewards, 18),
       token,
       tokenBalance: new Amount(tokenBalance, 18),
