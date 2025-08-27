@@ -68,6 +68,7 @@ export type TokenConfig = {
 export type VaultConfig<tokens> = {
   vaultToken: keyof tokens;
   underlyingToken: keyof tokens;
+  campaignId?: string;
   multiReward?: Address;
 };
 
