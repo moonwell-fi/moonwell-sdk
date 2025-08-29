@@ -1,5 +1,15 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.7
+
+### Patch Changes
+
+- [#144](https://github.com/moonwell-fi/moonwell-sdk/pull/144) [`5ac34cc34afebb1128a63b10255d80b67407a72c`](https://github.com/moonwell-fi/moonwell-sdk/commit/5ac34cc34afebb1128a63b10255d80b67407a72c) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Deprecate isolated market PT-LBTC-29MAY2025
+
+- [#147](https://github.com/moonwell-fi/moonwell-sdk/pull/147) [`688c1b3195d029f6a97f7fab35651a2bd80aae96`](https://github.com/moonwell-fi/moonwell-sdk/commit/688c1b3195d029f6a97f7fab35651a2bd80aae96) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Add staking rewards from merkl
+
+- [#146](https://github.com/moonwell-fi/moonwell-sdk/pull/146) [`498c3a726843c336e564cdb30e80ed38929c5cfe`](https://github.com/moonwell-fi/moonwell-sdk/commit/498c3a726843c336e564cdb30e80ed38929c5cfe) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Add stake APY view for x28 proposal block
+
 ## 0.8.6
 
 ### Patch Changes
