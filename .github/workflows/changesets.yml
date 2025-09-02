@@ -64,12 +64,23 @@ jobs:
         with: 
           submodules: 'recursive'
 
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+  
+
       - name: Install dependencies
         uses: ./.github/actions/install-dependencies
-
+      
+ 
       - name: Publish to NPM
         uses: changesets/action@v1
         with:
+          setupGitUser: false
           createGithubReleases: ${{ github.ref == 'refs/heads/main' }}
           publish: pnpm changeset:publish
           version: pnpm changeset:version
