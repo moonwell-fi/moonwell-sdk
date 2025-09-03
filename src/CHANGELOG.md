@@ -1,5 +1,17 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.8
+
+### Patch Changes
+
+- [#148](https://github.com/moonwell-fi/moonwell-sdk/pull/148) [`c423618778dc657bc65164e4853ffdf89998d69f`](https://github.com/moonwell-fi/moonwell-sdk/commit/c423618778dc657bc65164e4853ffdf89998d69f) Thanks [@avp1598](https://github.com/avp1598)! - Use gpg key signing for changeset actions
+
+- [#151](https://github.com/moonwell-fi/moonwell-sdk/pull/151) [`613bc83c52eb96a51ec0732cff2dee714bc23459`](https://github.com/moonwell-fi/moonwell-sdk/commit/613bc83c52eb96a51ec0732cff2dee714bc23459) Thanks [@avp1598](https://github.com/avp1598)! - add signed commits on changesets release as well
+
+- [#150](https://github.com/moonwell-fi/moonwell-sdk/pull/150) [`c5a6c9a3f62be68e22b1b9f373ecf20bf4fc3311`](https://github.com/moonwell-fi/moonwell-sdk/commit/c5a6c9a3f62be68e22b1b9f373ecf20bf4fc3311) Thanks [@avp1598](https://github.com/avp1598)! - Fix changesets action workflow
+
+- [#153](https://github.com/moonwell-fi/moonwell-sdk/pull/153) [`35b46e6228746298f4fed7d64171de92f61de2a1`](https://github.com/moonwell-fi/moonwell-sdk/commit/35b46e6228746298f4fed7d64171de92f61de2a1) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix snapshot proposals
+
 ## 0.8.7
 
 ### Patch Changes
