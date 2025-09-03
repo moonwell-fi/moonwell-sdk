@@ -22,7 +22,7 @@ export async function getMorphoMarketsData(params: {
       environment.contracts.morphoViews,
   );
 
-  const environmentsMarketsInfo = await Promise.all(
+  const marketInfoSettlements = await Promise.allSettled(
     environmentsWithMarkets.map((environment) => {
       const marketsIds = Object.values(environment.config.morphoMarkets)
         .map((item) => item.id as Address)
@@ -40,24 +40,34 @@ export async function getMorphoMarketsData(params: {
     }),
   );
 
-  const environmentPublicAllocatorSharedLiquidity = await Promise.all(
-    environmentsWithMarkets.map((environment) => {
-      const marketsIds = Object.values(environment.config.morphoMarkets)
-        .map((item) => item.id as Address)
-        .filter((id) =>
-          params.markets
-            ? params.markets
-                .map((id) => id.toLowerCase())
-                .includes(id.toLowerCase())
-            : true,
-        );
+  const environmentsMarketsInfo = marketInfoSettlements
+    .filter((s) => s.status === "fulfilled")
+    .map((s) => s.value);
 
-      return getMorphoMarketPublicAllocatorSharedLiquidity(
-        environment,
-        marketsIds,
-      );
-    }),
-  );
+  const environmentPublicAllocatorSharedLiquiditySettlements =
+    await Promise.allSettled(
+      environmentsWithMarkets.map((environment) => {
+        const marketsIds = Object.values(environment.config.morphoMarkets)
+          .map((item) => item.id as Address)
+          .filter((id) =>
+            params.markets
+              ? params.markets
+                  .map((id) => id.toLowerCase())
+                  .includes(id.toLowerCase())
+              : true,
+          );
+
+        return getMorphoMarketPublicAllocatorSharedLiquidity(
+          environment,
+          marketsIds,
+        );
+      }),
+    );
+
+  const environmentPublicAllocatorSharedLiquidity =
+    environmentPublicAllocatorSharedLiquiditySettlements
+      .filter((s) => s.status === "fulfilled")
+      .map((s) => s.value);
 
   const result = environmentsWithMarkets.reduce(
     (aggregator, environment, environmentIndex) => {

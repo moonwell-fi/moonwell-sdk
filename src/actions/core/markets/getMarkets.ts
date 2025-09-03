@@ -23,12 +23,17 @@ export async function getMarkets<
   args?: GetMarketsParameters<environments, Network>,
 ): GetMarketsReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
-
   const logId = logger.start("getMarkets", "Starting to get markets...");
 
-  const result = await Promise.all(
+  const settlements = await Promise.allSettled(
     environments.map((environment) => getMarketsData(environment)),
   );
+
+  const result = settlements
+    .filter(
+      (s): s is PromiseFulfilledResult<Market[]> => s.status === "fulfilled",
+    )
+    .map((s) => s.value);
 
   if (args?.includeLiquidStakingRewards === true) {
     const liquidStakingRewards = await fetchLiquidStakingRewards();
