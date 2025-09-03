@@ -114,10 +114,11 @@ export const getSnapshotProposalData = async (params: {
         }
 
         const votes = proposal.scores.reduce((a, b) => a + b, 0);
-        const scores = proposal.scores.map((score, index) => ({
-          votes: score,
-          percent: (score / votes) * 100,
-          choice: proposal.choices[index]!,
+        const scores = proposal.choices.map((choice, index) => ({
+          votes: votes === 0 ? 0 : proposal.scores[index] || 0,
+          percent:
+            votes === 0 ? 0 : ((proposal.scores[index] || 0) / votes) * 100,
+          choice: choice,
         }));
 
         return {
