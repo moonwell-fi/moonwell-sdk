@@ -26,7 +26,7 @@ export async function getMorphoUserStakingRewards<
 ): GetMorphoUserStakingRewardsReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const environmentsUserRewards = await Promise.all(
+  const settled = await Promise.allSettled(
     environments
       .filter((environment) => environment.contracts.morphoViews !== undefined)
       .map((environment) => {
@@ -37,5 +37,9 @@ export async function getMorphoUserStakingRewards<
       }),
   );
 
-  return environmentsUserRewards.flat();
+  const result = settled.flatMap((s) =>
+    s.status === "fulfilled" ? s.value : [],
+  );
+
+  return result;
 }

@@ -34,15 +34,21 @@ export async function getMorphoMarketsData(params: {
             : true,
         );
 
-      return environment.contracts.morphoViews?.read.getMorphoBlueMarketsInfo([
-        marketsIds,
-      ]);
+      try {
+        return environment.contracts.morphoViews!.read.getMorphoBlueMarketsInfo(
+          [marketsIds],
+        );
+      } catch (error) {
+        return Promise.reject(error);
+      }
     }),
   );
 
-  const environmentsMarketsInfo = marketInfoSettlements
-    .filter((s) => s.status === "fulfilled")
-    .map((s) => s.value);
+  const fulfilledMarketsInfo = marketInfoSettlements.flatMap((s, i) =>
+    s.status === "fulfilled"
+      ? [{ environment: environmentsWithMarkets[i]!, marketsInfo: s.value }]
+      : [],
+  );
 
   const environmentPublicAllocatorSharedLiquiditySettlements =
     await Promise.allSettled(
@@ -64,16 +70,32 @@ export async function getMorphoMarketsData(params: {
       }),
     );
 
-  const environmentPublicAllocatorSharedLiquidity =
-    environmentPublicAllocatorSharedLiquiditySettlements
-      .filter((s) => s.status === "fulfilled")
-      .map((s) => s.value);
+  const fulfilledPublicAllocatorSharedLiquidity =
+    environmentPublicAllocatorSharedLiquiditySettlements.flatMap((s, i) =>
+      s.status === "fulfilled"
+        ? [
+            {
+              environment: environmentsWithMarkets[i]!,
+              sharedLiquidity:
+                s.value as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
+            },
+          ]
+        : [],
+    );
 
-  const result = environmentsWithMarkets.reduce(
-    (aggregator, environment, environmentIndex) => {
-      const environmentMarketsInfo = environmentsMarketsInfo[environmentIndex]!;
+  const sharedLiquidityByChain = new Map<
+    number,
+    GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[]
+  >(
+    fulfilledPublicAllocatorSharedLiquidity.map((x) => [
+      x.environment.chainId,
+      x.sharedLiquidity,
+    ]),
+  );
 
-      const markets = environmentMarketsInfo.map((marketInfo) => {
+  const result = fulfilledMarketsInfo.reduce(
+    (aggregator, { environment, marketsInfo }) => {
+      const markets = marketsInfo.map((marketInfo) => {
         const marketKey = Object.keys(environment.config.morphoMarkets).find(
           (item) =>
             environment.config.morphoMarkets[item].id.toLowerCase() ===
@@ -106,11 +128,12 @@ export async function getMorphoMarketsData(params: {
           loanTokenPrice = collateralTokenPrice / oraclePrice;
         }
 
-        const publicAllocatorSharedLiquidity =
-          environmentPublicAllocatorSharedLiquidity[environmentIndex]?.find(
-            (item: { marketId: string }) =>
-              item.marketId === marketInfo.marketId,
-          );
+        const envSharedLiquidity = sharedLiquidityByChain.get(
+          environment.chainId,
+        );
+        const publicAllocatorSharedLiquidity = envSharedLiquidity?.find(
+          (item) => item.marketId === marketInfo.marketId,
+        );
 
         const performanceFee = new Amount(marketInfo.fee, 18).value;
         const loanToValue = new Amount(marketInfo.lltv, 18).value;
@@ -221,12 +244,12 @@ export async function getMorphoMarketsData(params: {
         //   market.loanTokenPrice;
       }
 
-      market.rewardsSupplyApy = market.rewards.reduce(
+      market.rewardsSupplyApy = market.rewards.reduce<number>(
         (acc, curr) => acc + curr.supplyApr,
         0,
       );
 
-      market.rewardsBorrowApy = market.rewards.reduce(
+      market.rewardsBorrowApy = market.rewards.reduce<number>(
         (acc, curr) => acc + curr.borrowApr,
         0,
       );

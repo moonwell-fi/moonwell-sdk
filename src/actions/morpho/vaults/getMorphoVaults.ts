@@ -27,11 +27,14 @@ export async function getMorphoVaults<
 
   const logId = logger.start("getMorphoVaults", "Starting to get vaults...");
 
+  console.log("getMorphoVaults before invocation");
   const result = await getMorphoVaultsData({
     environments: environments,
     includeRewards: args?.includeRewards ?? false,
     currentChainRewardsOnly: args?.currentChainRewardsOnly ?? false,
   });
+
+  console.log("getMorphoVaults result", result);
 
   logger.end(logId);
 

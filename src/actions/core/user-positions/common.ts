@@ -11,14 +11,27 @@ export const getUserPositionData = async (params: {
 }) => {
   const viewsContract = params.environment.contracts.views;
 
-  const userData = await Promise.all([
+  const userData = await Promise.allSettled([
     viewsContract?.read.getAllMarketsInfo(),
     viewsContract?.read.getUserBalances([params.account]),
     viewsContract?.read.getUserBorrowsBalances([params.account]),
     viewsContract?.read.getUserMarketsMemberships([params.account]),
   ]);
 
-  const [allMarkets, balances, borrows, memberships] = userData;
+  const [allMarketsRes, balancesRes, borrowsRes, membershipsRes] = userData;
+
+  const allMarkets =
+    allMarketsRes.status === "fulfilled" ? allMarketsRes.value : undefined;
+  const balances =
+    balancesRes.status === "fulfilled" ? balancesRes.value : undefined;
+  const borrows =
+    borrowsRes.status === "fulfilled" ? borrowsRes.value : undefined;
+  const memberships =
+    membershipsRes.status === "fulfilled" ? membershipsRes.value : undefined;
+
+  if (!allMarkets || !balances || !borrows || !memberships) {
+    return [];
+  }
 
   const markets = allMarkets
     ?.map((marketInfo) => {

@@ -35,8 +35,8 @@ export async function getStakingInfo<
     (env) => env.config.contracts.stakingToken,
   );
 
-  const envStakingInfo = await Promise.all(
-    envsWithStaking.map((environment) => {
+  const envStakingInfoSettlements = await Promise.allSettled(
+    envsWithStaking.map(async (environment) => {
       const homeEnvironment =
         (Object.values(publicEnvironments) as Environment[]).find((e) =>
           e.custom?.governance?.chainIds?.includes(environment.chainId),
@@ -56,9 +56,19 @@ export async function getStakingInfo<
           : []),
       ];
 
-      return Promise.all(promises);
+      const settlements = await Promise.allSettled(promises);
+      return settlements.map((s) =>
+        s.status === "fulfilled" ? s.value : undefined,
+      );
     }),
   );
+
+  const envStakingInfo = envStakingInfoSettlements
+    .filter((s) => s.status === "fulfilled")
+    .map((s) => s.value)
+    .filter((val) => val !== undefined);
+
+  console.log("sdk envStakingInfo", envStakingInfo);
 
   const result = envsWithStaking.flatMap((curr, index) => {
     const token =
@@ -70,13 +80,26 @@ export async function getStakingInfo<
         curr.config.contracts.stakingToken as keyof TokensType<typeof curr>
       ]!;
 
+    const envStakingInfoData = envStakingInfo[index]![0]!;
+    const envGovernanceTokenPriceData = envStakingInfo[index]![1]!;
+    const envStakingInfoDataAfterX28Proposal = envStakingInfo[index]![2]!;
+    const isBase = curr.chainId === base.id;
+
+    if (
+      !envStakingInfoData ||
+      !envGovernanceTokenPriceData ||
+      (isBase && !envStakingInfoDataAfterX28Proposal)
+    ) {
+      return [];
+    }
+
     const {
       cooldown,
       distributionEnd,
       emissionPerSecond: emissionPerSecondRaw,
       totalSupply: totalSupplyRaw,
       unstakeWindow,
-    } = envStakingInfo[index]?.[0]! as {
+    } = envStakingInfoData as {
       cooldown: bigint;
       distributionEnd: bigint;
       emissionPerSecond: bigint;
@@ -85,19 +108,18 @@ export async function getStakingInfo<
     };
 
     //Quick workaround to get governance token price from some other environment
-    const governanceTokenPriceRaw = envStakingInfo[index]?.[1]!;
+    const governanceTokenPriceRaw = envGovernanceTokenPriceData;
     const governanceTokenPrice = new Amount(
       governanceTokenPriceRaw as bigint,
       18,
     );
 
-    const isBase = curr.chainId === base.id;
     // Pending rewards after the X28 proposal (only for base)
     const {
       emissionPerSecond: emissionPerSecondRawAfterX28Proposal,
       totalSupply: totalSupplyRawAfterX28Proposal,
     } =
-      isBase && envStakingInfo[index]?.[2]
+      isBase && envStakingInfoDataAfterX28Proposal
         ? (envStakingInfo[index]![2] as {
             cooldown: bigint;
             distributionEnd: bigint;
