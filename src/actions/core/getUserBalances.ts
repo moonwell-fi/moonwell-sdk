@@ -70,7 +70,7 @@ const getTokenBalance = async (
 
     return result;
   } catch (error) {
-    console.log("getTokenBalance error", error);
+    console.error("getTokenBalance error", error);
     return { amount: 0n, token: tokenAddress };
   }
 };
@@ -103,7 +103,7 @@ async function getTokenBalancesFromEnvironment(
     );
     return res;
   } catch (error) {
-    console.log("getTokenBalancesFromEnvironment error", error);
+    console.error("getTokenBalancesFromEnvironment error", error);
     return [];
   }
 }
@@ -119,17 +119,10 @@ export async function getUserBalances<
 
   const environments = getEnvironmentsFromArgs(client, args, false);
 
-  console.log("get user balances", environments);
-
   const environmentsTokensBalancesSettled = await Promise.allSettled(
     environments.map((env) =>
       getTokenBalancesFromEnvironment(env, userAddress),
     ),
-  );
-
-  console.log(
-    "getUserBalances environmentsTokensBalancesSettled",
-    environmentsTokensBalancesSettled,
   );
 
   const environmentsTokensBalances = environmentsTokensBalancesSettled.map(

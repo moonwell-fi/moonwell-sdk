@@ -36,8 +36,6 @@ export async function getUserStakingInfo<
     (env) => env.contracts.stakingToken,
   );
 
-  console.log("envsWithStaking", envsWithStaking);
-
   const envStakingInfo = await Promise.all(
     envsWithStaking.map((environment) => {
       const homeEnvironment =

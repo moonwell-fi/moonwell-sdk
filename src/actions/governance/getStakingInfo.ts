@@ -68,8 +68,6 @@ export async function getStakingInfo<
     .map((s) => s.value)
     .filter((val) => val !== undefined);
 
-  console.log("sdk envStakingInfo", envStakingInfo);
-
   const result = envsWithStaking.flatMap((curr, index) => {
     const token =
       curr.config.tokens[
