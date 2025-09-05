@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.8.9
+
+### Patch Changes
+
+- [#155](https://github.com/moonwell-fi/moonwell-sdk/pull/155) [`9f2260e159d1776514b44fbaa7f1e611fd0d068e`](https://github.com/moonwell-fi/moonwell-sdk/commit/9f2260e159d1776514b44fbaa7f1e611fd0d068e) Thanks [@x0s0l](https://github.com/x0s0l)! - Support fetching user voting power at proposal creation
+
 ## 0.8.8
 
 ### Patch Changes
