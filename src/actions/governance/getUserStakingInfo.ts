@@ -35,22 +35,26 @@ export async function getUserStakingInfo<
   const envsWithStaking = environments.filter(
     (env) => env.contracts.stakingToken,
   );
-
   const envStakingInfo = await Promise.all(
-    envsWithStaking.map((environment) => {
+    envsWithStaking.map(async (environment) => {
       const homeEnvironment =
         (Object.values(publicEnvironments) as Environment[]).find((e) =>
           e.custom?.governance?.chainIds?.includes(environment.chainId),
         ) || environment;
 
-      return Promise.all([
+      const settled = await Promise.allSettled([
         environment.contracts.views?.read.getUserStakingInfo([userAddress]),
         environment.contracts.governanceToken?.read.balanceOf([userAddress]),
         homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
         environment.contracts.views?.read.getStakingInfo(),
       ]);
+
+      return settled.map((s) =>
+        s.status === "fulfilled" ? s.value : undefined,
+      );
     }),
   );
+
   // merkl rewards by campaignId
   const merklRewards = await getMerklRewardsData(
     ["0xcd60ff26dc0b43f14c995c494bc5650087eaae68b279bdbe85e0e8eaa11fd513"],
