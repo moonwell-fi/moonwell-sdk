@@ -14,6 +14,9 @@ export type GetUserVotingPowersParameters<
 
   /** User address*/
   userAddress: Address;
+
+  /** Block number **/
+  blockNumber?: bigint;
 };
 
 export type GetUserVotingPowersReturnType = Promise<UserVotingPowers[]>;
@@ -25,7 +28,7 @@ export async function getUserVotingPowers<
   client: MoonwellClient,
   args: GetUserVotingPowersParameters<environments, Network>,
 ): GetUserVotingPowersReturnType {
-  const { governanceToken, userAddress } = args;
+  const { governanceToken, userAddress, blockNumber } = args;
 
   const environments = getEnvironmentsFromArgs(client, args);
 
@@ -35,7 +38,9 @@ export async function getUserVotingPowers<
 
   const environmentsUserVotingPowers = await Promise.all(
     tokenEnvironments.map((environment) =>
-      environment.contracts.views?.read.getUserVotingPower([userAddress]),
+      environment.contracts.views?.read.getUserVotingPower([userAddress], {
+        blockNumber,
+      }),
     ),
   );
 
