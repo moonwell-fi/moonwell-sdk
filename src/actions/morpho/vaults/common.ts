@@ -42,8 +42,8 @@ export async function getMorphoVaultsData(params: {
       environment.contracts.morphoViews,
   );
 
-  const environmentsVaultsInfo = await Promise.all(
-    environmentsWithVaults.map((environment) => {
+  const environmentsVaultsInfoSettlements = await Promise.allSettled(
+    environmentsWithVaults.map(async (environment) => {
       const vaultsAddresses = Object.values(environment.vaults)
         .map((v) => v.address)
         .filter((address) =>
@@ -53,11 +53,38 @@ export async function getMorphoVaultsData(params: {
                 .includes(address.toLowerCase())
             : true,
         );
-      return environment.contracts.morphoViews?.read.getVaultsInfo([
-        vaultsAddresses,
-      ]);
+
+      try {
+        console.log(
+          "environment.contracts.morphoViews?.read.getVaultsInfo before invocation",
+          environment.contracts.morphoViews,
+        );
+        const vaultInfo =
+          await environment.contracts.morphoViews?.read.getVaultsInfo([
+            vaultsAddresses,
+          ]);
+
+        console.log(
+          "environment.contracts.morphoViews?.read.getVaultsInfo vaultInfo",
+          environment.chainId,
+          vaultInfo,
+        );
+
+        return vaultInfo;
+      } catch (error) {
+        console.log(
+          "environment.contracts.morphoViews?.read.getVaultsInfo error",
+          environment.chainId,
+          error,
+        );
+        return Promise.reject([]);
+      }
     }),
   );
+
+  const environmentsVaultsInfo = environmentsVaultsInfoSettlements
+    .filter((s) => s.status === "fulfilled")
+    .map((s) => s.value);
 
   const result = await environmentsWithVaults.reduce<
     Promise<MultichainReturnType<MorphoVault[]>>
@@ -66,7 +93,11 @@ export async function getMorphoVaultsData(params: {
       const aggregator = await aggregatorPromise;
       const environmentVaultsInfo = environmentsVaultsInfo[environmentIndex]!;
 
-      const vaults = await Promise.all(
+      if (!environmentVaultsInfo) {
+        return aggregator;
+      }
+
+      const settled = await Promise.allSettled(
         environmentVaultsInfo.map(async (vaultInfo) => {
           const vaultKey = Object.keys(environment.config.tokens).find(
             (key) => {
@@ -218,6 +249,10 @@ export async function getMorphoVaultsData(params: {
 
           return mapping;
         }),
+      );
+
+      const vaults = settled.flatMap((s) =>
+        s.status === "fulfilled" ? s.value : [],
       );
 
       return {

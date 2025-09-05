@@ -27,46 +27,86 @@ const getTokenBalance = async (
   userAddress: Address,
   tokenAddress: Address,
 ) => {
-  if (tokenAddress === zeroAddress) {
-    return new Promise<{ amount: bigint; token: `0x${string}` }>((resolve) => {
-      environment.publicClient
-        .getBalance({
-          address: userAddress,
-        })
-        .then((balance) => {
-          resolve({ amount: BigInt(balance), token: tokenAddress });
-        })
-        .catch(() => {
-          resolve({ amount: 0n, token: tokenAddress });
-        });
+  try {
+    if (tokenAddress === zeroAddress) {
+      return new Promise<{ amount: bigint; token: `0x${string}` }>(
+        (resolve) => {
+          environment.publicClient
+            .getBalance({
+              address: userAddress,
+            })
+            .then((balance) => {
+              resolve({ amount: BigInt(balance), token: tokenAddress });
+            })
+            .catch(() => {
+              resolve({ amount: 0n, token: tokenAddress });
+            });
+        },
+      );
+    }
+
+    const erc20Abi = parseAbi([
+      "function balanceOf(address owner) view returns (uint256)",
+    ]);
+
+    const erc20Contract = getContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      client: environment.publicClient,
     });
+
+    const result = new Promise<{ amount: bigint; token: `0x${string}` }>(
+      (resolve) => {
+        erc20Contract.read
+          .balanceOf([userAddress])
+          .then((balance) => {
+            resolve({ amount: BigInt(balance), token: tokenAddress });
+          })
+          .catch(() => {
+            resolve({ amount: 0n, token: tokenAddress });
+          });
+      },
+    );
+
+    return result;
+  } catch (error) {
+    console.error("getTokenBalance error", error);
+    return { amount: 0n, token: tokenAddress };
   }
-
-  const erc20Abi = parseAbi([
-    "function balanceOf(address owner) view returns (uint256)",
-  ]);
-
-  const erc20Contract = getContract({
-    address: tokenAddress,
-    abi: erc20Abi,
-    client: environment.publicClient,
-  });
-
-  const result = new Promise<{ amount: bigint; token: `0x${string}` }>(
-    (resolve) => {
-      erc20Contract.read
-        .balanceOf([userAddress])
-        .then((balance) => {
-          resolve({ amount: BigInt(balance), token: tokenAddress });
-        })
-        .catch(() => {
-          resolve({ amount: 0n, token: tokenAddress });
-        });
-    },
-  );
-
-  return result;
 };
+
+async function getTokenBalancesFromEnvironment(
+  environment: Environment,
+  userAddress: Address,
+): Promise<{ amount: bigint; token: `0x${string}` }[]> {
+  try {
+    if (environment.contracts.views) {
+      const tokenBalancesFromView =
+        await environment.contracts.views.read.getTokensBalances([
+          Object.values(environment.config.tokens).map(
+            (token) => token.address,
+          ),
+          userAddress,
+        ]);
+
+      return [...tokenBalancesFromView];
+    }
+
+    const tokenBalancesSettled = await Promise.allSettled(
+      Object.values(environment.config.tokens).map((token) =>
+        getTokenBalance(environment, userAddress, token.address),
+      ),
+    );
+
+    const res = tokenBalancesSettled.flatMap((s) =>
+      s.status === "fulfilled" ? s.value : [],
+    );
+    return res;
+  } catch (error) {
+    console.error("getTokenBalancesFromEnvironment error", error);
+    return [];
+  }
+}
 
 export async function getUserBalances<
   environments,
@@ -79,27 +119,14 @@ export async function getUserBalances<
 
   const environments = getEnvironmentsFromArgs(client, args, false);
 
-  const environmentsTokensBalances = await Promise.all(
-    environments.map((environment) => {
-      if (environment.contracts.views) {
-        return Promise.all([
-          environment.contracts.views.read.getTokensBalances([
-            Object.values(environment.config.tokens).map(
-              (token) => token.address,
-            ),
-            userAddress,
-          ]),
-        ]);
-      }
+  const environmentsTokensBalancesSettled = await Promise.allSettled(
+    environments.map((env) =>
+      getTokenBalancesFromEnvironment(env, userAddress),
+    ),
+  );
 
-      return Promise.all([
-        Promise.all(
-          Object.values(environment.config.tokens).map((token) =>
-            getTokenBalance(environment, userAddress, token.address),
-          ),
-        ),
-      ]);
-    }),
+  const environmentsTokensBalances = environmentsTokensBalancesSettled.map(
+    (s) => (s.status === "fulfilled" ? [...s.value] : []),
   );
 
   // Fetch morpho staking balances
@@ -107,7 +134,7 @@ export async function getUserBalances<
     environments.map(async (env, index) => {
       if (!env.config.vaults) return;
 
-      const vaultBalances = await Promise.all(
+      const vaultBalancesSettled = await Promise.allSettled(
         Object.values(env.config.vaults)
           .filter((vault) => vault.multiReward)
           .map((vault) =>
@@ -115,18 +142,17 @@ export async function getUserBalances<
           ),
       );
 
-      const envBalances = environmentsTokensBalances[index]?.[0];
-      if (envBalances) {
-        environmentsTokensBalances[index]![0] = [
-          ...envBalances,
-          ...vaultBalances,
-        ];
-      }
+      const vaultBalances = vaultBalancesSettled.flatMap((s) =>
+        s.status === "fulfilled" ? s.value : [],
+      );
+
+      const envBalances = environmentsTokensBalances[index] || [];
+      environmentsTokensBalances[index] = [...envBalances, ...vaultBalances];
     }),
   );
 
   const result = environments.flatMap((env, index) => {
-    const balances = environmentsTokensBalances[index]![0]!;
+    const balances = environmentsTokensBalances[index] || [];
 
     const userBalances = balances
       .map((balance) => {

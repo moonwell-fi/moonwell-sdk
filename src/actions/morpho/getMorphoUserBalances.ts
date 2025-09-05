@@ -24,35 +24,52 @@ export async function getMorphoUserBalances<
 ): GetMorphoUserBalancesReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const environmentsTokensBalances = await Promise.all(
-    environments.map((environment) => {
-      return environment.contracts.views?.read.getTokensBalances([
-        [
-          // Remove duplicates
-          ...new Set([
-            ...Object.values(environment.config.vaults).map(
-              (vault) =>
-                environment.config.tokens[vault.underlyingToken]!.address,
-            ),
-            ...Object.values(environment.config.vaults).map(
-              (vault) => environment.config.tokens[vault.vaultToken]!.address,
-            ),
-            ...Object.values(environment.config.morphoMarkets).map(
-              (market) =>
-                environment.config.tokens[market.collateralToken]!.address,
-            ),
-            ...Object.values(environment.config.morphoMarkets).map(
-              (market) => environment.config.tokens[market.loanToken]!.address,
-            ),
-          ]),
-        ],
-        args.userAddress,
-      ]);
+  const environmentsTokensBalancesSettled = await Promise.allSettled(
+    environments.map(async (environment) => {
+      const viewsRead = environment.contracts.views?.read;
+
+      if (!viewsRead || !viewsRead?.getTokensBalances) {
+        return Promise.reject(new Error("No views read contract"));
+      }
+
+      const uniqueTokenAddresses = [
+        ...new Set([
+          ...Object.values(environment.config.vaults).map(
+            (vault) =>
+              environment.config.tokens[vault.underlyingToken]!.address,
+          ),
+          ...Object.values(environment.config.vaults).map(
+            (vault) => environment.config.tokens[vault.vaultToken]!.address,
+          ),
+          ...Object.values(environment.config.morphoMarkets).map(
+            (market) =>
+              environment.config.tokens[market.collateralToken]!.address,
+          ),
+          ...Object.values(environment.config.morphoMarkets).map(
+            (market) => environment.config.tokens[market.loanToken]!.address,
+          ),
+        ]),
+      ];
+      try {
+        return await viewsRead.getTokensBalances([
+          [...uniqueTokenAddresses],
+          args.userAddress,
+        ]);
+      } catch (error) {
+        return Promise.reject(error);
+      }
     }),
+  );
+
+  const environmentsTokensBalances = environmentsTokensBalancesSettled.map(
+    (s) => (s.status === "fulfilled" ? [...s.value] : []),
   );
 
   const tokensBalances = environments.flatMap((curr, index) => {
     const balances = environmentsTokensBalances[index]!;
+    if (!balances) {
+      return [];
+    }
 
     const userBalances = balances
       .map((balance) => {

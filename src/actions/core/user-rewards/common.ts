@@ -23,19 +23,31 @@ export const getUserRewardsData = async (params: {
   const viewsContract = params.environment.contracts.views;
   const homeViewsContract = homeEnvironment.contracts.views;
 
-  const userData = await Promise.all([
+  const [m0, r0, n0, g0] = await Promise.allSettled([
     viewsContract?.read.getAllMarketsInfo(),
     viewsContract?.read.getUserRewards([params.account]),
     homeViewsContract?.read.getNativeTokenPrice(),
     homeViewsContract?.read.getGovernanceTokenPrice(),
-  ]);
+  ] as const);
 
-  const [
-    allMarkets,
-    userRewards,
-    nativeTokenPriceRaw,
-    governanceTokenPriceRaw,
-  ] = userData;
+  // Narrow each one by status and coerce to undefined on failure:
+  const allMarkets = m0.status === "fulfilled" ? m0.value : undefined;
+
+  const userRewards = r0.status === "fulfilled" ? r0.value : undefined;
+
+  const nativeTokenPriceRaw = n0.status === "fulfilled" ? n0.value : undefined;
+
+  const governanceTokenPriceRaw =
+    g0.status === "fulfilled" ? g0.value : undefined;
+
+  if (
+    !allMarkets ||
+    !userRewards ||
+    !nativeTokenPriceRaw ||
+    !governanceTokenPriceRaw
+  ) {
+    return [];
+  }
 
   const governanceTokenPrice = new Amount(governanceTokenPriceRaw || 0n, 18);
   const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
