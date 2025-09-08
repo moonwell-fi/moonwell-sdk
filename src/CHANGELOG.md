@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.0
+
+### Minor Changes
+
+- [#157](https://github.com/moonwell-fi/moonwell-sdk/pull/157) [`b757408e9c288a75caa14d4ef61e6491787f5876`](https://github.com/moonwell-fi/moonwell-sdk/commit/b757408e9c288a75caa14d4ef61e6491787f5876) Thanks [@chimalsky](https://github.com/chimalsky)! - When one or more networks' RPC nodes are down, the SDK will still return responses from available RPC nodes to consumers.
+
 ## 0.8.9
 
 ### Patch Changes
