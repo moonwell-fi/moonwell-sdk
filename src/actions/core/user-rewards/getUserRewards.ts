@@ -27,7 +27,7 @@ export async function getUserRewards<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const result = await Promise.all(
+  const settled = await Promise.allSettled(
     environments.map((environment) =>
       getUserRewardsData({
         environment,
@@ -36,5 +36,9 @@ export async function getUserRewards<
     ),
   );
 
-  return result.flat();
+  const result = settled.flatMap((s) =>
+    s.status === "fulfilled" ? s.value : [],
+  );
+
+  return result;
 }

@@ -26,7 +26,7 @@ export async function getUserPositions<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const result = await Promise.all(
+  const settled = await Promise.allSettled(
     environments.map((environment) =>
       getUserPositionData({
         environment,
@@ -35,5 +35,9 @@ export async function getUserPositions<
     ),
   );
 
-  return result.flat();
+  const result = settled.flatMap((s) =>
+    s.status === "fulfilled" ? s.value : [],
+  );
+
+  return result;
 }

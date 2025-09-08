@@ -26,7 +26,7 @@ export async function getMorphoMarketUserPositions<
 ): GetMorphoMarketUserPositionsReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const environmentsUserPositions = await Promise.all(
+  const settled = await Promise.allSettled(
     environments
       .filter((environment) => environment.contracts.morphoViews !== undefined)
       .map((environment) => {
@@ -37,5 +37,9 @@ export async function getMorphoMarketUserPositions<
       }),
   );
 
-  return environmentsUserPositions.flat();
+  const result = settled.flatMap((s) =>
+    s.status === "fulfilled" ? s.value : [],
+  );
+
+  return result;
 }

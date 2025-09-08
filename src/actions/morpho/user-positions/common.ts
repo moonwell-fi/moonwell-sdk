@@ -63,42 +63,46 @@ export async function getMorphoMarketUserPositionsData(params: {
     (market) => (params.markets ? params.markets.includes(market.id) : true),
   );
 
-  const userMarketPositions =
-    await params.environment.contracts.morphoViews!.read.getMorphoBlueUserBalances(
-      [markets.map((market) => market.id), params.account],
-    );
+  try {
+    const userMarketPositions =
+      await params.environment.contracts.morphoViews!.read.getMorphoBlueUserBalances(
+        [markets.map((market) => market.id), params.account],
+      );
 
-  return markets.map((market, index) => {
-    const position = userMarketPositions[index];
+    return markets.map((market, index) => {
+      const position = userMarketPositions[index];
 
-    const loanToken = params.environment.config.tokens[market.loanToken];
+      const loanToken = params.environment.config.tokens[market.loanToken];
 
-    const collateralToken =
-      params.environment.config.tokens[market.collateralToken];
+      const collateralToken =
+        params.environment.config.tokens[market.collateralToken];
 
-    const supplied = new Amount(
-      position.collateralAssets,
-      collateralToken.decimals,
-    );
+      const supplied = new Amount(
+        position.collateralAssets,
+        collateralToken.decimals,
+      );
 
-    const borrowed = new Amount(position.loanAssets, loanToken.decimals);
+      const borrowed = new Amount(position.loanAssets, loanToken.decimals);
 
-    const borrowedShares = new Amount(
-      position.loanShares,
-      loanToken.decimals + 6,
-    );
+      const borrowedShares = new Amount(
+        position.loanShares,
+        loanToken.decimals + 6,
+      );
 
-    const result: MorphoMarketUserPosition = {
-      chainId: params.environment.chainId,
-      account: params.account,
-      marketId: market.id,
-      loanToken,
-      collateralToken,
-      supplied,
-      borrowed,
-      borrowedShares,
-    };
+      const result: MorphoMarketUserPosition = {
+        chainId: params.environment.chainId,
+        account: params.account,
+        marketId: market.id,
+        loanToken,
+        collateralToken,
+        supplied,
+        borrowed,
+        borrowedShares,
+      };
 
-    return result;
-  });
+      return result;
+    });
+  } catch (error) {
+    return [];
+  }
 }
