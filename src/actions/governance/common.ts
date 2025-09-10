@@ -104,3 +104,28 @@ export async function getMerklRewardsData(
     return [];
   }
 }
+
+export async function getMerklStakingApr(campaignId: string): Promise<number> {
+  try {
+    const response = await fetch(
+      `https://api.merkl.xyz/v4/campaigns?campaignId=${campaignId}`,
+      {
+        headers: MOONWELL_FETCH_JSON_HEADERS,
+      },
+    );
+
+    if (!response.ok) {
+      console.warn(
+        `Merkl API request failed: ${response.status} ${response.statusText}`,
+      );
+      return 0;
+    }
+
+    const data = (await response.json()) as { apr: number }[];
+
+    return data.reduce((acc, curr) => acc + Number(curr.apr), 0);
+  } catch (error) {
+    console.error("Error in getMerklStakingApr:", error);
+    return 0;
+  }
+}

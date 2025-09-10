@@ -14,6 +14,7 @@ import {
   publicEnvironments,
 } from "../../environments/index.js";
 import type { StakingInfo } from "../../types/staking.js";
+import { getMerklStakingApr } from "./common.js";
 
 export type GetStakingInfoParameters<
   environments,
@@ -68,6 +69,8 @@ export async function getStakingInfo<
     .map((s) => s.value)
     .filter((val) => val !== undefined);
 
+  const baseStakingApr = await getMerklStakingApr(""); // merkl campaign id
+
   const result = envsWithStaking.flatMap((curr, index) => {
     const token =
       curr.config.tokens[
@@ -112,42 +115,6 @@ export async function getStakingInfo<
       18,
     );
 
-    // Pending rewards after the X28 proposal (only for base)
-    const {
-      emissionPerSecond: emissionPerSecondRawAfterX28Proposal,
-      totalSupply: totalSupplyRawAfterX28Proposal,
-    } =
-      isBase && envStakingInfoDataAfterX28Proposal
-        ? (envStakingInfo[index]![2] as {
-            cooldown: bigint;
-            distributionEnd: bigint;
-            emissionPerSecond: bigint;
-            totalSupply: bigint;
-            unstakeWindow: bigint;
-          })
-        : {
-            emissionPerSecond: 0n,
-            totalSupply: 0n,
-          };
-
-    const totalSupplyAfterX28Proposal = new Amount(
-      totalSupplyRawAfterX28Proposal,
-      18,
-    );
-    const emissionPerSecondAfterX28Proposal = new Amount(
-      emissionPerSecondRawAfterX28Proposal,
-      18,
-    );
-
-    const emissionPerYearAfterX28Proposal =
-      emissionPerSecondAfterX28Proposal.value * SECONDS_PER_DAY * DAYS_PER_YEAR;
-
-    const aprAfterX28Proposal =
-      ((emissionPerYearAfterX28Proposal + totalSupplyAfterX28Proposal.value) /
-        totalSupplyAfterX28Proposal.value -
-        1) *
-      100;
-
     const totalSupply = new Amount(totalSupplyRaw, 18);
     const emissionPerSecond = new Amount(emissionPerSecondRaw, 18);
 
@@ -158,7 +125,7 @@ export async function getStakingInfo<
       ((emissionPerYear + totalSupply.value) / totalSupply.value - 1) * 100;
 
     const stakingInfo: StakingInfo = {
-      apr: isBase ? aprAfterX28Proposal : apr,
+      apr: isBase ? baseStakingApr : apr,
       chainId: curr.chainId,
       cooldown: Number(cooldown),
       distributionEnd: Number(distributionEnd),
