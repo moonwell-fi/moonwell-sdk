@@ -84,7 +84,32 @@ export async function getMorphoVaultsData(params: {
 
   const environmentsVaultsInfo = environmentsVaultsInfoSettlements
     .filter((s) => s.status === "fulfilled")
-    .map((s) => s.value);
+    .map(
+      (s) =>
+        (
+          s as PromiseFulfilledResult<
+            | readonly {
+                vault: `0x${string}`;
+                totalSupply: bigint;
+                totalAssets: bigint;
+                underlyingPrice: bigint;
+                fee: bigint;
+                timelock: bigint;
+                markets: readonly {
+                  marketId: `0x${string}`;
+                  marketCollateral: `0x${string}`;
+                  marketCollateralName: string;
+                  marketCollateralSymbol: string;
+                  marketLltv: bigint;
+                  marketApy: bigint;
+                  marketLiquidity: bigint;
+                  vaultSupplied: bigint;
+                }[];
+              }[]
+            | undefined
+          >
+        ).value,
+    );
 
   const result = await environmentsWithVaults.reduce<
     Promise<MultichainReturnType<MorphoVault[]>>
@@ -98,157 +123,196 @@ export async function getMorphoVaultsData(params: {
       }
 
       const settled = await Promise.allSettled(
-        environmentVaultsInfo.map(async (vaultInfo) => {
-          const vaultKey = Object.keys(environment.config.tokens).find(
-            (key) => {
-              return (
-                environment.config.tokens[key].address.toLowerCase() ===
-                vaultInfo.vault.toLowerCase()
-              );
-            },
-          );
+        environmentVaultsInfo.map(
+          async (vaultInfo: {
+            vault: `0x${string}`;
+            totalSupply: bigint;
+            totalAssets: bigint;
+            underlyingPrice: bigint;
+            fee: bigint;
+            timelock: bigint;
+            markets: readonly {
+              marketId: `0x${string}`;
+              marketCollateral: `0x${string}`;
+              marketCollateralName: string;
+              marketCollateralSymbol: string;
+              marketLltv: bigint;
+              marketApy: bigint;
+              marketLiquidity: bigint;
+              vaultSupplied: bigint;
+            }[];
+          }) => {
+            const vaultKey = Object.keys(environment.config.tokens).find(
+              (key) => {
+                return (
+                  environment.config.tokens[key].address.toLowerCase() ===
+                  vaultInfo.vault.toLowerCase()
+                );
+              },
+            );
 
-          const vaultToken = environment.config.tokens[vaultKey!];
-          const vaultConfig = environment.config.vaults[vaultKey!];
-          const underlyingToken =
-            environment.config.tokens[vaultConfig.underlyingToken];
-          const underlyingPrice = new Amount(vaultInfo.underlyingPrice, 18);
+            const vaultToken = environment.config.tokens[vaultKey!];
+            const vaultConfig = environment.config.vaults[vaultKey!];
+            const underlyingToken =
+              environment.config.tokens[vaultConfig.underlyingToken];
+            const underlyingPrice = new Amount(vaultInfo.underlyingPrice, 18);
 
-          const vaultSupply = new Amount(
-            vaultInfo.totalSupply,
-            vaultToken.decimals,
-          );
-          const totalSupply = new Amount(
-            vaultInfo.totalAssets,
-            underlyingToken.decimals,
-          );
-          const totalSupplyUsd = totalSupply.value * underlyingPrice.value;
-          const performanceFee = new Amount(vaultInfo.fee, 18).value;
-          const timelock = Number(vaultInfo.timelock) / (60 * 60);
-
-          let ratio = 0n;
-
-          const markets = vaultInfo.markets.map((vaultMarket) => {
-            ratio += wMulDown(vaultMarket.marketApy, vaultMarket.vaultSupplied);
-
-            const totalSupplied = new Amount(
-              vaultMarket.vaultSupplied,
+            const vaultSupply = new Amount(
+              vaultInfo.totalSupply,
+              vaultToken.decimals,
+            );
+            const totalSupply = new Amount(
+              vaultInfo.totalAssets,
               underlyingToken.decimals,
             );
-            const totalSuppliedUsd =
-              totalSupplied.value * underlyingPrice.value;
-            const allocation = totalSupplied.value / totalSupply.value;
-            const marketLoanToValue =
-              new Amount(vaultMarket.marketLltv, 18).value * 100;
-            const marketApy = new Amount(vaultMarket.marketApy, 18).value * 100;
+            const totalSupplyUsd = totalSupply.value * underlyingPrice.value;
+            const performanceFee = new Amount(vaultInfo.fee, 18).value;
+            const timelock = Number(vaultInfo.timelock) / (60 * 60);
 
-            let marketLiquidity = new Amount(
-              vaultMarket.marketLiquidity,
+            let ratio = 0n;
+
+            const markets = vaultInfo.markets.map(
+              (vaultMarket: {
+                marketId: `0x${string}`;
+                marketCollateral: `0x${string}`;
+                marketCollateralName: string;
+                marketCollateralSymbol: string;
+                marketLltv: bigint;
+                marketApy: bigint;
+                marketLiquidity: bigint;
+                vaultSupplied: bigint;
+              }) => {
+                ratio += wMulDown(
+                  vaultMarket.marketApy,
+                  vaultMarket.vaultSupplied,
+                );
+
+                const totalSupplied = new Amount(
+                  vaultMarket.vaultSupplied,
+                  underlyingToken.decimals,
+                );
+                const totalSuppliedUsd =
+                  totalSupplied.value * underlyingPrice.value;
+                const allocation = totalSupplied.value / totalSupply.value;
+                const marketLoanToValue =
+                  new Amount(vaultMarket.marketLltv, 18).value * 100;
+                const marketApy =
+                  new Amount(vaultMarket.marketApy, 18).value * 100;
+
+                let marketLiquidity = new Amount(
+                  vaultMarket.marketLiquidity,
+                  underlyingToken.decimals,
+                );
+                let marketLiquidityUsd =
+                  marketLiquidity.value * underlyingPrice.value;
+
+                if (vaultMarket.marketCollateral === zeroAddress) {
+                  marketLiquidity = totalSupplied;
+                  marketLiquidityUsd = totalSuppliedUsd;
+                }
+
+                const mapping: MorphoVaultMarket = {
+                  marketId: vaultMarket.marketId,
+                  allocation,
+                  marketApy,
+                  marketCollateral: {
+                    address: vaultMarket.marketCollateral,
+                    decimals: 0,
+                    name: vaultMarket.marketCollateralName,
+                    symbol: vaultMarket.marketCollateralSymbol,
+                  },
+                  marketLiquidity,
+                  marketLiquidityUsd,
+                  marketLoanToValue,
+                  totalSupplied,
+                  totalSuppliedUsd,
+                  rewards: [],
+                };
+
+                return mapping;
+              },
+            );
+
+            const avgSupplyApy = mulDivDown(
+              ratio,
+              WAD - vaultInfo.fee,
+              vaultInfo.totalAssets === 0n ? 1n : vaultInfo.totalAssets,
+            );
+            const baseApy = new Amount(avgSupplyApy, 18).value * 100;
+
+            let totalLiquidity = new Amount(
+              markets.reduce(
+                (acc: bigint, curr: MorphoVaultMarket) =>
+                  acc + curr.marketLiquidity.exponential,
+                0n,
+              ),
               underlyingToken.decimals,
             );
-            let marketLiquidityUsd =
-              marketLiquidity.value * underlyingPrice.value;
 
-            if (vaultMarket.marketCollateral === zeroAddress) {
-              marketLiquidity = totalSupplied;
-              marketLiquidityUsd = totalSuppliedUsd;
+            let totalLiquidityUsd = markets.reduce(
+              (acc: number, curr: MorphoVaultMarket) =>
+                acc + curr.marketLiquidityUsd,
+              0,
+            );
+
+            if (totalLiquidity.value > totalSupply.value) {
+              totalLiquidity = totalSupply;
+              totalLiquidityUsd = totalSupplyUsd;
             }
 
-            const mapping: MorphoVaultMarket = {
-              marketId: vaultMarket.marketId,
-              allocation,
-              marketApy,
-              marketCollateral: {
-                address: vaultMarket.marketCollateral,
-                decimals: 0,
-                name: vaultMarket.marketCollateralName,
-                symbol: vaultMarket.marketCollateralSymbol,
-              },
-              marketLiquidity,
-              marketLiquidityUsd,
-              marketLoanToValue,
-              totalSupplied,
-              totalSuppliedUsd,
-              rewards: [],
-            };
+            let totalStaked = new Amount(0n, underlyingToken.decimals);
+            let totalStakedUsd = 0;
 
-            return mapping;
-          });
-
-          const avgSupplyApy = mulDivDown(
-            ratio,
-            WAD - vaultInfo.fee,
-            vaultInfo.totalAssets === 0n ? 1n : vaultInfo.totalAssets,
-          );
-          const baseApy = new Amount(avgSupplyApy, 18).value * 100;
-
-          let totalLiquidity = new Amount(
-            markets.reduce(
-              (acc, curr) => acc + curr.marketLiquidity.exponential,
-              0n,
-            ),
-            underlyingToken.decimals,
-          );
-
-          let totalLiquidityUsd = markets.reduce(
-            (acc, curr) => acc + curr.marketLiquidityUsd,
-            0,
-          );
-
-          if (totalLiquidity.value > totalSupply.value) {
-            totalLiquidity = totalSupply;
-            totalLiquidityUsd = totalSupplyUsd;
-          }
-
-          let totalStaked = new Amount(0n, underlyingToken.decimals);
-          let totalStakedUsd = 0;
-
-          if (vaultConfig.multiReward) {
-            const [distributorTotalSupply, vaultTotalSupply, vaultTotalAssets] =
-              await Promise.all([
+            if (vaultConfig.multiReward) {
+              const [
+                distributorTotalSupply,
+                vaultTotalSupply,
+                vaultTotalAssets,
+              ] = await Promise.all([
                 getTotalSupplyData(environment, vaultConfig.multiReward),
                 getTotalSupplyData(environment, vaultToken.address),
                 getTotalAssetsData(environment, vaultToken.address),
               ]);
 
-            const stakedAssets = toAssetsDown(
-              distributorTotalSupply,
-              vaultTotalAssets,
-              vaultTotalSupply,
-            );
+              const stakedAssets = toAssetsDown(
+                distributorTotalSupply,
+                vaultTotalAssets,
+                vaultTotalSupply,
+              );
 
-            totalStaked = new Amount(stakedAssets, underlyingToken.decimals);
-            totalStakedUsd = totalStaked.value * underlyingPrice.value;
-          }
+              totalStaked = new Amount(stakedAssets, underlyingToken.decimals);
+              totalStakedUsd = totalStaked.value * underlyingPrice.value;
+            }
 
-          const mapping: MorphoVault = {
-            chainId: environment.chainId,
-            vaultKey: vaultKey!,
-            vaultToken,
-            underlyingToken,
-            underlyingPrice: underlyingPrice.value,
-            baseApy,
-            totalApy: baseApy,
-            rewardsApy: 0,
-            stakingRewardsApr: 0,
-            totalStakingApr: baseApy,
-            curators: [],
-            performanceFee,
-            timelock,
-            totalLiquidity,
-            totalLiquidityUsd,
-            totalSupplyUsd,
-            totalSupply,
-            vaultSupply,
-            totalStaked,
-            totalStakedUsd,
-            markets: markets,
-            rewards: [],
-            stakingRewards: [],
-          };
+            const mapping: MorphoVault = {
+              chainId: environment.chainId,
+              vaultKey: vaultKey!,
+              vaultToken,
+              underlyingToken,
+              underlyingPrice: underlyingPrice.value,
+              baseApy,
+              totalApy: baseApy,
+              rewardsApy: 0,
+              stakingRewardsApr: 0,
+              totalStakingApr: baseApy,
+              curators: [],
+              performanceFee,
+              timelock,
+              totalLiquidity,
+              totalLiquidityUsd,
+              totalSupplyUsd,
+              totalSupply,
+              vaultSupply,
+              totalStaked,
+              totalStakedUsd,
+              markets: markets,
+              rewards: [],
+              stakingRewards: [],
+            };
 
-          return mapping;
-        }),
+            return mapping;
+          },
+        ),
       );
 
       const vaults = settled.flatMap((s) =>

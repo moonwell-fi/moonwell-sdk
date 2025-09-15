@@ -66,7 +66,26 @@ export async function getStakingInfo<
 
   const envStakingInfo = envStakingInfoSettlements
     .filter((s) => s.status === "fulfilled")
-    .map((s) => s.value)
+    .map(
+      (s) =>
+        (
+          s as PromiseFulfilledResult<
+            (
+              | bigint
+              | {
+                  cooldown: bigint;
+                  unstakeWindow: bigint;
+                  distributionEnd: bigint;
+                  totalSupply: bigint;
+                  emissionPerSecond: bigint;
+                  lastUpdateTimestamp: bigint;
+                  index: bigint;
+                }
+              | undefined
+            )[]
+          >
+        ).value,
+    )
     .filter((val) => val !== undefined);
 
   const baseStakingApr = await getMerklStakingApr(
