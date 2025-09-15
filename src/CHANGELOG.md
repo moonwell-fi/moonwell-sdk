@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.1
+
+### Patch Changes
+
+- [#159](https://github.com/moonwell-fi/moonwell-sdk/pull/159) [`70a1e6e917c2862a0a60f62035b683585bbf8230`](https://github.com/moonwell-fi/moonwell-sdk/commit/70a1e6e917c2862a0a60f62035b683585bbf8230) Thanks [@Leoakin43](https://github.com/Leoakin43)! - Add merkl stake rewards and apr
+
 ## 0.9.0
 
 ### Minor Changes
