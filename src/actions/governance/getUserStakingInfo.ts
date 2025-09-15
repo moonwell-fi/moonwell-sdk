@@ -57,7 +57,10 @@ export async function getUserStakingInfo<
 
   // merkl rewards by campaignId
   const merklRewards = await getMerklRewardsData(
-    ["0xcd60ff26dc0b43f14c995c494bc5650087eaae68b279bdbe85e0e8eaa11fd513"],
+    [
+      "0xcd60ff26dc0b43f14c995c494bc5650087eaae68b279bdbe85e0e8eaa11fd513",
+      "0xf2c5b7dd2d3416d3853bcf1e93c1cfdb7b5b5fda079d36408df02f731f7d1499",
+    ],
     base.id,
     userAddress,
   );
@@ -81,10 +84,13 @@ export async function getUserStakingInfo<
 
     // merkl rewards (only for base)
     const isBase = curr.chainId === base.id;
-    const merklReward = merklRewards.find((r) => r.chain === curr.chainId);
-    const merklPendingRewards = isBase
-      ? BigInt(merklReward?.amount || 0) - BigInt(merklReward?.claimed || 0)
-      : 0n;
+    const merklReward = merklRewards.reduce((acc, r) => {
+      if (r.chain === curr.chainId) {
+        return acc + BigInt(r.amount) - BigInt(r.claimed);
+      }
+      return acc;
+    }, 0n);
+    const merklPendingRewards = isBase ? merklReward : 0n;
 
     const tokenBalance = envStakingInfo[index]![1]! as bigint;
 
@@ -110,7 +116,7 @@ export async function getUserStakingInfo<
       unstakingStart: Number(cooldownEnding),
       unstakingEnding: Number(unstakingEnding),
       pendingRewards: isBase
-        ? new Amount(merklPendingRewards, merklReward?.token.decimals || 18)
+        ? new Amount(merklPendingRewards, 18)
         : new Amount(pendingRewards, 18),
       token,
       tokenBalance: new Amount(tokenBalance, 18),
