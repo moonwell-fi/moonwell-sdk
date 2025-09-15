@@ -57,7 +57,10 @@ export async function getUserStakingInfo<
 
   // merkl rewards by campaignId
   const merklRewards = await getMerklRewardsData(
-    ["0xcd60ff26dc0b43f14c995c494bc5650087eaae68b279bdbe85e0e8eaa11fd513"],
+    [
+      "0xcd60ff26dc0b43f14c995c494bc5650087eaae68b279bdbe85e0e8eaa11fd513",
+      "0xf2c5b7dd2d3416d3853bcf1e93c1cfdb7b5b5fda079d36408df02f731f7d1499",
+    ],
     base.id,
     userAddress,
   );
