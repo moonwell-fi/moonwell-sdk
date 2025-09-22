@@ -1,4 +1,5 @@
 import type { Narrow, Prettify } from "viem";
+import type { DiagnosticsHook } from "../common/diagnostics.js";
 import {
   type ArbitrumEnvironment,
   type AvalancheEnvironment,
@@ -65,6 +66,7 @@ export type MoonwellClient<
       >]: PolygonEnvironment;
     }
   >;
+  onDiagnostics?: DiagnosticsHook;
 };
 
 export type NetworkConfig = {
@@ -77,6 +79,7 @@ export type NetworksConfig<networks> = {} extends networks
 
 export const createMoonwellClient = <const networks>(config: {
   networks: NetworksConfig<Narrow<networks>>;
+  onDiagnostics?: DiagnosticsHook;
 }) => {
   const environments = Object.keys(config.networks).reduce((prev, curr) => {
     const key = curr as SupportedChains;
@@ -145,6 +148,7 @@ export const createMoonwellClient = <const networks>(config: {
 
   const client = {
     environments,
+    onDiagnostics: config.onDiagnostics,
   };
 
   return Object.assign(client, actions<typeof environments>(client as any));
