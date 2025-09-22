@@ -1,5 +1,9 @@
 import type { Chain } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import {
+  type WithDiagnosticsHook,
+  settleAcrossEnvironments,
+} from "../../../common/diagnostics.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import * as logger from "../../../logger/console.js";
@@ -20,24 +24,22 @@ export async function getMarkets<
   Network extends Chain | undefined,
 >(
   client: MoonwellClient,
-  args?: GetMarketsParameters<environments, Network>,
+  args?: GetMarketsParameters<environments, Network> & WithDiagnosticsHook,
 ): GetMarketsReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
   const logId = logger.start("getMarkets", "Starting to get markets...");
 
-  const settlements = await Promise.allSettled(
-    environments.map((environment) => getMarketsData(environment)),
+  const { data } = await settleAcrossEnvironments(
+    client,
+    "getMarkets",
+    environments,
+    (environment) => getMarketsData(environment),
   );
 
-  const result = settlements
-    .filter(
-      (s): s is PromiseFulfilledResult<Market[]> => s.status === "fulfilled",
-    )
-    .map((s) => s.value);
-
   if (args?.includeLiquidStakingRewards === true) {
+    // TODO: convert to use settleAcrossEnvironments()
     const liquidStakingRewards = await fetchLiquidStakingRewards();
-    for (const item of result.flat()) {
+    for (const item of data.flat()) {
       if (item.underlyingToken.symbol.toLowerCase() === "cbeth") {
         item.rewards.push({
           token: item.underlyingToken,
@@ -76,5 +78,5 @@ export async function getMarkets<
 
   logger.end(logId);
 
-  return result.flat();
+  return data.flat();
 }
