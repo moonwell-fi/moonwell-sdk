@@ -26,5 +26,9 @@ export const vaults = createVaultConfig({
       underlyingToken: "cbBTC",
       vaultToken: "mwcbBTC",
     },
+    meUSDC: {
+      underlyingToken: "USDC",
+      vaultToken: "meUSDC",
+    },
   },
 });
