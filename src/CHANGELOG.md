@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.3
+
+### Patch Changes
+
+- [#164](https://github.com/moonwell-fi/moonwell-sdk/pull/164) [`28f7ba1232e24eade0d35f29e901c9b7528a5183`](https://github.com/moonwell-fi/moonwell-sdk/commit/28f7ba1232e24eade0d35f29e901c9b7528a5183) Thanks [@bprofiro](https://github.com/bprofiro)! - add new vault - meUSDC
+
 ## 0.9.2
 
 ### Patch Changes
