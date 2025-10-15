@@ -284,4 +284,16 @@ export const tokens = createTokenConfig({
     name: "Moonwell Ecosystem USDC Vault",
     symbol: "meUSDC",
   },
+  MAMO: {
+    address: "0x7300B37DfdfAb110d83290A29DfB31B1740219fE",
+    decimals: 18,
+    name: "Mamo",
+    symbol: "MAMO",
+  },
+  MOONWELL_MAMO: {
+    address: "0x2f90bb22eb3979f5ffad31ea6c3f0792ca66da32",
+    decimals: 8,
+    name: "Moonwell MAMO",
+    symbol: "mMAMO",
+  },
 });
