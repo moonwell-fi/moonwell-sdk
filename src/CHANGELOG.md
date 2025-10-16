@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.4
+
+### Patch Changes
+
+- [#166](https://github.com/moonwell-fi/moonwell-sdk/pull/166) [`8ae879d262657a97f34a5f6759edc39fbf8b4fef`](https://github.com/moonwell-fi/moonwell-sdk/commit/8ae879d262657a97f34a5f6759edc39fbf8b4fef) Thanks [@bprofiro](https://github.com/bprofiro)! - add new market - mMAMO
+
 ## 0.9.3
 
 ### Patch Changes
