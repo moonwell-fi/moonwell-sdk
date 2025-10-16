@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.5
+
+### Patch Changes
+
+- [#168](https://github.com/moonwell-fi/moonwell-sdk/pull/168) [`e5bb70890dc1c842d745f6818424372b6f15cf95`](https://github.com/moonwell-fi/moonwell-sdk/commit/e5bb70890dc1c842d745f6818424372b6f15cf95) Thanks [@bprofiro](https://github.com/bprofiro)! - add well, mamo and stkwell isolated markets
+
 ## 0.9.4
 
 ### Patch Changes
