@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.6
+
+### Patch Changes
+
+- [#170](https://github.com/moonwell-fi/moonwell-sdk/pull/170) [`9a7b41c40c8e913cf27454929feaad8e2a80803a`](https://github.com/moonwell-fi/moonwell-sdk/commit/9a7b41c40c8e913cf27454929feaad8e2a80803a) Thanks [@bprofiro](https://github.com/bprofiro)! - fix stkWELL price on snapshots
+
 ## 0.9.5
 
 ### Patch Changes
