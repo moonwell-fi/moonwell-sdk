@@ -10,9 +10,7 @@ export const moonwellClient = createMoonwellClient({
       ],
     },
     moonbeam: {
-      rpcUrls: [
-        "https://api-moonbeam.dwellir.com/5f017d19-2181-4eac-97c9-0f7574323e35",
-      ],
+      rpcUrls: ["https://rpc.moonwell.fi/main/evm/1284"],
     },
   },
 });
