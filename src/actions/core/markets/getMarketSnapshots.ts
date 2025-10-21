@@ -183,6 +183,51 @@ async function fetchIsolatedMarketSnapshots(
   marketAddress: string,
   environment: Environment,
 ): Promise<MarketSnapshot[]> {
+  const marketConfig = Object.values(environment.config.morphoMarkets).find(
+    (market) => market.id.toLowerCase() === marketAddress.toLowerCase(),
+  );
+
+  const isStkWellMarket =
+    marketConfig &&
+    environment.config.tokens[marketConfig.collateralToken]?.symbol ===
+      "stkWELL";
+
+  // If stkWELL market, fetch WELL price from subgraph. stkWELL and WELL have the same price
+  let wellPrice: number | null = null;
+  if (isStkWellMarket) {
+    const wellMarketConfig = Object.values(
+      environment.config.morphoMarkets,
+    ).find(
+      (market) =>
+        market.collateralToken === "WELL" || market.loanToken === "WELL",
+    );
+
+    if (wellMarketConfig) {
+      const wellQuery = `    
+        query getWellPrice {
+          wellMarket: marketByUniqueKey(
+            chainId: ${environment.chainId}
+            uniqueKey: "${wellMarketConfig.id.toLowerCase()}"
+          ) {
+            loanAsset {
+              priceUsd
+            }
+            collateralAsset {
+              priceUsd
+            }
+          }
+        }`;
+
+      const wellResult = await fetchMorphoGraphQL(wellQuery, "getWellPrice");
+      if (wellResult?.wellMarket) {
+        wellPrice =
+          wellMarketConfig.collateralToken === "WELL"
+            ? wellResult.wellMarket.collateralAsset.priceUsd
+            : wellResult.wellMarket.loanAsset.priceUsd;
+      }
+    }
+  }
+
   const operationName = "getMarketTotalTimeseries";
 
   const variables = {
@@ -289,10 +334,14 @@ async function fetchIsolatedMarketSnapshots(
             const borrowApy =
               result.marketTotalTimeseries.historicalState.borrowApy[index];
 
-            const collateralTokenPrice =
+            let collateralTokenPrice =
               result.marketTotalTimeseries.collateralAsset.priceUsd;
             const loanTokenPrice =
               result.marketTotalTimeseries.loanAsset.priceUsd;
+
+            if (isStkWellMarket && wellPrice !== null) {
+              collateralTokenPrice = wellPrice;
+            }
 
             const totalSupply =
               (new Amount(BigInt(supplyAssets.y), Number(loanDecimals)).value *
@@ -341,6 +390,51 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
   marketAddress: string,
   environment: Environment,
 ): Promise<MarketSnapshot[]> {
+  const marketConfig = Object.values(environment.config.morphoMarkets).find(
+    (market) => market.id.toLowerCase() === marketAddress.toLowerCase(),
+  );
+
+  const isStkWellMarket =
+    marketConfig &&
+    environment.config.tokens[marketConfig.collateralToken]?.symbol ===
+      "stkWELL";
+
+  // If stkWELL market, fetch WELL price from subgraph. stkWELL and WELL have the same price
+  let wellPrice: number | null = null;
+  if (isStkWellMarket) {
+    const wellMarketConfig = Object.values(
+      environment.config.morphoMarkets,
+    ).find(
+      (market) =>
+        market.collateralToken === "WELL" || market.loanToken === "WELL",
+    );
+
+    if (wellMarketConfig) {
+      const wellQuery = `    
+        {
+          marketDailySnapshots (where:{market:"${wellMarketConfig.id.toLowerCase()}"}, orderBy:timestamp, orderDirection:desc, first: 1) {
+            inputTokenPriceUSD
+            outputTokenPriceUSD
+          }
+        }
+      `;
+
+      const wellResult = await getSubgraph<{
+        marketDailySnapshots: Array<{
+          inputTokenPriceUSD: string;
+          outputTokenPriceUSD: string;
+        }>;
+      }>(environment, wellQuery);
+
+      if (wellResult?.marketDailySnapshots?.[0]) {
+        wellPrice =
+          wellMarketConfig.collateralToken === "WELL"
+            ? Number(wellResult.marketDailySnapshots[0].inputTokenPriceUSD)
+            : Number(wellResult.marketDailySnapshots[0].outputTokenPriceUSD);
+      }
+    }
+  }
+
   const query = `    
     {
       marketDailySnapshots (where:{market:"${marketAddress.toLowerCase()}"}, orderBy:timestamp, orderDirection:desc, first: 365) {
@@ -396,8 +490,13 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
             Number(supplyDecimals),
           ).value;
 
-          const totalSupply =
-            totalSupplyInLoanToken / Number(item.inputTokenPriceUSD);
+          let collateralTokenPrice = Number(item.inputTokenPriceUSD);
+
+          if (isStkWellMarket && wellPrice !== null) {
+            collateralTokenPrice = wellPrice;
+          }
+
+          const totalSupply = totalSupplyInLoanToken / collateralTokenPrice;
 
           const borrowAssets = item.variableBorrowedTokenBalance;
 
@@ -412,7 +511,7 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
           );
 
           const totalLiquidity =
-            totalLiquidityInLoanToken / Number(item.inputTokenPriceUSD);
+            totalLiquidityInLoanToken / collateralTokenPrice;
 
           return {
             chainId: environment.chainId,
@@ -421,14 +520,14 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
             totalBorrows,
             totalBorrowsUsd: Number(item.outputTokenPriceUSD) * totalBorrows,
             totalSupply,
-            totalSupplyUsd: Number(item.inputTokenPriceUSD) * totalSupply,
+            totalSupplyUsd: collateralTokenPrice * totalSupply,
             totalLiquidity,
             totalLiquidityUsd:
               Number(item.outputTokenPriceUSD) * totalLiquidityInLoanToken,
             baseSupplyApy: 0,
             baseBorrowApy: 0,
             loanTokenPrice: Number(item.outputTokenPriceUSD),
-            collateralTokenPrice: Number(item.inputTokenPriceUSD),
+            collateralTokenPrice,
           };
         },
       );
