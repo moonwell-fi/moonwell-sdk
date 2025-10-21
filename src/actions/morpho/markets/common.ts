@@ -128,6 +128,72 @@ export async function getMorphoMarketsData(params: {
           loanTokenPrice = collateralTokenPrice / oraclePrice;
         }
 
+        // stkWELL is 1:1 with WELL, so use WELL price for stkWELL
+        if (collateralToken.symbol === "stkWELL") {
+          const wellMarketInfo = marketsInfo.find((mi) => {
+            const wellMarketConfig = Object.values(
+              environment.config.morphoMarkets,
+            ).find(
+              (item) =>
+                item.id.toLowerCase() === mi.marketId.toLowerCase() &&
+                (item.collateralToken === "WELL" || item.loanToken === "WELL"),
+            );
+            return wellMarketConfig !== undefined;
+          });
+
+          if (wellMarketInfo) {
+            const wellMarketConfig = Object.values(
+              environment.config.morphoMarkets,
+            ).find(
+              (item) =>
+                item.id.toLowerCase() === wellMarketInfo.marketId.toLowerCase(),
+            );
+
+            let wellPrice = 0;
+            if (
+              wellMarketConfig &&
+              wellMarketConfig.collateralToken === "WELL"
+            ) {
+              wellPrice = new Amount(wellMarketInfo.collateralPrice, 18).value;
+
+              if (wellPrice === 0) {
+                const wellLoanToken =
+                  environment.config.tokens[wellMarketConfig.loanToken];
+                const wellLoanPrice = new Amount(wellMarketInfo.loanPrice, 18)
+                  .value;
+                const wellOraclePrice = new Amount(
+                  BigInt(wellMarketInfo.oraclePrice),
+                  36 + wellLoanToken.decimals - 18, // WELL has 18 decimals
+                ).value;
+                wellPrice = wellLoanPrice * wellOraclePrice;
+              }
+            } else if (
+              wellMarketConfig &&
+              wellMarketConfig.loanToken === "WELL"
+            ) {
+              wellPrice = new Amount(wellMarketInfo.loanPrice, 18).value;
+
+              if (wellPrice === 0) {
+                const wellCollateralToken =
+                  environment.config.tokens[wellMarketConfig.collateralToken];
+                const wellCollateralPrice = new Amount(
+                  wellMarketInfo.collateralPrice,
+                  18,
+                ).value;
+                const wellOraclePrice = new Amount(
+                  BigInt(wellMarketInfo.oraclePrice),
+                  36 + 18 - wellCollateralToken.decimals,
+                ).value;
+                wellPrice = wellCollateralPrice / wellOraclePrice;
+              }
+            }
+
+            if (wellPrice > 0) {
+              collateralTokenPrice = wellPrice;
+            }
+          }
+        }
+
         const envSharedLiquidity = sharedLiquidityByChain.get(
           environment.chainId,
         );
