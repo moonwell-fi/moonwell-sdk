@@ -837,7 +837,8 @@ export async function getMorphoVaultsRewards(
           rewards: rewards
             .filter(
               (reward) =>
-                reward.vaultId === vault.vaultToken.address &&
+                reward.vaultId.toLowerCase() ===
+                  vault.vaultToken.address.toLowerCase() &&
                 (reward.chainId === vault.chainId || !currentChainRewardsOnly),
             )
             .map((reward) => {
