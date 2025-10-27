@@ -1,7 +1,7 @@
 {
   "name": "@moonwell-fi/moonwell-sdk",
   "description": "TypeScript Interface for Moonwell",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "type": "module",
   "main": "./_cjs/index.js",
   "module": "./_esm/index.js",
@@ -49,7 +49,9 @@
   },
   "typesVersions": {
     "*": {
-      "actions": ["./_types/actions/index.d.ts"]
+      "actions": [
+        "./_types/actions/index.d.ts"
+      ]
     }
   },
   "peerDependencies": {
@@ -74,7 +76,9 @@
   "license": "MIT",
   "homepage": "https://moonwell.fi",
   "repository": "moonwell-fi/moonwell-sdk",
-  "authors": ["x0s0l.eth"],
+  "authors": [
+    "x0s0l.eth"
+  ],
   "keywords": [
     "eth",
     "ethereum",
