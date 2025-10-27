@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.8
+
+### Patch Changes
+
+- [#174](https://github.com/moonwell-fi/moonwell-sdk/pull/174) [`c7ed255ad412eb1cbdb0ae44440a0a8c1c6c7642`](https://github.com/moonwell-fi/moonwell-sdk/commit/c7ed255ad412eb1cbdb0ae44440a0a8c1c6c7642) Thanks [@bprofiro](https://github.com/bprofiro)! - update stkwell campaign id
+
 ## 0.9.7
 
 ### Patch Changes
