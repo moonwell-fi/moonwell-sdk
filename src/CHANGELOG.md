@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.9
+
+### Patch Changes
+
+- [#176](https://github.com/moonwell-fi/moonwell-sdk/pull/176) [`8fe8970b043ec5d44e6211d1865805dfa6b9af5a`](https://github.com/moonwell-fi/moonwell-sdk/commit/8fe8970b043ec5d44e6211d1865805dfa6b9af5a) Thanks [@bprofiro](https://github.com/bprofiro)! - update vaults campaign
+
 ## 0.9.8
 
 ### Patch Changes
