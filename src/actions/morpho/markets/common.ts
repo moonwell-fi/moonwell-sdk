@@ -301,7 +301,7 @@ export async function getMorphoMarketsData(params: {
       if (marketReward) {
         market.rewards = marketReward.rewards;
 
-        // market.collateralAssets = marketReward.collateralAssets;
+        market.collateralAssets = marketReward.collateralAssets;
         // market.publicAllocatorSharedLiquidity =
         //   marketReward.publicAllocatorSharedLiquidity;
         // market.availableLiquidity = marketReward.reallocatableLiquidityAssets;
