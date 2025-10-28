@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.10
+
+### Patch Changes
+
+- [#178](https://github.com/moonwell-fi/moonwell-sdk/pull/178) [`604ae81a653fdd1aded650022daa7b44281d1648`](https://github.com/moonwell-fi/moonwell-sdk/commit/604ae81a653fdd1aded650022daa7b44281d1648) Thanks [@bprofiro](https://github.com/bprofiro)! - uncomment collateralAssets fr markets with non active vaults positions"
+
 ## 0.9.9
 
 ### Patch Changes
