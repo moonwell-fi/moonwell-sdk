@@ -38,7 +38,7 @@ const createEnvironment = (
       : fallback([
           http(base.rpcUrls.default.http[0]),
           http("https://base.llamarpc.com"),
-          http("https://base-mainnet.public.blastapi.io"),
+          http("https://rpc.moonwell.fi/main/evm/8453"),
           http("https://base.lava.build"),
         ]),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
