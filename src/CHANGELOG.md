@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.11
+
+### Patch Changes
+
+- [#180](https://github.com/moonwell-fi/moonwell-sdk/pull/180) [`fb9fbd59c5b184d43391e947a4fc65cd2b92111f`](https://github.com/moonwell-fi/moonwell-sdk/commit/fb9fbd59c5b184d43391e947a4fc65cd2b92111f) Thanks [@bprofiro](https://github.com/bprofiro)! - fix rpc
+
 ## 0.9.10
 
 ### Patch Changes
