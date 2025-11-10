@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.13
+
+### Patch Changes
+
+- [#184](https://github.com/moonwell-fi/moonwell-sdk/pull/184) [`b114f8f355e666e66ab25d724a09dbc2c1bc26af`](https://github.com/moonwell-fi/moonwell-sdk/commit/b114f8f355e666e66ab25d724a09dbc2c1bc26af) Thanks [@bprofiro](https://github.com/bprofiro)! - Return total collateral assets
+
 ## 0.9.12
 
 ### Patch Changes
