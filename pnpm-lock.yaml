@@ -83,7 +83,7 @@ importers:
         version: 5.9.3
       vocs:
         specifier: latest
-        version: 1.1.0(@types/node@22.13.10)(@types/react@19.2.2)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(rollup@4.52.5)(typescript@5.9.3)
+        version: 1.1.1(@types/node@22.13.10)(@types/react@19.2.2)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(rollup@4.52.5)(typescript@5.9.3)
 
   src:
     dependencies:
@@ -5179,8 +5179,8 @@ packages:
       jsdom:
         optional: true
 
-  vocs@1.1.0:
-    resolution: {integrity: sha512-RvSdP+OP5w/mzY6rupup8RLRRfi+9dqZmiiB/NOFrQds5iZNR2h2hNui+oKXUwAxv/Dywo2ma4YYSy6v/aw0Dw==}
+  vocs@1.1.1:
+    resolution: {integrity: sha512-AkzxZy+7q9BRlhNO294GpYAUb8MOOONZiWboFkvy+FxIGsmJELvsyKIzzRknP4oqrT+9cWC1hv+QJzPulx4E9w==}
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -10983,7 +10983,7 @@ snapshots:
       - supports-color
       - terser
 
-  vocs@1.1.0(@types/node@22.13.10)(@types/react@19.2.2)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(rollup@4.52.5)(typescript@5.9.3):
+  vocs@1.1.1(@types/node@22.13.10)(@types/react@19.2.2)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(rollup@4.52.5)(typescript@5.9.3):
     dependencies:
       '@floating-ui/react': 0.27.16(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@hono/node-server': 1.19.5(hono@4.10.3)
