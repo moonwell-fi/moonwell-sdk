@@ -93,14 +93,49 @@ export async function getMorphoMarketsData(params: {
     ]),
   );
 
+  const initialMarkets: MorphoMarket[] = [];
+  fulfilledMarketsInfo.forEach(({ environment, marketsInfo }) => {
+    marketsInfo.forEach((marketInfo) => {
+      const marketKey = Object.keys(environment.config.morphoMarkets).find(
+        (item) =>
+          environment.config.morphoMarkets[item].id.toLowerCase() ===
+          marketInfo.marketId.toLowerCase(),
+      );
+
+      if (!marketKey) {
+        return;
+      }
+
+      initialMarkets.push({
+        chainId: environment.chainId,
+        marketId: marketInfo.marketId,
+        marketKey,
+      } as MorphoMarket);
+    });
+  });
+
+  const rewardsData = await getMorphoMarketRewards(initialMarkets);
+  const rewardsDataByChainAndMarket = new Map<
+    string,
+    GetMorphoMarketsRewardsReturnType
+  >();
+  rewardsData.forEach((reward) => {
+    const key = `${reward.chainId}-${reward.marketId.toLowerCase()}`;
+    rewardsDataByChainAndMarket.set(key, reward);
+  });
+
   const result = fulfilledMarketsInfo.reduce(
     (aggregator, { environment, marketsInfo }) => {
-      const markets = marketsInfo.map((marketInfo) => {
+      const markets = marketsInfo.flatMap((marketInfo) => {
         const marketKey = Object.keys(environment.config.morphoMarkets).find(
           (item) =>
             environment.config.morphoMarkets[item].id.toLowerCase() ===
             marketInfo.marketId.toLowerCase(),
-        )!;
+        );
+
+        if (!marketKey) {
+          return [];
+        }
 
         const marketConfig = Object.values(
           environment.config.morphoMarkets,
@@ -228,8 +263,9 @@ export async function getMorphoMarketsData(params: {
           new Amount(0, 18);
         const availableLiquidityUsd =
           availableLiquidity?.value * loanTokenPrice;
-        const collateralAssets =
-          publicAllocatorSharedLiquidity?.collateralAssets || new Amount(0, 18);
+
+        const rewardKey = `${environment.chainId}-${marketInfo.marketId.toLowerCase()}`;
+        const marketRewardData = rewardsDataByChainAndMarket.get(rewardKey);
 
         const mapping: MorphoMarket = {
           chainId: environment.chainId,
@@ -242,7 +278,9 @@ export async function getMorphoMarketsData(params: {
           loanTokenPrice,
           collateralToken,
           collateralTokenPrice,
-          collateralAssets,
+          collateralAssets:
+            marketRewardData?.collateralAssets || new Amount(0, 18),
+          collateralAssetsUsd: marketRewardData?.collateralAssetsUsd || 0,
           totalSupply,
           totalSupplyUsd: totalSupply.value * collateralTokenPrice,
           totalSupplyInLoanToken,
@@ -269,7 +307,7 @@ export async function getMorphoMarketsData(params: {
             [],
         };
 
-        return mapping;
+        return [mapping];
       });
 
       return {
@@ -623,6 +661,7 @@ type GetMorphoMarketsRewardsReturnType = {
   chainId: number;
   marketId: string;
   collateralAssets: Amount;
+  collateralAssetsUsd: number;
   reallocatableLiquidityAssets: Amount;
   publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
   rewards: Required<MorphoReward>[];
@@ -684,6 +723,7 @@ async function getMorphoMarketRewards(
         }
         state {
           collateralAssets
+          collateralAssetsUsd
           rewards {
             asset {
               address
@@ -750,6 +790,7 @@ async function getMorphoMarketRewards(
         };
         state: {
           collateralAssets: string;
+          collateralAssetsUsd: number;
           rewards: {
             asset: {
               address: Address;
@@ -780,6 +821,7 @@ async function getMorphoMarketRewards(
           BigInt(item.state.collateralAssets),
           item.collateralAsset.decimals,
         ),
+        collateralAssetsUsd: item.state.collateralAssetsUsd,
         publicAllocatorSharedLiquidity: item.publicAllocatorSharedLiquidity.map(
           (item) => ({
             assets: Number(item.assets),

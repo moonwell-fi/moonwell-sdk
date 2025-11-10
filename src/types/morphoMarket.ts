@@ -13,6 +13,7 @@ export type MorphoMarket = {
   loanToken: TokenConfig;
   loanTokenPrice: number;
   collateralAssets: Amount;
+  collateralAssetsUsd: number;
   collateralToken: TokenConfig;
   collateralTokenPrice: number;
   totalSupply: Amount;
