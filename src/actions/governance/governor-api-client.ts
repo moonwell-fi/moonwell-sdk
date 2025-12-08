@@ -264,7 +264,6 @@ export async function fetchVoters(
   if (options?.cursor) params.append("cursor", options.cursor);
 
   const endpoint = `${baseUrl}/api/v1/governor/voters?${params.toString()}`;
-  console.log("[Governor API] Fetching voters from:", endpoint);
 
   try {
     const response = await axios.get<PaginatedResponse<ApiVoter>>(endpoint);
@@ -273,11 +272,6 @@ export async function fetchVoters(
       throw new Error(`Failed to fetch voters: ${response.statusText}`);
     }
 
-    console.log(
-      "[Governor API] Successfully fetched voters:",
-      response.data.results?.length,
-      "voters",
-    );
     return response.data;
   } catch (error: any) {
     console.error("[Governor API] CORS/Network Error:", {
@@ -303,7 +297,7 @@ export async function fetchAllVoters(
 
   do {
     const response = await fetchVoters(environment, {
-      limit: 1000,
+      limit: 100,
       ...(cursor && { cursor }),
     });
 
@@ -353,7 +347,6 @@ export async function fetchVoterProposals(
   if (options?.cursor) params.append("cursor", options.cursor);
 
   const endpoint = `${baseUrl}/api/v1/governor/voters/${address}/proposals?${params.toString()}`;
-  console.log("[Governor API] Fetching voter proposals from:", endpoint);
 
   const response = await axios.get<PaginatedResponse<ApiProposal>>(endpoint);
 
@@ -402,7 +395,6 @@ export async function fetchVoterVotes(
   if (options?.cursor) params.append("cursor", options.cursor);
 
   const endpoint = `${baseUrl}/api/v1/governor/voters/${address}/votes?${params.toString()}`;
-  console.log("[Governor API] Fetching voter votes from:", endpoint);
 
   const response = await axios.get<PaginatedResponse<ApiVote>>(endpoint);
 
