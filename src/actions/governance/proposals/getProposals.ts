@@ -1,18 +1,14 @@
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { getEnvironmentsFromArgs } from "../../../common/index.js";
+import { Amount } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
-import {
-  type Chain,
-  moonbeam,
-  moonriver,
-} from "../../../environments/index.js";
+import { type Chain, publicEnvironments } from "../../../environments/index.js";
 import * as logger from "../../../logger/console.js";
 import type { Proposal } from "../../../types/proposal.js";
+import { fetchAllProposals } from "../governor-api-client.js";
 import {
-  appendProposalExtendedData,
-  getCrossChainProposalData,
-  getExtendedProposalData,
-  getProposalData,
+  formatApiProposalData,
+  getProposalsOnChainData,
+  isMultichainProposal,
 } from "./common.js";
 
 export type GetProposalsParameters<
@@ -26,47 +22,92 @@ export async function getProposals<
   environments,
   Network extends Chain | undefined,
 >(
-  client: MoonwellClient,
-  args?: GetProposalsParameters<environments, Network>,
+  _client: MoonwellClient,
+  _args?: GetProposalsParameters<environments, Network>,
 ): GetProposalsReturnType {
-  const environments = getEnvironmentsFromArgs(client, args);
-
-  const governanceEnvironments = environments.filter(
-    (environment) =>
-      environment.chainId === moonriver.id ||
-      environment.chainId === moonbeam.id,
+  const logId = logger.start(
+    "getProposals",
+    "Starting to get proposals from Governor API...",
   );
 
-  const logId = logger.start("getProposals", "Starting to get proposals...");
+  const governanceEnvironment = publicEnvironments.moonbeam;
 
-  const environmentProposals = await Promise.all(
-    governanceEnvironments
-      .filter(
-        (environment) =>
-          environment.chainId === moonriver.id ||
-          environment.chainId === moonbeam.id,
-      )
-      .map((environment) =>
-        Promise.all([
-          getProposalData({ environment }),
-          getCrossChainProposalData({ environment }),
-          getExtendedProposalData({ environment }),
-        ]),
-      ),
+  const apiProposals = await fetchAllProposals(governanceEnvironment);
+  const onChainDataList = await getProposalsOnChainData(
+    apiProposals,
+    governanceEnvironment,
   );
+
+  const proposals: Proposal[] = apiProposals.map((apiProposal, index) => {
+    const onChainData = onChainDataList[index]!;
+
+    const formattedData = formatApiProposalData(apiProposal);
+
+    let proposalState = onChainData.state;
+    const now = Math.floor(Date.now() / 1000);
+
+    if (
+      proposalState === 0 &&
+      now >= apiProposal.votingStartTime &&
+      now <= apiProposal.votingEndTime
+    ) {
+      proposalState = 1; // Active
+    }
+
+    const isMultichain = isMultichainProposal(apiProposal.targets);
+
+    if (formattedData.executed) {
+      proposalState = 7; // ProposalState.Executed
+    } else if (
+      isMultichain &&
+      onChainData.votesCollected &&
+      now > apiProposal.votingEndTime &&
+      proposalState < 5
+    ) {
+      proposalState = 5; // ProposalState.Queued
+    }
+
+    const proposal: Proposal = {
+      id: apiProposal.proposalId,
+      chainId: apiProposal.chainId,
+      proposalId: apiProposal.proposalId,
+      proposer: apiProposal.proposer as `0x${string}`,
+      eta: onChainData.eta,
+      startTimestamp: apiProposal.votingStartTime,
+      endTimestamp: apiProposal.votingEndTime,
+      startBlock: Number(apiProposal.blockNumber),
+      forVotes: formattedData.forVotes,
+      againstVotes: formattedData.againstVotes,
+      abstainVotes: formattedData.abstainVotes,
+      totalVotes: formattedData.totalVotes,
+      canceled: formattedData.canceled,
+      executed: formattedData.executed,
+      quorum: new Amount(onChainData.quorum, 18),
+      state: proposalState,
+      // Extended data
+      title: formattedData.title,
+      subtitle: formattedData.subtitle,
+      description: apiProposal.description,
+      targets: apiProposal.targets,
+      calldatas: apiProposal.calldatas,
+      signatures: [],
+      stateChanges: formattedData.stateChanges,
+      environment: governanceEnvironment,
+    };
+
+    if (isMultichain) {
+      proposal.multichain = {
+        id: apiProposal.proposalId,
+        votesCollected: onChainData.votesCollected,
+      };
+    }
+
+    return proposal;
+  });
+
+  const sortedProposals = proposals.sort((a, b) => b.proposalId - a.proposalId);
 
   logger.end(logId);
 
-  const proposals = governanceEnvironments.flatMap((_item, index: number) => {
-    const [_proposals, _xcProposals, _extendedDatas] =
-      environmentProposals[index]!;
-
-    const proposals = [..._proposals, ..._xcProposals];
-
-    appendProposalExtendedData(proposals, _extendedDatas);
-
-    return proposals;
-  });
-
-  return proposals;
+  return sortedProposals;
 }

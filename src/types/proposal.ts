@@ -35,6 +35,7 @@ export type Proposal = {
     state: string;
     chainId: number;
   }[];
+  environment?: any; // Environment reference for blockchain explorer URLs
 };
 
 export enum ProposalState {
