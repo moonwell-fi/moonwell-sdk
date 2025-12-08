@@ -1,292 +1,195 @@
 import axios from "axios";
 import { isAddress } from "viem";
+import { base, moonbeam, optimism } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
-import { HttpRequestError } from "../../common/index.js";
 import {
   type Environment,
   publicEnvironments,
 } from "../../environments/index.js";
 import * as logger from "../../logger/console.js";
 import type { Delegate } from "../../types/delegate.js";
-
-export type GetDelegatesErrorType = HttpRequestError;
+import { fetchAllVoters } from "./governor-api-client.js";
 
 export type GetDelegatesReturnType = Promise<Delegate[]>;
 
 /**
- * Returns a list of the delegates from the Moonwell Governance Forum
- *
- * https://forum.moonwell.fi/c/delegation-pitch/17
+ * Returns a list of delegates with voting power and activity stats
+ * Data is fetched from Governor API, enriched with forum profiles and on-chain voting power
+ * All delegates are returned sorted by total voting power
+ * The app should handle pagination locally for better performance and caching
  */
 export async function getDelegates(
   client: MoonwellClient,
 ): GetDelegatesReturnType {
-  let users: Delegate[] = [];
-
   const logId = logger.start("getDelegates", "Starting to get delegates...");
 
-  const getUsersPaginated = async (page = 0) => {
-    const response = await axios.get<{
-      directory_items: {
-        user: {
-          id: number;
-          username: string;
-          name: string;
-          avatar_template: string;
-          title: string;
-          user_fields: {
-            "1": { value: string[] };
-            "2": { value: string[] };
-            "3": { value: string[] };
-          };
-          wallet_address: string;
-          pitch_intro: string;
-          pitch_link: string;
-        };
-      }[];
-      meta: {
-        total_rows_directory_items: number;
-        load_more_directory_items: string;
-      };
-    }>(
-      `https://forum.moonwell.fi/directory_items.json?period=all&order=Delegate+Wallet+Address&user_field_ids=2%7C1%7C3&page=${page}`,
-    );
+  const governanceEnvironment = publicEnvironments.moonbeam;
 
-    if (response.status !== 200 || !response.data) {
-      throw new HttpRequestError(response.statusText);
-    }
+  const apiVoters = await fetchAllVoters(governanceEnvironment);
+  const forumProfiles = await getForumProfiles();
 
-    const results = response.data.directory_items
-      .filter(
-        (item) =>
-          item.user.user_fields["1"] !== undefined &&
-          item.user.user_fields["1"].value !== undefined &&
-          item.user.user_fields["1"].value[0] !== undefined &&
-          isAddress(item.user.user_fields["1"].value[0]) &&
-          item.user.user_fields["2"] !== undefined &&
-          item.user.user_fields["2"].value !== undefined &&
-          item.user.user_fields["2"].value[0] !== undefined,
-      )
-      .map((item) => {
-        const avatar = item.user.avatar_template.replace("{size}", "160");
-        const result: Delegate = {
-          avatar: avatar.startsWith("/user_avatar")
-            ? `https://dub1.discourse-cdn.com/flex017${avatar}`
-            : avatar,
-          name: item.user.username,
-          wallet: item.user.user_fields["1"].value[0],
-          pitch: {
-            intro: item.user.user_fields["2"].value[0],
-            url: item.user.user_fields["3"]?.value[0],
-          },
-        };
-        return result;
-      });
-
-    users = users.concat(results);
-
-    const loadMore = response.data.directory_items.length > 0;
-    if (loadMore) {
-      await getUsersPaginated(page + 1);
-    }
-  };
-
-  await getUsersPaginated();
-
-  //Get how many proposals the delegate have voted for
-  const proposals = await getDelegatesExtendedData({
-    users: users.map((r) => r.wallet),
-  });
-  //Get delegate voting powers
+  const targetChainIds = [moonbeam.id, base.id, optimism.id] as const;
   const envs = Object.values(client.environments as Environment[]).filter(
-    (env) => env.contracts.views !== undefined,
+    (env) =>
+      env.contracts.views !== undefined &&
+      (targetChainIds as readonly number[]).includes(env.chainId),
   );
 
   const votingPowers = await Promise.all(
-    users.map(async (user) =>
+    apiVoters.map(async (voter) =>
       Promise.all(
         envs.map((environment) =>
           environment.contracts.views?.read.getUserVotingPower([
-            user.wallet as `0x${string}`,
+            voter.id as `0x${string}`,
           ]),
         ),
       ),
     ),
   );
 
-  logger.end(logId);
+  let delegates: Delegate[] = apiVoters.map((voter, index) => {
+    const forumProfile = forumProfiles.find(
+      (p) => p.wallet.toLowerCase() === voter.id.toLowerCase(),
+    );
 
-  users = users.map((user, index) => {
-    let votingPower: {
-      [chainId: string]: number;
-    } = {};
-
+    const votingPower: { [chainId: string]: number } = {};
     const userVotingPowers = votingPowers[index];
     if (userVotingPowers) {
-      votingPower = envs.reduce(
-        (prev, curr, reduceIndex) => {
-          const { claimsVotes, stakingVotes, tokenVotes } =
-            userVotingPowers[reduceIndex]!;
+      envs.forEach((env, reduceIndex) => {
+        const { claimsVotes, stakingVotes, tokenVotes } =
+          userVotingPowers[reduceIndex]!;
 
-          const totalVotes =
-            claimsVotes.delegatedVotingPower +
-            stakingVotes.delegatedVotingPower +
-            tokenVotes.delegatedVotingPower;
+        const totalVotes =
+          claimsVotes.delegatedVotingPower +
+          stakingVotes.delegatedVotingPower +
+          tokenVotes.delegatedVotingPower;
 
-          return {
-            ...prev,
-            [curr.chainId]: Number(totalVotes / BigInt(10 ** 18)),
-          };
-        },
-        {} as { [chainId: string]: number },
-      );
+        votingPower[env.chainId] = Number(totalVotes / BigInt(10 ** 18));
+      });
     }
 
-    const extended: Delegate = {
-      ...user,
-      proposals: proposals[user.wallet.toLowerCase()],
+    const delegate: Delegate = {
+      avatar: forumProfile?.avatar || "",
+      name: forumProfile?.name || voter.id,
+      wallet: voter.id as `0x${string}`,
+      pitch: forumProfile?.pitch || { intro: "", url: "" },
+      proposals: {
+        all: {
+          created: voter.createdProposalIds.length,
+          voted: voter.votedProposalIds.length,
+        },
+      },
       votingPower,
     };
 
-    return extended;
+    return delegate;
   });
 
-  return users;
+  delegates = delegates.sort((a, b) => {
+    const aTotalPower = Object.values(a.votingPower || {}).reduce(
+      (sum, power) => sum + power,
+      0,
+    );
+    const bTotalPower = Object.values(b.votingPower || {}).reduce(
+      (sum, power) => sum + power,
+      0,
+    );
+
+    return bTotalPower - aTotalPower;
+  });
+
+  logger.end(logId);
+
+  return delegates;
 }
 
 /**
- * Helper function to get how many proposals the delegates have created and voted
+ * Helper function to fetch delegate profiles from forum
  */
-const getDelegatesExtendedData = async (params: {
-  users: string[];
-}) => {
-  const response = await axios.post<{
-    data: {
-      proposers: {
-        items: {
-          id: string;
-          proposals: {
-            items: {
-              proposalId: string;
-              chainId: number;
-            }[];
-          };
-        }[];
-      };
-      voters: {
-        items: {
-          id: string;
-          votes: {
-            items: {
-              proposal: {
-                chainId: number;
-              };
-            }[];
-          };
-        }[];
-      };
+const getForumProfiles = async () => {
+  const profiles: Array<{
+    avatar: string;
+    name: string;
+    wallet: string;
+    pitch?: {
+      intro: string;
+      url?: string;
     };
-  }>(publicEnvironments.moonbeam.governanceIndexerUrl, {
-    query: `
-      query {
-        proposers(where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}) {
-          items {
-            id
-            proposals(limit: 1000) {
-              items {
-                chainId
-                proposalId
-              }
-            }
-          }
-        }
-        voters(where: {id_in: [${params.users.map((r) => `"${r.toLowerCase()}"`).join(",")}]}) {
-          items {
-            id
-            votes(limit: 1000) {
-              items {
-                voter
-                proposal {
-                  chainId
-                }
-              }
-            }
-          }
-        }
+  }> = [];
+
+  const getUsersPaginated = async (page = 0) => {
+    try {
+      const response = await axios.get<{
+        directory_items: {
+          user: {
+            id: number;
+            username: string;
+            name: string;
+            avatar_template: string;
+            title: string;
+            user_fields: {
+              "1": { value: string[] };
+              "2": { value: string[] };
+              "3": { value: string[] };
+            };
+            wallet_address: string;
+            pitch_intro: string;
+            pitch_link: string;
+          };
+        }[];
+        meta: {
+          total_rows_directory_items: number;
+          load_more_directory_items: string;
+        };
+      }>(
+        `https://forum.moonwell.fi/directory_items.json?period=all&order=Delegate+Wallet+Address&user_field_ids=2%7C1%7C3&page=${page}`,
+      );
+
+      if (response.status !== 200 || !response.data) {
+        return false;
       }
-    `,
-  });
 
-  if (response.status === 200 && response.data?.data?.voters) {
-    const voters = response?.data?.data?.voters?.items.reduce(
-      (prev, curr) => {
-        return {
-          ...prev,
-          [curr.id.toLowerCase()]: curr.votes.items.reduce(
-            (prevVotes, currVotes) => {
-              const previousVotes = prevVotes[currVotes.proposal.chainId] || 0;
-              return {
-                ...prevVotes,
-                [currVotes.proposal.chainId]: previousVotes + 1,
-              };
+      const results = response.data.directory_items
+        .filter(
+          (item) =>
+            item.user.user_fields["1"] !== undefined &&
+            item.user.user_fields["1"].value !== undefined &&
+            item.user.user_fields["1"].value[0] !== undefined &&
+            isAddress(item.user.user_fields["1"].value[0]) &&
+            item.user.user_fields["2"] !== undefined &&
+            item.user.user_fields["2"].value !== undefined &&
+            item.user.user_fields["2"].value[0] !== undefined,
+        )
+        .map((item) => {
+          const avatar = item.user.avatar_template.replace("{size}", "160");
+          return {
+            avatar: avatar.startsWith("/user_avatar")
+              ? `https://dub1.discourse-cdn.com/flex017${avatar}`
+              : avatar,
+            name: item.user.username,
+            wallet: item.user.user_fields["1"].value[0],
+            pitch: {
+              intro: item.user.user_fields["2"].value[0],
+              url: item.user.user_fields["3"]?.value[0],
             },
-            {} as { [chainId: string]: number },
-          ),
-        };
-      },
-      {} as { [voter: string]: { [chainId: string]: number } },
-    );
+          };
+        });
 
-    const proposers = response?.data?.data?.proposers?.items.reduce(
-      (prev, curr) => {
-        return {
-          ...prev,
-          [curr.id.toLowerCase()]: curr.proposals.items.reduce(
-            (prevVotes, currVotes) => {
-              const previousProposed = prevVotes[currVotes.chainId] || 0;
-              return {
-                ...prevVotes,
-                [currVotes.chainId]: previousProposed + 1,
-              };
-            },
-            {} as { [chainId: string]: number },
-          ),
-        };
-      },
-      {} as { [proposer: string]: { [chainId: string]: number } },
-    );
+      profiles.push(...results);
 
-    return params.users.reduce(
-      (prev, curr) => {
-        const proposalsCreated = proposers[curr.toLowerCase()];
-        const proposalsVoted = voters[curr.toLowerCase()];
-        const chains = [
-          ...Object.keys(proposalsCreated || {}),
-          ...Object.keys(proposalsVoted || {}),
-        ];
+      return response.data.directory_items.length > 0;
+    } catch (error) {
+      // If forum fetch fails, just return what we have
+      return false;
+    }
+  };
 
-        return {
-          ...prev,
-          [curr.toLowerCase()]: chains.reduce(
-            (prevChain, currChain) => {
-              return {
-                ...prevChain,
-                [currChain]: {
-                  created: proposalsCreated?.[currChain] || 0,
-                  voted: proposalsVoted?.[currChain] || 0,
-                },
-              };
-            },
-            {} as { [chainId: string]: { created: number; voted: number } },
-          ),
-        };
-      },
-      {} as {
-        [user: string]: {
-          [chainId: string]: { created: number; voted: number };
-        };
-      },
-    );
+  let page = 0;
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = await getUsersPaginated(page);
+    page++;
   }
-  return {};
+
+  return profiles;
 };

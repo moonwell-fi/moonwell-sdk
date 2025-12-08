@@ -4,10 +4,10 @@ export type Delegate = {
   wallet: string;
   pitch: {
     intro: string;
-    url: string;
+    url?: string;
   };
   proposals?: {
-    [chainId: string]: {
+    all: {
       created: number;
       voted: number;
     };
