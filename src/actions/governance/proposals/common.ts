@@ -94,7 +94,7 @@ export type ApiProposalFormatted = {
  * Parses and formats API proposal data
  */
 export const formatApiProposalData = (
-  apiProposal: any,
+  apiProposal: ApiProposal,
 ): ApiProposalFormatted => {
   const forVotes = new Amount(
     BigInt(Math.floor(apiProposal.forVotes * 1e18)),

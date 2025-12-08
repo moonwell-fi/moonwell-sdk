@@ -1,7 +1,6 @@
 import axios from "axios";
 import { isAddress } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
-import type { HttpRequestError } from "../../common/index.js";
 import {
   type Environment,
   publicEnvironments,
@@ -9,8 +8,6 @@ import {
 import * as logger from "../../logger/console.js";
 import type { Delegate } from "../../types/delegate.js";
 import { fetchAllVoters } from "./governor-api-client.js";
-
-export type GetDelegatesErrorType = HttpRequestError;
 
 export type GetDelegatesReturnType = Promise<Delegate[]>;
 

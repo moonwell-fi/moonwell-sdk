@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import type { Amount } from "../common/index.js";
+import type { Environment } from "../environments/index.js";
 
 export type Proposal = {
   chainId: number;
@@ -35,7 +36,7 @@ export type Proposal = {
     state: string;
     chainId: number;
   }[];
-  environment?: any; // Environment reference for blockchain explorer URLs
+  environment?: Environment; // Environment reference for blockchain explorer URLs
 };
 
 export enum ProposalState {
