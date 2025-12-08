@@ -1,5 +1,5 @@
 import axios from "axios";
-import { last } from "lodash";
+import last from "lodash/last.js";
 import { moonriver } from "viem/chains";
 import { Amount } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
