@@ -1,5 +1,6 @@
 import axios from "axios";
 import { isAddress } from "viem";
+import { base, moonbeam, optimism } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type Environment,
@@ -27,10 +28,11 @@ export async function getDelegates(
   const apiVoters = await fetchAllVoters(governanceEnvironment);
   const forumProfiles = await getForumProfiles();
 
-  const targetChainIds = [1284, 8453, 10]; // Moonbeam, Base, Optimism
+  const targetChainIds = [moonbeam.id, base.id, optimism.id] as const;
   const envs = Object.values(client.environments as Environment[]).filter(
     (env) =>
-      env.contracts.views !== undefined && targetChainIds.includes(env.chainId),
+      env.contracts.views !== undefined &&
+      (targetChainIds as readonly number[]).includes(env.chainId),
   );
 
   const votingPowers = await Promise.all(

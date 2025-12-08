@@ -1,7 +1,8 @@
+import { moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
-import type { Chain } from "../../../environments/index.js";
+import type { Chain, Environment } from "../../../environments/index.js";
 import * as logger from "../../../logger/console.js";
 import type { Proposal } from "../../../types/proposal.js";
 import { fetchAllProposals } from "../governor-api-client.js";
@@ -35,8 +36,8 @@ export async function getProposals<
 
   const governanceEnvironments = environments.filter(
     (environment) =>
-      environment.chainId === 1284 || // Moonbeam
-      environment.chainId === 1285, // Moonriver
+      environment.chainId === moonbeam.id ||
+      environment.chainId === moonriver.id,
   );
 
   if (governanceEnvironments.length === 0) {
@@ -46,7 +47,7 @@ export async function getProposals<
 
   const allProposals = await Promise.all(
     governanceEnvironments.map(async (governanceEnvironment) => {
-      if (governanceEnvironment.chainId === 1284) {
+      if (governanceEnvironment.chainId === moonbeam.id) {
         // Moonbeam: Use new Governor API
         return getMoonbeamProposals(governanceEnvironment);
       } else {
@@ -68,7 +69,7 @@ export async function getProposals<
  * Fetch proposals for Moonbeam using the new Governor API
  */
 async function getMoonbeamProposals(
-  governanceEnvironment: any,
+  governanceEnvironment: Environment,
 ): Promise<Proposal[]> {
   const apiProposals = await fetchAllProposals(governanceEnvironment);
   const onChainDataList = await getProposalsOnChainData(
@@ -150,7 +151,7 @@ async function getMoonbeamProposals(
  * Fetch proposals for Moonriver using the old Ponder-based approach
  */
 async function getMoonriverProposals(
-  governanceEnvironment: any,
+  governanceEnvironment: Environment,
 ): Promise<Proposal[]> {
   const [_proposals, _xcProposals, _extendedDatas] = await Promise.all([
     getProposalData({ environment: governanceEnvironment }),

@@ -1,7 +1,8 @@
+import { moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
-import type { Chain } from "../../../environments/index.js";
+import type { Chain, Environment } from "../../../environments/index.js";
 import type { Proposal } from "../../../types/proposal.js";
 import { fetchProposal } from "../governor-api-client.js";
 import {
@@ -37,12 +38,15 @@ export async function getProposal<
     return undefined;
   }
 
-  if (environment.chainId !== 1284 && environment.chainId !== 1285) {
+  if (
+    environment.chainId !== moonbeam.id &&
+    environment.chainId !== moonriver.id
+  ) {
     return undefined;
   }
 
   try {
-    if (environment.chainId === 1284) {
+    if (environment.chainId === moonbeam.id) {
       // Moonbeam: Use new Governor API
       return await getMoonbeamProposal(environment, proposalId);
     } else {
@@ -62,7 +66,7 @@ export async function getProposal<
  * Fetch a single proposal for Moonbeam using the new Governor API
  */
 async function getMoonbeamProposal(
-  governanceEnvironment: any,
+  governanceEnvironment: Environment,
   proposalId: number,
 ): Promise<Proposal | undefined> {
   const apiProposalId = `${proposalId}`;
@@ -142,7 +146,7 @@ async function getMoonbeamProposal(
  * Fetch a single proposal for Moonriver using the old Ponder-based approach
  */
 async function getMoonriverProposal(
-  governanceEnvironment: any,
+  governanceEnvironment: Environment,
   proposalId: number,
 ): Promise<Proposal | undefined> {
   const [_proposals, _xcProposals, _extendedDatas] = await Promise.all([
