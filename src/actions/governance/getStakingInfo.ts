@@ -89,7 +89,7 @@ export async function getStakingInfo<
     .filter((val) => val !== undefined);
 
   const baseStakingApr = await getMerklStakingApr(
-    "0x78a35e1cb13a476120a0d7efa669deda6578d46f8ecc708621291df87e90252b",
+    "0xf9e12deb62df71ffe6527b8f9000f93d3f783b3a58f7ec3f2be52cb9156608f3",
   ); // merkl campaign id
 
   const result = envsWithStaking.flatMap((curr, index) => {

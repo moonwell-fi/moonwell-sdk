@@ -62,6 +62,7 @@ export async function getUserStakingInfo<
       "0xf2c5b7dd2d3416d3853bcf1e93c1cfdb7b5b5fda079d36408df02f731f7d1499",
       "0x0761f42dda11caa8ef9d8f46a12fc13f073bd11153ff16ac0177c59a536f68ee",
       "0x78a35e1cb13a476120a0d7efa669deda6578d46f8ecc708621291df87e90252b",
+      "0xf9e12deb62df71ffe6527b8f9000f93d3f783b3a58f7ec3f2be52cb9156608f3",
     ],
     base.id,
     userAddress,
