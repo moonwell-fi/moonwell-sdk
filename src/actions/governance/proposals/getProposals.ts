@@ -1,12 +1,16 @@
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { Amount } from "../../../common/index.js";
+import { Amount, getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
-import { type Chain, publicEnvironments } from "../../../environments/index.js";
+import type { Chain } from "../../../environments/index.js";
 import * as logger from "../../../logger/console.js";
 import type { Proposal } from "../../../types/proposal.js";
 import { fetchAllProposals } from "../governor-api-client.js";
 import {
+  appendProposalExtendedData,
   formatApiProposalData,
+  getCrossChainProposalData,
+  getExtendedProposalData,
+  getProposalData,
   getProposalsOnChainData,
   isMultichainProposal,
 } from "./common.js";
@@ -22,16 +26,50 @@ export async function getProposals<
   environments,
   Network extends Chain | undefined,
 >(
-  _client: MoonwellClient,
-  _args?: GetProposalsParameters<environments, Network>,
+  client: MoonwellClient,
+  args?: GetProposalsParameters<environments, Network>,
 ): GetProposalsReturnType {
-  const logId = logger.start(
-    "getProposals",
-    "Starting to get proposals from Governor API...",
+  const logId = logger.start("getProposals", "Starting to get proposals...");
+
+  const environments = getEnvironmentsFromArgs(client, args);
+
+  const governanceEnvironments = environments.filter(
+    (environment) =>
+      environment.chainId === 1284 || // Moonbeam
+      environment.chainId === 1285, // Moonriver
   );
 
-  const governanceEnvironment = publicEnvironments.moonbeam;
+  if (governanceEnvironments.length === 0) {
+    logger.end(logId);
+    return [];
+  }
 
+  const allProposals = await Promise.all(
+    governanceEnvironments.map(async (governanceEnvironment) => {
+      if (governanceEnvironment.chainId === 1284) {
+        // Moonbeam: Use new Governor API
+        return getMoonbeamProposals(governanceEnvironment);
+      } else {
+        // Moonriver: Use old Ponder approach
+        return getMoonriverProposals(governanceEnvironment);
+      }
+    }),
+  );
+
+  const proposals = allProposals.flat();
+  const sortedProposals = proposals.sort((a, b) => b.proposalId - a.proposalId);
+
+  logger.end(logId);
+
+  return sortedProposals;
+}
+
+/**
+ * Fetch proposals for Moonbeam using the new Governor API
+ */
+async function getMoonbeamProposals(
+  governanceEnvironment: any,
+): Promise<Proposal[]> {
   const apiProposals = await fetchAllProposals(governanceEnvironment);
   const onChainDataList = await getProposalsOnChainData(
     apiProposals,
@@ -105,9 +143,28 @@ export async function getProposals<
     return proposal;
   });
 
-  const sortedProposals = proposals.sort((a, b) => b.proposalId - a.proposalId);
+  return proposals;
+}
 
-  logger.end(logId);
+/**
+ * Fetch proposals for Moonriver using the old Ponder-based approach
+ */
+async function getMoonriverProposals(
+  governanceEnvironment: any,
+): Promise<Proposal[]> {
+  const [_proposals, _xcProposals, _extendedDatas] = await Promise.all([
+    getProposalData({ environment: governanceEnvironment }),
+    getCrossChainProposalData({ environment: governanceEnvironment }),
+    getExtendedProposalData({ environment: governanceEnvironment }),
+  ]);
 
-  return sortedProposals;
+  const proposals = [..._proposals, ..._xcProposals];
+
+  proposals.forEach((proposal) => {
+    proposal.environment = governanceEnvironment;
+  });
+
+  appendProposalExtendedData(proposals, _extendedDatas);
+
+  return proposals;
 }
