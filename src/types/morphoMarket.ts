@@ -12,8 +12,17 @@ export type MorphoMarket = {
   performanceFee: number;
   loanToken: TokenConfig;
   loanTokenPrice: number;
-  collateralAssets: Amount;
-  collateralAssetsUsd: number;
+  /**
+   * Total collateral assets deposited in the market.
+   * May be `null` if the Morpho API returns no data (e.g., markets with no collateral
+   * or during API data sync delays). Check for `null` to distinguish from zero collateral.
+   */
+  collateralAssets: Amount | null;
+  /**
+   * USD value of total collateral assets.
+   * May be `null` if the Morpho API returns no data.
+   */
+  collateralAssetsUsd: number | null;
   collateralToken: TokenConfig;
   collateralTokenPrice: number;
   totalSupply: Amount;
