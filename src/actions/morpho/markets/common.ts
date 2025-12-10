@@ -278,9 +278,11 @@ export async function getMorphoMarketsData(params: {
           loanTokenPrice,
           collateralToken,
           collateralTokenPrice,
-          collateralAssets:
-            marketRewardData?.collateralAssets || new Amount(0, 18),
-          collateralAssetsUsd: marketRewardData?.collateralAssetsUsd || 0,
+          // Note: collateralAssets and collateralAssetsUsd may be null when the Morpho API
+          // returns null values for markets with no collateral or during API data sync delays.
+          // Consumers should handle null to distinguish between "no data" vs "zero collateral".
+          collateralAssets: marketRewardData?.collateralAssets ?? null,
+          collateralAssetsUsd: marketRewardData?.collateralAssetsUsd ?? null,
           totalSupply,
           totalSupplyUsd: totalSupply.value * collateralTokenPrice,
           totalSupplyInLoanToken,
@@ -660,8 +662,8 @@ async function getMorphoMarketPublicAllocatorSharedLiquidity(
 type GetMorphoMarketsRewardsReturnType = {
   chainId: number;
   marketId: string;
-  collateralAssets: Amount;
-  collateralAssetsUsd: number;
+  collateralAssets: Amount | null;
+  collateralAssetsUsd: number | null;
   reallocatableLiquidityAssets: Amount;
   publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
   rewards: Required<MorphoReward>[];
@@ -817,11 +819,17 @@ async function getMorphoMarketRewards(
           BigInt(item.reallocatableLiquidityAssets),
           item.loanAsset.decimals,
         ),
-        collateralAssets: new Amount(
-          BigInt(item.state.collateralAssets),
-          item.collateralAsset.decimals,
-        ),
-        collateralAssetsUsd: item.state.collateralAssetsUsd,
+        // Note: The Morpho GraphQL API may return null for collateralAssets and
+        // collateralAssetsUsd for markets with no collateral deposited or during data sync.
+        // We preserve null to let consumers distinguish between "no data" vs "zero collateral".
+        collateralAssets:
+          item.state.collateralAssets != null
+            ? new Amount(
+                BigInt(item.state.collateralAssets),
+                item.collateralAsset.decimals,
+              )
+            : null,
+        collateralAssetsUsd: item.state.collateralAssetsUsd ?? null,
         publicAllocatorSharedLiquidity: item.publicAllocatorSharedLiquidity.map(
           (item) => ({
             assets: Number(item.assets),

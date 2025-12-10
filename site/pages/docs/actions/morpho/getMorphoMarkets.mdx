@@ -41,6 +41,20 @@ MorphoMarket[]
 
 - **Type:** [`MorphoMarket[]`](/docs/glossary/types#morphomarket)
 
+:::info[Nullable Fields]
+The `collateralAssets` and `collateralAssetsUsd` fields may be `null` when the Morpho API returns no data for a market. This can occur for markets with no collateral deposited or during API data synchronization delays.
+
+When consuming these fields, check for `null` to distinguish between "data unavailable" and "zero collateral":
+
+```ts
+if (market.collateralAssets === null) {
+  // Data not available from API
+} else if (market.collateralAssets.value === 0) {
+  // Market has zero collateral
+}
+```
+:::
+
 ## Parameters
 
 ### includeRewards (optional)
