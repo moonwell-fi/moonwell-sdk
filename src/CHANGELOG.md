@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.15
+
+### Patch Changes
+
+- [#189](https://github.com/moonwell-fi/moonwell-sdk/pull/189) [`8f29aae57890c80475595e25a8725c2b29fcc95c`](https://github.com/moonwell-fi/moonwell-sdk/commit/8f29aae57890c80475595e25a8725c2b29fcc95c) Thanks [@bprofiro](https://github.com/bprofiro)! - fix bigint conversion
+
 ## 0.9.14
 
 ### Patch Changes
