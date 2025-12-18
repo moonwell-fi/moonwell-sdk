@@ -19,3 +19,24 @@ async function getBaseMarkets() {
 }
 
 getBaseMarkets();
+## Simple Example for Base Chain Users (Beginner-Friendly)
+
+Moonwell shines on Base for low fees and Coinbase ties! Here's an easy way to fetch markets on Base using a public RPC:
+
+```ts
+import { createMoonwellClient } from '@moonwell-fi/moonwell-sdk';
+
+const moonwellClient = createMoonwellClient({
+  networks: {
+    base: {
+      rpcUrls: ["https://mainnet.base.org"],  // Free public Base RPC
+    },
+  },
+});
+
+async function getBaseMarkets() {
+  const markets = await moonwellClient.getMarkets('base');  // Get all markets on Base
+  console.log('Moonwell Markets on Base:', markets);
+}
+
+getBaseMarkets();
