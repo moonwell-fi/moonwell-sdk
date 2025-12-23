@@ -24,7 +24,9 @@ const createEnvironment = (
       ? fallback(rpcUrls.map((url) => http(url)))
       : http("https://rpc.api.moonbeam.network"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
-    governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
+    governanceIndexerUrl:
+      governanceIndexerUrl ||
+      "https://lunar-services-worker.moonwell.workers.dev",
     tokens,
     markets,
     vaults: {},

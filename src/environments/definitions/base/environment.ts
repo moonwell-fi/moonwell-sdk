@@ -42,7 +42,9 @@ const createEnvironment = (
           http("https://base.lava.build"),
         ]),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
-    governanceIndexerUrl: governanceIndexerUrl || "https://ponder.moonwell.fi",
+    governanceIndexerUrl:
+      governanceIndexerUrl ||
+      "https://lunar-services-worker.moonwell.workers.dev",
     tokens,
     markets,
     vaults,
