@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.16
+
+### Patch Changes
+
+- [#188](https://github.com/moonwell-fi/moonwell-sdk/pull/188) [`79d51fc0eb9940eb8ddeaf989e76ceb4df9efd18`](https://github.com/moonwell-fi/moonwell-sdk/commit/79d51fc0eb9940eb8ddeaf989e76ceb4df9efd18) Thanks [@bprofiro](https://github.com/bprofiro)! - change governance indexer to lunar-indexer
+
 ## 0.9.15
 
 ### Patch Changes
