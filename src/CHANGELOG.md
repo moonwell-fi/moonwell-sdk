@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.17
+
+### Patch Changes
+
+- [#194](https://github.com/moonwell-fi/moonwell-sdk/pull/194) [`23d73873629b75fc4398d59e31408a8197a35667`](https://github.com/moonwell-fi/moonwell-sdk/commit/23d73873629b75fc4398d59e31408a8197a35667) Thanks [@bprofiro](https://github.com/bprofiro)! - add new merkl campaign
+
 ## 0.9.16
 
 ### Patch Changes
