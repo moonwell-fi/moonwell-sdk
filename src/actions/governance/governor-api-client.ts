@@ -83,6 +83,17 @@ export type ApiProposalStateChange = {
   chainId: number; // Chain ID where this state change occurred
 };
 
+export type ApiVoteReceipt = {
+  id: string;
+  proposalId: string;
+  voter: string;
+  votes: string;
+  voteValue: number; // 0=for, 1=against, 2=abstain
+  blockNumber: string;
+  chainId: number;
+  timestamp: number;
+};
+
 /**
  * Fetch proposals from Governor API
  */
@@ -426,4 +437,28 @@ export async function fetchAllVoterVotes(
   } while (cursor);
 
   return allVotes;
+}
+
+/**
+ * Fetch vote receipts for a specific user on a proposal
+ * Returns all votes across all chains for multichain proposals
+ */
+export async function fetchUserVoteReceipt(
+  environment: Environment,
+  proposalId: string,
+  voterAddress: string,
+): Promise<ApiVoteReceipt[]> {
+  const baseUrl = getGovernorApiUrl(environment);
+
+  const response = await axios.get<ApiVoteReceipt[]>(
+    `${baseUrl}/api/v1/governor/proposals/${proposalId}/vote/${voterAddress}`,
+  );
+
+  if (response.status !== 200 || !response.data) {
+    throw new Error(
+      `Failed to fetch user vote receipt: ${response.statusText}`,
+    );
+  }
+
+  return response.data;
 }
