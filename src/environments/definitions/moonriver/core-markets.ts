@@ -7,14 +7,17 @@ export const markets = createMarketConfig({
     MOONWELL_MOVR: {
       marketToken: "MOONWELL_MOVR",
       underlyingToken: "MOVR",
+      deprecated: true,
     },
     MOONWELL_xcKSM: {
       marketToken: "MOONWELL_xcKSM",
       underlyingToken: "xcKSM",
+      deprecated: true,
     },
     MOONWELL_FRAX: {
       marketToken: "MOONWELL_FRAX",
       underlyingToken: "FRAX",
+      deprecated: true,
     },
     MOONWELL_BTC: {
       marketToken: "MOONWELL_BTC",
