@@ -2,11 +2,8 @@ import type { Address, Chain } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentFromArgs } from "../../common/index.js";
 import type { NetworkParameterType } from "../../common/types.js";
-import {
-  type Environment,
-  publicEnvironments,
-} from "../../environments/index.js";
 import type { VoteReceipt } from "../../types/voteReceipt.js";
+import { fetchUserVoteReceipt } from "./governor-api-client.js";
 
 export type GetUserVoteReceiptParameters<
   environments,
@@ -36,79 +33,36 @@ export async function getUserVoteReceipt<
     return [];
   }
 
-  let isMultichain = false;
-  let getReceiptProposalId = proposalId;
+  try {
+    const apiVoteReceipts = await fetchUserVoteReceipt(
+      environment,
+      `${proposalId}`,
+      userAddress,
+    );
 
-  if (environment.contracts.multichainGovernor) {
-    if (environment.custom?.governance?.proposalIdOffset) {
-      if (proposalId > environment.custom?.governance?.proposalIdOffset) {
-        isMultichain = true;
-        getReceiptProposalId =
-          proposalId - environment.custom?.governance?.proposalIdOffset;
-      }
-    }
-  }
-
-  const result: VoteReceipt[] = [];
-
-  if (isMultichain) {
-    const governanceChainIds = environment.custom?.governance?.chainIds || [];
-
-    const receipt =
-      await environment.contracts.multichainGovernor?.read.getReceipt([
-        BigInt(getReceiptProposalId),
-        userAddress,
-      ]);
-
-    const [hasVoted, voteValue, votes] = receipt || [false, 0, 0];
-
-    result.push({
-      chainId: environment.chainId,
-      proposalId,
-      account: userAddress,
-      option: voteValue,
-      voted: hasVoted,
-      votes: new Amount(votes || 0, 18),
-    });
-
-    for (const chainId of governanceChainIds) {
-      const multichainEnvironment = (
-        Object.values(publicEnvironments) as Environment[]
-      ).find((r) => r.chainId === chainId);
-      if (multichainEnvironment) {
-        const receipt =
-          await multichainEnvironment.contracts.voteCollector?.read.getReceipt([
-            BigInt(getReceiptProposalId),
-            userAddress,
-          ]);
-
-        const [hasVoted, voteValue, votes] = receipt || [false, 0, 0];
-
-        result.push({
-          chainId: multichainEnvironment.chainId,
+    if (apiVoteReceipts.length === 0) {
+      return [
+        {
+          chainId: environment.chainId,
           proposalId,
           account: userAddress,
-          option: voteValue,
-          voted: hasVoted,
-          votes: new Amount(votes || 0, 18),
-        });
-      }
+          voted: false,
+          option: 0,
+          votes: new Amount(0, 18),
+        },
+      ];
     }
-  } else {
-    const receipt = await environment.contracts.governor?.read.getReceipt([
-      BigInt(getReceiptProposalId),
-      userAddress,
-    ]);
 
-    result.push({
-      chainId: environment.chainId,
+    return apiVoteReceipts.map((apiReceipt) => ({
+      chainId: apiReceipt.chainId,
       proposalId,
-      account: userAddress,
-      option: receipt?.voteValue || 0,
-      voted: receipt?.hasVoted || false,
-      votes: new Amount(receipt?.votes || 0, 18),
-    });
+      account: userAddress as Address,
+      voted: true,
+      option: apiReceipt.voteValue,
+      votes: new Amount(BigInt(apiReceipt.votes), 18),
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to fetch user vote receipt: ${message}`);
   }
-
-  return result;
 }
