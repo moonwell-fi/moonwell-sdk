@@ -62,19 +62,6 @@ export async function getUserVoteReceipt<
       votes: new Amount(BigInt(apiReceipt.votes), 18),
     }));
   } catch (error) {
-    console.error(
-      `[getUserVoteReceipt] Error fetching vote receipt for proposal ${proposalId}:`,
-      error,
-    );
-    return [
-      {
-        chainId: environment.chainId,
-        proposalId,
-        account: userAddress,
-        voted: false,
-        option: 0,
-        votes: new Amount(0, 18),
-      },
-    ];
+    throw new Error(`Failed to fetch user vote receipt: ${error}`);
   }
 }
