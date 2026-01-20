@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.18
+
+### Patch Changes
+
+- [#196](https://github.com/moonwell-fi/moonwell-sdk/pull/196) [`ff59c56751386c39f27045c14479dd2a20d6ca7a`](https://github.com/moonwell-fi/moonwell-sdk/commit/ff59c56751386c39f27045c14479dd2a20d6ca7a) Thanks [@bprofiro](https://github.com/bprofiro)! - fix user vote receipt
+
 ## 0.9.17
 
 ### Patch Changes
