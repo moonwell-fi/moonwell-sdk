@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.19
+
+### Patch Changes
+
+- [#198](https://github.com/moonwell-fi/moonwell-sdk/pull/198) [`58f09c9f513af49ff1a727b924fc6be8551c4f1d`](https://github.com/moonwell-fi/moonwell-sdk/commit/58f09c9f513af49ff1a727b924fc6be8551c4f1d) Thanks [@bprofiro](https://github.com/bprofiro)! - deprecate moonriver markets
+
 ## 0.9.18
 
 ### Patch Changes
