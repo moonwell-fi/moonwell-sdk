@@ -62,6 +62,7 @@ export async function getUserVoteReceipt<
       votes: new Amount(BigInt(apiReceipt.votes), 18),
     }));
   } catch (error) {
-    throw new Error(`Failed to fetch user vote receipt: ${error}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to fetch user vote receipt: ${message}`);
   }
 }
