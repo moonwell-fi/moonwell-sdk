@@ -25,6 +25,7 @@ import {
   MorphoPublicAllocatorAbi,
   MorphoVaultAbi,
   MorphoViewsAbi,
+  MorphoViewsV2Abi,
   MultiRewardDistributorAbi,
   MultichainGovernorAbi,
   StakingTokenAbi,
@@ -70,6 +71,7 @@ export type VaultConfig<tokens> = {
   underlyingToken: keyof tokens;
   campaignId?: string;
   multiReward?: Address;
+  version?: 1 | 2; // 1 = MetaMorpho V1, 2 = Morpho Vault V2
 };
 
 export type MarketConfig<tokens> = {
@@ -95,6 +97,7 @@ export type ContractConfig<tokens> = {
   views?: Address;
   tokenSale?: Address;
   morphoViews?: Address;
+  morphoViewsV2?: Address;
   multiRewardDistributor?: Address;
   temporalGovernor?: Address;
   voteCollector?: Address;
@@ -117,6 +120,7 @@ export type ContractsConfigReturnType = {
   views: CoreViewsContractReturnType;
   tokenSale: TokenSaleContractReturnType;
   morphoViews: MorphoViewsContractReturnType;
+  morphoViewsV2: MorphoViewsContractReturnType;
   multiRewardDistributor: MultiRewardDistributorContractReturnType;
   temporalGovernor: TemporalGovernorContractReturnType;
   voteCollector: VoteCollectorContractReturnType;
@@ -319,6 +323,9 @@ export const createEnvironmentConfig = <
       case "morphoViews":
         abi = MorphoViewsAbi;
         break;
+      case "morphoViewsV2":
+        abi = MorphoViewsV2Abi;
+        break;
       case "multiRewardDistributor":
         abi = MultiRewardDistributorAbi;
         break;
@@ -412,6 +419,11 @@ export const createEnvironmentConfig = <
       [name in keyof contracts as Extract<
         name,
         "morphoViews"
+      >]: MorphoViewsContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
+        "morphoViewsV2"
       >]: MorphoViewsContractReturnType;
     } & {
       [name in keyof contracts as Extract<
@@ -564,6 +576,11 @@ export type Environment<
       [name in keyof contracts as Extract<
         name,
         "morphoViews"
+      >]: MorphoViewsContractReturnType;
+    } & {
+      [name in keyof contracts as Extract<
+        name,
+        "morphoViewsV2"
       >]: MorphoViewsContractReturnType;
     } & {
       [name in keyof contracts as Extract<

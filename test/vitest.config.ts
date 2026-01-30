@@ -31,6 +31,7 @@ export default defineConfig({
     include: [
       ...(process.env.TYPES ? ["**/*.bench-d.ts"] : []),
       "src/**/getBeamTokenLimits.test.ts",
+      "src/actions/morpho/**/*.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,

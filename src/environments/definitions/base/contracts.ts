@@ -19,5 +19,6 @@ export const contracts = createContractsConfig({
     morphoBundler: "0xb98c948CFA24072e58935BC004a8A7b376AE746A",
     morphoPublicAllocator: "0xA090dD1a701408Df1d4d0B85b716c87565f90467",
     morphoViews: "0xc72fCC9793a10b9c363EeaAcaAbe422E0672B42B",
+    morphoViewsV2: "0x8D189997ccD6ab6909eF89836e5bcEf94599Cce0",
   },
 });

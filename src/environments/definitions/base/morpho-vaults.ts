@@ -34,5 +34,12 @@ export const vaults = createVaultConfig({
       campaignId:
         "0x6738320fdf80785ff7a1d45ed93a6ffa07068ce9ec4170c1887d09f32fba7b57",
     },
+    meUSDCv2: {
+      underlyingToken: "USDC",
+      vaultToken: "meUSDCv2",
+      campaignId:
+        "0x6738320fdf80785ff7a1d45ed93a6ffa07068ce9ec4170c1887d09f32fba7b57",
+      version: 2,
+    },
   },
 });

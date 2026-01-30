@@ -19,7 +19,7 @@ import type {
   MorphoVault,
   MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
-import { getGraphQL } from "../utils/graphql.js";
+import { getGraphQL, getVaultV2Apy } from "../utils/graphql.js";
 import {
   SECONDS_PER_YEAR,
   WAD,
@@ -42,10 +42,14 @@ export async function getMorphoVaultsData(params: {
       environment.contracts.morphoViews,
   );
 
+  // Query vaults for each environment, combining v1 and v2 results per environment
   const environmentsVaultsInfoSettlements = await Promise.allSettled(
     environmentsWithVaults.map(async (environment) => {
-      const vaultsAddresses = Object.values(environment.vaults)
-        .map((v) => v.address)
+      // Split vaults by version
+      const v1VaultsAddresses = Object.entries(environment.config.vaults)
+        .filter(([_, config]) => !config.version || config.version === 1)
+        .map(([key, _]) => environment.vaults[key]?.address)
+        .filter((address): address is `0x${string}` => address !== undefined)
         .filter((address) =>
           params.vaults
             ? params.vaults
@@ -54,62 +58,125 @@ export async function getMorphoVaultsData(params: {
             : true,
         );
 
-      try {
-        console.log(
-          "environment.contracts.morphoViews?.read.getVaultsInfo before invocation",
-          environment.contracts.morphoViews,
-        );
-        const vaultInfo =
-          await environment.contracts.morphoViews?.read.getVaultsInfo([
-            vaultsAddresses,
-          ]);
-
-        console.log(
-          "environment.contracts.morphoViews?.read.getVaultsInfo vaultInfo",
-          environment.chainId,
-          vaultInfo,
+      const v2VaultsAddresses = Object.entries(environment.config.vaults)
+        .filter(([_, config]) => config.version === 2)
+        .map(([key, _]) => environment.vaults[key]?.address)
+        .filter((address): address is `0x${string}` => address !== undefined)
+        .filter((address) =>
+          params.vaults
+            ? params.vaults
+                .map((id) => id.toLowerCase())
+                .includes(address.toLowerCase())
+            : true,
         );
 
-        return vaultInfo;
-      } catch (error) {
-        console.log(
-          "environment.contracts.morphoViews?.read.getVaultsInfo error",
-          environment.chainId,
-          error,
+      // Run v1 and v2 queries in parallel within this environment
+      const queryPromises: Promise<
+        | readonly {
+            vault: `0x${string}`;
+            totalSupply: bigint;
+            totalAssets: bigint;
+            underlyingPrice: bigint;
+            fee: bigint;
+            timelock: bigint;
+            markets: readonly {
+              marketId: `0x${string}`;
+              marketCollateral: `0x${string}`;
+              marketCollateralName: string;
+              marketCollateralSymbol: string;
+              marketLltv: bigint;
+              marketApy: bigint;
+              marketLiquidity: bigint;
+              vaultSupplied: bigint;
+            }[];
+          }[]
+        | undefined
+      >[] = [];
+
+      // Query v1 vaults with morphoViews
+      if (v1VaultsAddresses.length > 0 && environment.contracts.morphoViews) {
+        queryPromises.push(
+          (async () => {
+            try {
+              const vaultInfo =
+                await environment.contracts.morphoViews?.read.getVaultsInfo([
+                  v1VaultsAddresses,
+                ]);
+              return vaultInfo;
+            } catch (error) {
+              return undefined;
+            }
+          })(),
         );
-        return Promise.reject([]);
       }
+
+      // Query v2 vaults with morphoViewsV2
+      if (v2VaultsAddresses.length > 0 && environment.contracts.morphoViewsV2) {
+        queryPromises.push(
+          (async () => {
+            try {
+              const vaultInfoV2 =
+                await environment.contracts.morphoViewsV2?.read.getVaultsInfo([
+                  v2VaultsAddresses,
+                ]);
+
+              // Transform v2 structure to v1 structure
+              const transformedVaults = vaultInfoV2?.map((v2Vault: any) => {
+                // Get the first adapter (assuming single adapter for now)
+                const adapter = v2Vault.adapters?.[0];
+
+                if (!adapter) {
+                  return {
+                    vault: v2Vault.vault,
+                    totalSupply: v2Vault.totalSupply,
+                    totalAssets: v2Vault.totalAssets,
+                    underlyingPrice: v2Vault.underlyingPrice,
+                    fee: 0n,
+                    timelock: 0n,
+                    markets: [],
+                  };
+                }
+
+                // For v2 vaults, markets are not included since they are wrappers
+                // around v1 vaults and we don't have accurate per-market allocations
+                // from the v2 API. Users should query the underlying vault directly
+                // if they need market-level data.
+                const markets: any[] = [];
+
+                return {
+                  vault: v2Vault.vault,
+                  totalSupply: v2Vault.totalSupply,
+                  totalAssets: v2Vault.totalAssets,
+                  underlyingPrice: v2Vault.underlyingPrice,
+                  fee: adapter.underlyingVaultFee,
+                  timelock: adapter.underlyingVaultTimelock,
+                  markets,
+                };
+              });
+
+              return transformedVaults;
+            } catch (error) {
+              return undefined;
+            }
+          })(),
+        );
+      }
+
+      const queryResults = await Promise.all(queryPromises);
+      const results = queryResults
+        .filter((r): r is NonNullable<typeof r> => r !== undefined)
+        .flat();
+
+      return results;
     }),
   );
 
-  const environmentsVaultsInfo = environmentsVaultsInfoSettlements
-    .filter((s) => s.status === "fulfilled")
-    .map(
-      (s) =>
-        (
-          s as PromiseFulfilledResult<
-            | readonly {
-                vault: `0x${string}`;
-                totalSupply: bigint;
-                totalAssets: bigint;
-                underlyingPrice: bigint;
-                fee: bigint;
-                timelock: bigint;
-                markets: readonly {
-                  marketId: `0x${string}`;
-                  marketCollateral: `0x${string}`;
-                  marketCollateralName: string;
-                  marketCollateralSymbol: string;
-                  marketLltv: bigint;
-                  marketApy: bigint;
-                  marketLiquidity: bigint;
-                  vaultSupplied: bigint;
-                }[];
-              }[]
-            | undefined
-          >
-        ).value,
-    );
+  const environmentsVaultsInfo = environmentsVaultsInfoSettlements.map((s) => {
+    if (s.status === "fulfilled") {
+      return s.value;
+    }
+    return [];
+  });
 
   const result = await environmentsWithVaults.reduce<
     Promise<MultichainReturnType<MorphoVault[]>>
@@ -170,6 +237,22 @@ export async function getMorphoVaultsData(params: {
             const timelock = Number(vaultInfo.timelock) / (60 * 60);
 
             let ratio = 0n;
+            let baseApy = 0;
+            let v2ApyData:
+              | Awaited<ReturnType<typeof getVaultV2Apy>>
+              | undefined;
+
+            // For v2 vaults, fetch APY from Morpho API
+            if (vaultConfig.version === 2) {
+              v2ApyData = await getVaultV2Apy(
+                vaultInfo.vault,
+                environment.chainId,
+              );
+              if (v2ApyData) {
+                // Use avgNetApy (net APY including rewards)
+                baseApy = v2ApyData.avgNetApy * 100;
+              }
+            }
 
             const markets = vaultInfo.markets.map(
               (vaultMarket: {
@@ -233,31 +316,51 @@ export async function getMorphoVaultsData(params: {
               },
             );
 
-            const avgSupplyApy = mulDivDown(
-              ratio,
-              WAD - vaultInfo.fee,
-              vaultInfo.totalAssets === 0n ? 1n : vaultInfo.totalAssets,
-            );
-            const baseApy = new Amount(avgSupplyApy, 18).value * 100;
+            // Only calculate baseApy from markets for v1 vaults
+            // v2 vaults already have baseApy from Morpho API
+            if (vaultConfig.version !== 2) {
+              const avgSupplyApy = mulDivDown(
+                ratio,
+                WAD - vaultInfo.fee,
+                vaultInfo.totalAssets === 0n ? 1n : vaultInfo.totalAssets,
+              );
+              baseApy = new Amount(avgSupplyApy, 18).value * 100;
+            }
 
-            let totalLiquidity = new Amount(
-              markets.reduce(
-                (acc: bigint, curr: MorphoVaultMarket) =>
-                  acc + curr.marketLiquidity.exponential,
-                0n,
-              ),
-              underlyingToken.decimals,
-            );
+            let totalLiquidity: Amount;
+            let totalLiquidityUsd: number;
 
-            let totalLiquidityUsd = markets.reduce(
-              (acc: number, curr: MorphoVaultMarket) =>
-                acc + curr.marketLiquidityUsd,
-              0,
-            );
+            // V2 vaults: Use liquidity from Morpho API
+            // V1 vaults: Sum up market liquidity
+            if (vaultConfig.version === 2 && v2ApyData) {
+              // Use liquidity data from Morpho API
+              totalLiquidity = new Amount(
+                BigInt(v2ApyData.liquidity || "0"),
+                underlyingToken.decimals,
+              );
+              totalLiquidityUsd = v2ApyData.liquidityUsd || 0;
+            } else {
+              // V1 vaults: sum market liquidity
+              totalLiquidity = new Amount(
+                markets.reduce(
+                  (acc: bigint, curr: MorphoVaultMarket) =>
+                    acc + curr.marketLiquidity.exponential,
+                  0n,
+                ),
+                underlyingToken.decimals,
+              );
 
-            if (totalLiquidity.value > totalSupply.value) {
-              totalLiquidity = totalSupply;
-              totalLiquidityUsd = totalSupplyUsd;
+              totalLiquidityUsd = markets.reduce(
+                (acc: number, curr: MorphoVaultMarket) =>
+                  acc + curr.marketLiquidityUsd,
+                0,
+              );
+
+              // Cap liquidity at totalSupply for V1 vaults
+              if (totalLiquidity.value > totalSupply.value) {
+                totalLiquidity = totalSupply;
+                totalLiquidityUsd = totalSupplyUsd;
+              }
             }
 
             let totalStaked = new Amount(0n, underlyingToken.decimals);
@@ -287,6 +390,7 @@ export async function getMorphoVaultsData(params: {
             const mapping: MorphoVault = {
               chainId: environment.chainId,
               vaultKey: vaultKey!,
+              version: vaultConfig.version || 1,
               vaultToken,
               underlyingToken,
               underlyingPrice: underlyingPrice.value,
