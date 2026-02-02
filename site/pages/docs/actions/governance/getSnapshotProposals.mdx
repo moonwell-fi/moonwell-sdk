@@ -26,7 +26,7 @@ const proposals = await moonwellClient.getSnapshotProposals(); // [!code focus]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getSnapshotProposals({
     pagination: { size: 1, page: 1 },
     chainId: 1284,

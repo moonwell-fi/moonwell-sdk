@@ -6,6 +6,7 @@ import type { MorphoStakingReward } from "./morphoStakingReward.js";
 export type MorphoVault = {
   chainId: number;
   vaultKey: string;
+  deprecated: boolean;
   vaultToken: TokenConfig;
   underlyingToken: TokenConfig;
   vaultSupply: Amount;

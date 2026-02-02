@@ -28,7 +28,7 @@ const rewards = await moonwellClient.getUserRewards({ // [!code focus:3]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getUserRewards({
     userAddress: "0x0000000000000000000000000000000000000000",
   })

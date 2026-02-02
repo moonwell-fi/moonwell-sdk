@@ -28,7 +28,7 @@ const vaultUserPositions = await moonwellClient.getMorphoVaultUserPositions({ //
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMorphoVaultUserPositions({
     userAddress: "0x0000000000000000000000000000000000000000",
   })

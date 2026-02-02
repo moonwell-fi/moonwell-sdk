@@ -30,7 +30,7 @@ const marketUserPosition = await moonwellClient.getMorphoMarketUserPosition({ //
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMorphoMarketUserPosition({
     userAddress: "0x0000000000000000000000000000000000000000",
     chainId: 8453,

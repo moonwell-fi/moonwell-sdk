@@ -26,7 +26,7 @@ const proposals = await moonwellClient.getProposals(); // [!code focus]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getProposals({
     chainId: 1284,
   })

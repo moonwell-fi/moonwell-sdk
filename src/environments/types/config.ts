@@ -70,6 +70,7 @@ export type VaultConfig<tokens> = {
   underlyingToken: keyof tokens;
   campaignId?: string;
   multiReward?: Address;
+  deprecated?: boolean;
 };
 
 export type MarketConfig<tokens> = {

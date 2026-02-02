@@ -28,7 +28,7 @@ const balances = await moonwellClient.getMorphoUserBalances({ // [!code focus:3]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMorphoUserBalances({
     userAddress: "0x0000000000000000000000000000000000000000",
     chainId: 8453,
