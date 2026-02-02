@@ -30,7 +30,7 @@ const marketSnapshots = await moonwellClient.getMarketSnapshots({ // [!code focu
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMarketSnapshots({
     type: "core",
     marketId: "0x628ff693426583D9a7FB391E54366292F509D457",

@@ -33,7 +33,7 @@ const receipt = await moonwellClient.getUserVoteReceipt({ // [!code focus:5]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getUserVoteReceipt({
     proposalId: 1,
     userAddress: "0x0000000000000000000000000000000000000000",

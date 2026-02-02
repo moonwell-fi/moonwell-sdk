@@ -26,7 +26,7 @@ const vaults = await moonwellClient.getMorphoVaults(); // [!code focus]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMorphoVaults({
     chainId: 8453,
   })

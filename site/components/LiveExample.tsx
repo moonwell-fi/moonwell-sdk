@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 
 interface LiveExampleProps<T> {
-  promise: Promise<T>;
+  promiseFn: () => Promise<T>;
 }
 
-export function LiveExample<T>({ promise }: LiveExampleProps<T>) {
+export function LiveExample<T>({ promiseFn }: LiveExampleProps<T>) {
   const [data, setData] = useState<T | T[] | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +12,7 @@ export function LiveExample<T>({ promise }: LiveExampleProps<T>) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const result = await promise;
+        const result = await promiseFn();
         const data = Array.isArray(result) ? [result[0]] : result;
         setData(data);
       } catch (err) {
@@ -24,7 +24,7 @@ export function LiveExample<T>({ promise }: LiveExampleProps<T>) {
     }
 
     fetchData();
-  }, [promise]);
+  }, [promiseFn]);
 
   if (loading) return <div>Loading example...</div>;
   if (error) return <div>Error: {error}</div>;

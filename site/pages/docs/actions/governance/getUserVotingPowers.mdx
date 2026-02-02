@@ -29,7 +29,7 @@ const powers = await moonwellClient.getUserVotingPowers({ // [!code focus:4]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getUserVotingPowers({
     governanceToken: "WELL",
     userAddress: "0x0000000000000000000000000000000000000000",

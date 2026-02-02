@@ -30,7 +30,7 @@ const proposal = await moonwellClient.getSnapshotProposal({ // [!code focus:4]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getSnapshotProposal({
     proposalId: '0x14846ac838c7a144ffa257d4d8bc39091d30086b0d84eac4dc86263bbaa093d0',
     chainId: 1284,
