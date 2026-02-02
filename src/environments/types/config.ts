@@ -72,6 +72,7 @@ export type VaultConfig<tokens> = {
   campaignId?: string;
   multiReward?: Address;
   version?: 1 | 2; // 1 = MetaMorpho V1, 2 = Morpho Vault V2
+  deprecated?: boolean;
 };
 
 export type MarketConfig<tokens> = {

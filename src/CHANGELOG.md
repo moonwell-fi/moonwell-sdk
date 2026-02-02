@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.20
+
+### Patch Changes
+
+- [#204](https://github.com/moonwell-fi/moonwell-sdk/pull/204) [`223c9320b3e48924966aa584bb91518085043eee`](https://github.com/moonwell-fi/moonwell-sdk/commit/223c9320b3e48924966aa584bb91518085043eee) Thanks [@bprofiro](https://github.com/bprofiro)! - fix build
+
+- [#200](https://github.com/moonwell-fi/moonwell-sdk/pull/200) [`0193bdeb9afe40c1d884eafbacf865d71660fff9`](https://github.com/moonwell-fi/moonwell-sdk/commit/0193bdeb9afe40c1d884eafbacf865d71660fff9) Thanks [@bprofiro](https://github.com/bprofiro)! - deprecate op vault and op isolated markets
+
 ## 0.9.19
 
 ### Patch Changes

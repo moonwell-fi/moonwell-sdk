@@ -30,7 +30,7 @@ const position = await moonwellClient.getUserPosition({ // [!code focus:5]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getUserPosition({
     userAddress: "0x0000000000000000000000000000000000000000",
     chainId: 8453,

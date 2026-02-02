@@ -34,7 +34,7 @@ const market = await moonwellClient.getMarket({ // [!code focus:4]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMarket({
   chainId: 8453,
     marketAddress: "0x628ff693426583D9a7FB391E54366292F509D457",

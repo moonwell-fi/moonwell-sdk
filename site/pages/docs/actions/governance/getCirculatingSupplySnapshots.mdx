@@ -26,7 +26,7 @@ const snapshots = await moonwellClient.getCirculatingSupplySnapshots(); // [!cod
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getCirculatingSupplySnapshots({
     chainId: 1284,
   })

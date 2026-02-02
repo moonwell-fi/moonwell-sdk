@@ -30,7 +30,7 @@ const reward = await moonwellClient.getUserReward({ // [!code focus:5]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getUserReward({
     userAddress: "0x0000000000000000000000000000000000000000",
     chainId: 8453,

@@ -29,7 +29,7 @@ const market = await moonwellClient.getMorphoMarket({ // [!code focus:4]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMorphoMarket({
     chainId: 8453,
     marketId: "0x8793cf302b8ffd655ab97bd1c695dbd967807e8367a65cb2f4edaf1380ba1bda",

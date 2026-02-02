@@ -7,6 +7,7 @@ export type MorphoVault = {
   chainId: number;
   vaultKey: string;
   version: 1 | 2;
+  deprecated: boolean;
   vaultToken: TokenConfig;
   underlyingToken: TokenConfig;
   vaultSupply: Amount;

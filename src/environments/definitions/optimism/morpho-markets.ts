@@ -8,11 +8,13 @@ export const morphoMarkets = createMorphoMarketConfig({
       collateralToken: "ETH",
       loanToken: "USDC",
       id: "0x173b66359f0741b1c7f1963075cd271c739b6dc73b658e108a54ce6febeb279b",
+      deprecated: true,
     },
     "wstETH-USDC": {
       collateralToken: "wstETH",
       loanToken: "USDC",
       id: "0xc7ae57c1998c67a4c21804df606db1309b68a518ba5acc8b1dc3ffcb1b26b071",
+      deprecated: true,
     },
   },
 });
