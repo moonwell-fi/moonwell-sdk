@@ -287,6 +287,7 @@ export async function getMorphoVaultsData(params: {
             const mapping: MorphoVault = {
               chainId: environment.chainId,
               vaultKey: vaultKey!,
+              deprecated: vaultConfig.deprecated === true,
               vaultToken,
               underlyingToken,
               underlyingPrice: underlyingPrice.value,
