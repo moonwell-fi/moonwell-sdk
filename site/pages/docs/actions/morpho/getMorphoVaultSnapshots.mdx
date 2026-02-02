@@ -29,7 +29,7 @@ const vaultSnapshots = await moonwellClient.getMorphoVaultSnapshots({ // [!code 
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMorphoVaultSnapshots({
     chainId: 8453,
     vaultAddress: "0xa0E430870c4604CcfC7B38Ca7845B1FF653D0ff1",

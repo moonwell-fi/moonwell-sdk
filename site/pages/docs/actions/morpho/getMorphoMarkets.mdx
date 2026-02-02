@@ -27,7 +27,7 @@ const markets = await moonwellClient.getMorphoMarkets(); // [!code focus]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getMorphoMarkets({
     chainId: 8453,
   })

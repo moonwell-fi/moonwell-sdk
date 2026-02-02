@@ -32,7 +32,7 @@ const snapshots = await moonwellClient.getStakingSnapshots({ // [!code focus:3]
 
 :::details[Example]
 
-<LiveExample promise={
+<LiveExample promiseFn={() =>
   moonwellClient.getStakingSnapshots({
     chainId: 1284,
   })
