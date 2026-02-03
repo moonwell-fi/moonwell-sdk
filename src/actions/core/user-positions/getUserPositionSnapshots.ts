@@ -7,6 +7,11 @@ import { getEnvironmentFromArgs, isStartOfDay } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { UserPositionSnapshot } from "../../../types/userPosition.js";
+import {
+  createLunarIndexerClient,
+  shouldFallback,
+} from "../../lunar-indexer-client.js";
+import { transformPortfolioToSnapshots } from "../../lunar-indexer-transformers.js";
 
 dayjs.extend(utc);
 
@@ -39,6 +44,70 @@ export async function getUserPositionSnapshots<
 }
 
 async function fetchUserPositionSnapshots(
+  userAddress: Address,
+  environment: Environment,
+): Promise<UserPositionSnapshot[]> {
+  if (environment.lunarIndexerUrl) {
+    try {
+      const result = await fetchUserPositionSnapshotsFromLunar(
+        userAddress,
+        environment,
+      );
+      return result;
+    } catch (error) {
+      if (shouldFallback(error)) {
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  const result = await fetchUserPositionSnapshotsFromPonder(
+    userAddress,
+    environment,
+  );
+  return result;
+}
+
+async function fetchUserPositionSnapshotsFromLunar(
+  userAddress: Address,
+  environment: Environment,
+): Promise<UserPositionSnapshot[]> {
+  if (!environment.lunarIndexerUrl) {
+    throw new Error("Lunar Indexer URL not configured");
+  }
+
+  const client = createLunarIndexerClient({
+    baseUrl: environment.lunarIndexerUrl,
+    timeout: 10000,
+  });
+
+  const endTime = dayjs.utc().unix();
+  const startTime = dayjs.utc().subtract(365, "days").unix();
+
+  const portfolio = await client.getAccountPortfolio(
+    userAddress.toLowerCase(),
+    {
+      startTime,
+      endTime,
+      granularity: "1d",
+      chainId: environment.chainId,
+    },
+  );
+
+  const snapshots = transformPortfolioToSnapshots(
+    portfolio,
+    environment.chainId,
+  );
+
+  const filteredSnapshots = snapshots.filter((snapshot) =>
+    isStartOfDay(Math.floor(snapshot.timestamp / 1000)),
+  );
+
+  return filteredSnapshots;
+}
+
+async function fetchUserPositionSnapshotsFromPonder(
   userAddress: Address,
   environment: Environment,
 ): Promise<UserPositionSnapshot[]> {
