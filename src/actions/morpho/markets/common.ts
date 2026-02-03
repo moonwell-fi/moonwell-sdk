@@ -114,7 +114,10 @@ export async function getMorphoMarketsData(params: {
     });
   });
 
-  const rewardsData = await getMorphoMarketRewards(initialMarkets);
+  const rewardsData = await getMorphoMarketRewards(
+    params.environments[0],
+    initialMarkets,
+  );
   const rewardsDataByChainAndMarket = new Map<
     string,
     GetMorphoMarketsRewardsReturnType
@@ -330,7 +333,10 @@ export async function getMorphoMarketsData(params: {
         return environment?.custom.morpho?.minimalDeployment === false;
       });
 
-    const rewards = await getMorphoMarketRewards(markets);
+    const rewards = await getMorphoMarketRewards(
+      params.environments[0],
+      markets,
+    );
 
     markets.forEach((market) => {
       const marketReward = rewards.find(
@@ -670,6 +676,7 @@ type GetMorphoMarketsRewardsReturnType = {
 };
 
 async function getMorphoMarketRewards(
+  environment: Environment,
   markets: MorphoMarket[],
 ): Promise<GetMorphoMarketsRewardsReturnType[]> {
   if (markets.length === 0) {
@@ -808,7 +815,7 @@ async function getMorphoMarketRewards(
         };
       }[];
     };
-  }>(query);
+  }>(environment, query);
 
   if (result) {
     const markets = result.markets.items.map((item) => {

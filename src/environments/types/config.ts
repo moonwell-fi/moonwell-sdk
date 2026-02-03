@@ -139,6 +139,9 @@ export type CustomConfigType = {
   morpho?: {
     minimalDeployment?: boolean;
     subgraphUrl?: string;
+    blueApiUrl?: string; // For blue-api.morpho.org/graphql
+    apiUrl?: string; // For api.morpho.org/graphql
+    rewardsApiUrl?: string; // For rewards.morpho.org
   };
   governance?: {
     token: GovernanceToken;

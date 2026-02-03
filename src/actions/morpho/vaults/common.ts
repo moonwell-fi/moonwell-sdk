@@ -189,6 +189,39 @@ export async function getMorphoVaultsData(params: {
         return aggregator;
       }
 
+      // Batch fetch V2 APY data for all V2 vaults upfront
+      const v2VaultsToFetch = environmentVaultsInfo.filter((vaultInfo) => {
+        const vaultKey = Object.keys(environment.config.tokens).find(
+          (key) =>
+            environment.config.tokens[key].address.toLowerCase() ===
+            vaultInfo.vault.toLowerCase(),
+        );
+        const vaultConfig = environment.config.vaults[vaultKey!];
+        return vaultConfig?.version === 2;
+      });
+
+      const v2ApyDataMap = new Map<
+        string,
+        Awaited<ReturnType<typeof getVaultV2Apy>>
+      >();
+
+      if (v2VaultsToFetch.length > 0) {
+        const v2ApySettlements = await Promise.allSettled(
+          v2VaultsToFetch.map((vaultInfo) =>
+            getVaultV2Apy(environment, vaultInfo.vault, environment.chainId),
+          ),
+        );
+
+        v2ApySettlements.forEach((settlement, index) => {
+          if (settlement.status === "fulfilled" && settlement.value) {
+            v2ApyDataMap.set(
+              v2VaultsToFetch[index].vault.toLowerCase(),
+              settlement.value,
+            );
+          }
+        });
+      }
+
       const settled = await Promise.allSettled(
         environmentVaultsInfo.map(
           async (vaultInfo: {
@@ -242,12 +275,9 @@ export async function getMorphoVaultsData(params: {
               | Awaited<ReturnType<typeof getVaultV2Apy>>
               | undefined;
 
-            // For v2 vaults, fetch APY from Morpho API
+            // For v2 vaults, use batched APY data
             if (vaultConfig.version === 2) {
-              v2ApyData = await getVaultV2Apy(
-                vaultInfo.vault,
-                environment.chainId,
-              );
+              v2ApyData = v2ApyDataMap.get(vaultInfo.vault.toLowerCase());
               if (v2ApyData) {
                 // Use avgNetApy (net APY including rewards)
                 baseApy = v2ApyData.avgNetApy * 100;
@@ -579,6 +609,7 @@ export async function getMorphoVaultsData(params: {
       });
 
     const rewards = await getMorphoVaultsRewards(
+      params.environments[0],
       vaults,
       params.currentChainRewardsOnly,
     );
@@ -752,6 +783,7 @@ type GetMorphoVaultsRewardsResult = {
 };
 
 export async function getMorphoVaultsRewards(
+  environment: Environment,
   vaults: MorphoVault[],
   currentChainRewardsOnly?: boolean,
 ): Promise<GetMorphoVaultsRewardsResult[]> {
@@ -884,7 +916,7 @@ export async function getMorphoVaultsRewards(
         };
       }[];
     };
-  }>(query);
+  }>(environment, query);
 
   if (result) {
     try {
