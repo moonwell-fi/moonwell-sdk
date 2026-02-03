@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.21
+
+### Patch Changes
+
+- [#201](https://github.com/moonwell-fi/moonwell-sdk/pull/201) [`576cb3f82564c2dfb0850e7f47a680415e12122f`](https://github.com/moonwell-fi/moonwell-sdk/commit/576cb3f82564c2dfb0850e7f47a680415e12122f) Thanks [@bprofiro](https://github.com/bprofiro)! - add morpho vault v2 support
+
+- [#202](https://github.com/moonwell-fi/moonwell-sdk/pull/202) [`5f513720d9da386b124d4cd434c7ad87c2baaf44`](https://github.com/moonwell-fi/moonwell-sdk/commit/5f513720d9da386b124d4cd434c7ad87c2baaf44) Thanks [@bprofiro](https://github.com/bprofiro)! - update merkl campaign id
+
 ## 0.9.20
 
 ### Patch Changes
