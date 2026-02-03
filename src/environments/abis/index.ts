@@ -11,6 +11,7 @@ import MorphoBundlerAbi from "./morphoBundlerAbi.js";
 import MorphoPublicAllocatorAbi from "./morphoPublicAllocatorAbi.js";
 import MorphoVaultAbi from "./morphoVaultAbi.js";
 import MorphoViewsAbi from "./morphoViewsAbi.js";
+import MorphoViewsV2Abi from "./morphoViewsV2Abi.js";
 import MultiRewardDistributorAbi from "./multiRewardDistributorAbi.js";
 import MultichainGovernorAbi from "./multichainGovernorAbi.js";
 import StakingTokenAbi from "./stakingTokenAbi.js";
@@ -33,6 +34,7 @@ export {
   MorphoPublicAllocatorAbi,
   MorphoVaultAbi,
   MorphoViewsAbi,
+  MorphoViewsV2Abi,
   MultiRewardDistributorAbi,
   MultichainGovernorAbi,
   StakingTokenAbi,

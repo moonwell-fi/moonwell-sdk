@@ -154,27 +154,39 @@ async function fetchCoreMarketSnapshots(
 }
 
 async function fetchMorphoGraphQL(
+  environment: Environment,
   query: string,
   operationName?: string,
   variables?: any,
 ) {
   try {
+    const url =
+      environment.custom.morpho?.blueApiUrl ||
+      "https://blue-api.morpho.org/graphql";
     const response = await axios.post(
-      "https://blue-api.morpho.org/graphql",
+      url,
       { query: query, operationName, variables },
       { timeout: 5000 },
     );
 
     if (response.status !== 200 || response.data.errors) {
-      console.log(
-        `Non-200 (${response.statusText}
-        }) or other error from Morpho GraphQL! - ${JSON.stringify(response.data)}`,
-      );
+      if (typeof window !== "undefined") {
+        console.debug(
+          `[Morpho GraphQL Market Snapshots] Non-200 (${response.statusText}) or errors:`,
+          response.data.errors,
+        );
+      }
       return undefined;
     }
 
     return response.data.data;
   } catch (error) {
+    if (typeof window !== "undefined") {
+      console.debug(
+        "[Morpho GraphQL Market Snapshots] Error fetching data:",
+        error,
+      );
+    }
     return undefined;
   }
 }
@@ -218,7 +230,11 @@ async function fetchIsolatedMarketSnapshots(
           }
         }`;
 
-      const wellResult = await fetchMorphoGraphQL(wellQuery, "getWellPrice");
+      const wellResult = await fetchMorphoGraphQL(
+        environment,
+        wellQuery,
+        "getWellPrice",
+      );
       if (wellResult?.wellMarket) {
         wellPrice =
           wellMarketConfig.collateralToken === "WELL"
@@ -289,7 +305,12 @@ async function fetchIsolatedMarketSnapshots(
       }
     }`;
 
-  const result = await fetchMorphoGraphQL(query, operationName, variables);
+  const result = await fetchMorphoGraphQL(
+    environment,
+    query,
+    operationName,
+    variables,
+  );
 
   if (result) {
     try {

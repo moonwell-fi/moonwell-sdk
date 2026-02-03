@@ -27,11 +27,12 @@ export async function getUserMorphoRewardsData(params: {
 
   if (params.environment.custom.morpho?.minimalDeployment === false) {
     const morphoRewards = await getMorphoRewardsData(
-      params.environment.chainId,
+      params.environment,
       params.account,
     );
     // Process Morpho rewards
     const morphoAssets = await getMorphoAssetsData(
+      params.environment,
       morphoRewards.map((r) => r.asset.address),
     );
 
@@ -500,11 +501,13 @@ type MorphoAssetResponse = {
 };
 
 async function getMorphoRewardsData(
-  chainId: number,
+  environment: Environment,
   account: Address,
 ): Promise<MorphoRewardsResponse[]> {
+  const baseUrl =
+    environment.custom.morpho?.rewardsApiUrl || "https://rewards.morpho.org";
   const rewardsRequest = await fetch(
-    `https://rewards.morpho.org/v1/users/${account}/rewards?chain_id=${chainId}&trusted=true&exclude_merkl_programs=true`,
+    `${baseUrl}/v1/users/${account}/rewards?chain_id=${environment.chainId}&trusted=true&exclude_merkl_programs=true`,
     {
       headers: MOONWELL_FETCH_JSON_HEADERS,
     },
@@ -514,13 +517,16 @@ async function getMorphoRewardsData(
 }
 
 async function getMorphoAssetsData(
+  environment: Environment,
   addresses: Address[],
 ): Promise<MorphoAssetResponse[]> {
   const rewardsRequest = await getGraphQL<{
     assets: {
       items: MorphoAssetResponse[];
     };
-  }>(`
+  }>(
+    environment,
+    `
     query {
       assets(where: { address_in:[${uniq(addresses)
         .map((a: string) => `"${a.toLowerCase()}"`)
@@ -534,7 +540,8 @@ async function getMorphoAssetsData(
         }
       }
     }
-  `);
+  `,
+  );
   if (rewardsRequest) {
     return rewardsRequest.assets.items;
   }

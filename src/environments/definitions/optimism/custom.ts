@@ -5,6 +5,9 @@ export const custom = createCustomConfig({
     minimalDeployment: true,
     subgraphUrl:
       "https://api.goldsky.com/api/public/project_cm7wv7gztiq1e01vv7uco1h1y/subgraphs/moonwell-morpho-blue-optimism/production/gn",
+    blueApiUrl: "https://blue-api.morpho.org/graphql",
+    apiUrl: "https://api.morpho.org/graphql",
+    rewardsApiUrl: "https://rewards.morpho.org",
   },
   governance: {
     token: "WELL",

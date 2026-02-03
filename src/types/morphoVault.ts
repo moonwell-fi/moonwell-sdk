@@ -6,6 +6,7 @@ import type { MorphoStakingReward } from "./morphoStakingReward.js";
 export type MorphoVault = {
   chainId: number;
   vaultKey: string;
+  version: 1 | 2;
   deprecated: boolean;
   vaultToken: TokenConfig;
   underlyingToken: TokenConfig;
@@ -61,4 +62,35 @@ export type MorphoVaultStakingSnapshot = {
   totalStaked: number;
   totalStakedUsd: number;
   timestamp: number;
+};
+
+export type MorphoVaultV2ApyResponse = {
+  address: string;
+  avgApy: number;
+  avgNetApy: number;
+  totalAssets: string;
+  totalAssetsUsd: number;
+  totalSupply: string;
+  liquidity: string;
+  liquidityUsd: number;
+  idleAssetsUsd: number;
+  asset: {
+    yield: {
+      apr: number;
+    };
+  };
+  performanceFee: number;
+  managementFee: number;
+  rewards: MorphoVaultV2RewardResponse[];
+};
+
+export type MorphoVaultV2RewardResponse = {
+  asset: {
+    address: string;
+    chain: {
+      id: number;
+    };
+  };
+  supplyApr: number;
+  yearlySupplyTokens: string;
 };
