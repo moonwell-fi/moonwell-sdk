@@ -120,6 +120,40 @@ export async function getMorphoVaultsData(params: {
                   v2VaultsAddresses,
                 ]);
 
+              // Extract unique underlying vault addresses from V2 adapters
+              const underlyingVaultAddresses =
+                vaultInfoV2
+                  ?.flatMap((v2Vault: any) =>
+                    v2Vault.adapters?.map(
+                      (adapter: any) => adapter.underlyingVault,
+                    ),
+                  )
+                  .filter((addr: any) => addr && addr !== zeroAddress) || [];
+
+              const uniqueUnderlyingAddresses = [
+                ...new Set(underlyingVaultAddresses),
+              ] as `0x${string}`[];
+
+              // Query underlying V1 vaults to get their market positions
+              const underlyingVaultsData: Map<string, any> = new Map();
+              if (
+                uniqueUnderlyingAddresses.length > 0 &&
+                environment.contracts.morphoViews
+              ) {
+                const underlyingInfo =
+                  await environment.contracts.morphoViews.read.getVaultsInfo([
+                    uniqueUnderlyingAddresses,
+                  ]);
+
+                // Map by vault address for quick lookup
+                underlyingInfo?.forEach((vaultData: any, index: number) => {
+                  underlyingVaultsData.set(
+                    uniqueUnderlyingAddresses[index].toLowerCase(),
+                    vaultData,
+                  );
+                });
+              }
+
               // Transform v2 structure to v1 structure
               const transformedVaults = vaultInfoV2?.map((v2Vault: any) => {
                 // Get the first adapter (assuming single adapter for now)
@@ -137,11 +171,52 @@ export async function getMorphoVaultsData(params: {
                   };
                 }
 
-                // For v2 vaults, markets are not included since they are wrappers
-                // around v1 vaults and we don't have accurate per-market allocations
-                // from the v2 API. Users should query the underlying vault directly
-                // if they need market-level data.
-                const markets: any[] = [];
+                // Get underlying vault data for accurate market allocations
+                const underlyingVaultData = underlyingVaultsData.get(
+                  adapter.underlyingVault.toLowerCase(),
+                );
+
+                let markets: any[] = [];
+
+                if (underlyingVaultData?.markets) {
+                  // Map V1 vault's markets with scaled allocations
+                  markets = underlyingVaultData.markets.map((v1Market: any) => {
+                    // Scale the V1 vault's position by V2's ownership
+                    // V2 ownership = realAssets / underlyingVaultTotalAssets
+                    const scaledVaultSupplied =
+                      adapter.underlyingVaultTotalAssets > 0n
+                        ? (v1Market.vaultSupplied * adapter.realAssets) /
+                          adapter.underlyingVaultTotalAssets
+                        : 0n;
+
+                    return {
+                      marketId: v1Market.marketId,
+                      marketCollateral: v1Market.marketCollateral,
+                      marketCollateralName: v1Market.marketCollateralName,
+                      marketCollateralSymbol: v1Market.marketCollateralSymbol,
+                      marketLltv: v1Market.marketLltv,
+                      marketApy: v1Market.marketApy,
+                      marketLiquidity: v1Market.marketLiquidity,
+                      vaultSupplied: scaledVaultSupplied,
+                    };
+                  });
+                } else {
+                  // Fallback: if we can't get V1 data, use underlyingMarkets with 0 allocations
+                  markets =
+                    (adapter.underlyingMarkets || []).map(
+                      (underlyingMarket: any) => ({
+                        marketId: underlyingMarket.marketId,
+                        marketCollateral: underlyingMarket.collateralToken,
+                        marketCollateralName: underlyingMarket.collateralName,
+                        marketCollateralSymbol:
+                          underlyingMarket.collateralSymbol,
+                        marketLltv: underlyingMarket.marketLltv,
+                        marketApy: underlyingMarket.marketSupplyApy,
+                        marketLiquidity: underlyingMarket.marketLiquidity,
+                        vaultSupplied: 0n,
+                      }),
+                    ) || [];
+                }
 
                 return {
                   vault: v2Vault.vault,
@@ -167,7 +242,23 @@ export async function getMorphoVaultsData(params: {
         .filter((r): r is NonNullable<typeof r> => r !== undefined)
         .flat();
 
-      return results;
+      // Sort results to match the order in environment.config.vaults
+      const vaultKeys = Object.keys(environment.config.vaults);
+      const sortedResults = results.sort((a, b) => {
+        const aIndex = vaultKeys.findIndex(
+          (key) =>
+            environment.vaults[key]?.address.toLowerCase() ===
+            a.vault.toLowerCase(),
+        );
+        const bIndex = vaultKeys.findIndex(
+          (key) =>
+            environment.vaults[key]?.address.toLowerCase() ===
+            b.vault.toLowerCase(),
+        );
+        return aIndex - bIndex;
+      });
+
+      return sortedResults;
     }),
   );
 
