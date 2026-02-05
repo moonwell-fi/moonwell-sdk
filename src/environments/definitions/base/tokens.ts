@@ -279,16 +279,16 @@ export const tokens = createTokenConfig({
     symbol: "mcbXRP",
   },
   meUSDC: {
-    address: "0xe1ba476304255353aef290e6474a417d06e7b773",
+    address: "0xbB2F06CeAE42CBcF5559Ed0713538c8892D977c9",
     decimals: 18,
     name: "Moonwell Ecosystem USDC Vault",
     symbol: "meUSDC",
   },
-  meUSDCv2: {
-    address: "0xbB2F06CeAE42CBcF5559Ed0713538c8892D977c9",
+  meUSDCv1: {
+    address: "0xe1ba476304255353aef290e6474a417d06e7b773",
     decimals: 18,
-    name: "Moonwell Ecosystem USDC Vault V2",
-    symbol: "meUSDCv2",
+    name: "Moonwell Ecosystem USDC Vault V1",
+    symbol: "meUSDCv1",
   },
   MAMO: {
     address: "0x7300B37DfdfAb110d83290A29DfB31B1740219fE",
