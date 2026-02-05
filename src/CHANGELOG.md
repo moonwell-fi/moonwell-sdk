@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.22
+
+### Patch Changes
+
+- [#207](https://github.com/moonwell-fi/moonwell-sdk/pull/207) [`d703dea0a142f35b0b0ae6ab10a425cfc8b0427d`](https://github.com/moonwell-fi/moonwell-sdk/commit/d703dea0a142f35b0b0ae6ab10a425cfc8b0427d) Thanks [@bprofiro](https://github.com/bprofiro)! - fix v2 vaults allocation
+
+- [#207](https://github.com/moonwell-fi/moonwell-sdk/pull/207) [`2c9b2abad07aef1f8a55cd3c1fce905bdc574be8`](https://github.com/moonwell-fi/moonwell-sdk/commit/2c9b2abad07aef1f8a55cd3c1fce905bdc574be8) Thanks [@bprofiro](https://github.com/bprofiro)! - remove unused market
+
 ## 0.9.21
 
 ### Patch Changes
