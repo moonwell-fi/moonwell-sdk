@@ -333,7 +333,7 @@ describe("Testing getMorphoVaults", () => {
 
     const v2Vaults = morphoVaults.filter((vault) => vault.version === 2);
 
-    // Should have at least one v2 vault (meUSDC)
+    // Should have at least one V2 vault
     expect(v2Vaults.length).toBeGreaterThan(0);
 
     v2Vaults.forEach((vault) => {
