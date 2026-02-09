@@ -8,6 +8,8 @@ export const custom = createCustomConfig({
     blueApiUrl: "https://blue-api.morpho.org/graphql",
     apiUrl: "https://api.morpho.org/graphql",
     rewardsApiUrl: "https://rewards.morpho.org",
+    // Lunar Indexer URL for vault data (dev: ngrok, prod: will be lunar-services URL)
+    lunarIndexerUrl: "https://3824f1941df5.ngrok.app/api/v1/morpho",
   },
   governance: {
     token: "WELL",
