@@ -21,12 +21,82 @@ export type GetUserPositionSnapshotsParameters<
 > = NetworkParameterType<environments, network> & {
   /** User address*/
   userAddress: Address;
+  /** Predefined time period for snapshots */
+  period?: "1M" | "3M" | "1Y" | "ALL";
+  /** Custom start time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided. */
+  startTime?: number;
+  /** Custom end time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided. */
+  endTime?: number;
+  /** Data granularity. Defaults to "1d" */
+  granularity?: "1h" | "6h" | "1d";
 };
 
 export type GetUserPositionSnapshotsReturnType = Promise<
   UserPositionSnapshot[]
 >;
 
+/**
+ * Calculate start and end times based on period or custom timestamps
+ * Priority: custom timestamps > period > default (365 days)
+ */
+function calculateTimeRange(
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  startTime?: number,
+  endTime?: number,
+): { startTime: number; endTime: number } {
+  const now = dayjs.utc();
+  const end = endTime ?? now.unix();
+
+  // If both startTime and endTime are provided, use them (custom range)
+  if (startTime !== undefined && endTime !== undefined) {
+    return { startTime, endTime: end };
+  }
+
+  // Calculate based on period
+  let start: number;
+  switch (period) {
+    case "1M":
+      start = now.subtract(31, "days").unix();
+      break;
+    case "3M":
+      start = now.subtract(91, "days").unix();
+      break;
+    case "1Y":
+      start = now.subtract(366, "days").unix();
+      break;
+    case "ALL":
+      // Use a date far in the past to get all available data
+      start = now.subtract(10, "years").unix();
+      break;
+    default:
+      // Default to 365 days for backward compatibility
+      start = now.subtract(365, "days").unix();
+      break;
+  }
+
+  return { startTime: start, endTime: end };
+}
+
+/**
+ * Get historical snapshots of a user's positions across all markets
+ *
+ * @param client - Moonwell client instance
+ * @param args - Parameters including user address and optional time range
+ * @param args.userAddress - The user's wallet address
+ * @param args.period - Predefined time period: "1M" (31 days), "3M" (91 days), "1Y" (366 days), or "ALL" (all available history)
+ * @param args.startTime - Custom start time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided.
+ * @param args.endTime - Custom end time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided.
+ * @param args.granularity - Data granularity: "1h", "6h", or "1d" (default). Determines snapshot frequency.
+ *
+ * @returns Array of user position snapshots with USD values for supply, borrow, and collateral
+ *
+ * @remarks
+ * - Default behavior (no time parameters): Returns 365 days of history
+ * - Parameter priority: Custom timestamps > period > default (365 days)
+ * - When using Lunar Indexer, custom time ranges are supported
+ * - When falling back to Ponder, all available data is returned (client-side filtering may be needed)
+ * - Snapshots are filtered to start-of-day for "1d" granularity
+ */
 export async function getUserPositionSnapshots<
   environments,
   Network extends Chain | undefined,
@@ -40,18 +110,33 @@ export async function getUserPositionSnapshots<
     return [];
   }
 
-  return fetchUserPositionSnapshots(args.userAddress, environment);
+  return fetchUserPositionSnapshots(
+    args.userAddress,
+    environment,
+    args.period,
+    args.startTime,
+    args.endTime,
+    args.granularity,
+  );
 }
 
 async function fetchUserPositionSnapshots(
   userAddress: Address,
   environment: Environment,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  startTime?: number,
+  endTime?: number,
+  granularity?: "1h" | "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (environment.lunarIndexerUrl) {
     try {
       const result = await fetchUserPositionSnapshotsFromLunar(
         userAddress,
         environment,
+        period,
+        startTime,
+        endTime,
+        granularity,
       );
       return result;
     } catch (error) {
@@ -62,6 +147,7 @@ async function fetchUserPositionSnapshots(
     }
   }
 
+  // Ponder fallback returns all available data (doesn't support time filtering)
   const result = await fetchUserPositionSnapshotsFromPonder(
     userAddress,
     environment,
@@ -72,6 +158,10 @@ async function fetchUserPositionSnapshots(
 async function fetchUserPositionSnapshotsFromLunar(
   userAddress: Address,
   environment: Environment,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
+  granularity: "1h" | "6h" | "1d" = "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
     throw new Error("Lunar Indexer URL not configured");
@@ -82,15 +172,18 @@ async function fetchUserPositionSnapshotsFromLunar(
     timeout: 10000,
   });
 
-  const endTime = dayjs.utc().unix();
-  const startTime = dayjs.utc().subtract(365, "days").unix();
+  const { startTime, endTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
 
   const portfolio = await client.getAccountPortfolio(
     userAddress.toLowerCase(),
     {
       startTime,
       endTime,
-      granularity: "1d",
+      granularity,
       chainId: environment.chainId,
     },
   );
@@ -100,11 +193,19 @@ async function fetchUserPositionSnapshotsFromLunar(
     environment.chainId,
   );
 
-  const filteredSnapshots = snapshots.filter((snapshot) =>
-    isStartOfDay(Math.floor(snapshot.timestamp / 1000)),
+  // Find the first snapshot where user has any position
+  const firstNonZeroIndex = snapshots.findIndex(
+    (snapshot) =>
+      snapshot.totalSupplyUsd > 0 ||
+      snapshot.totalBorrowsUsd > 0 ||
+      snapshot.totalCollateralUsd > 0,
   );
 
-  return filteredSnapshots;
+  if (firstNonZeroIndex === -1) {
+    return [];
+  }
+
+  return snapshots.slice(firstNonZeroIndex);
 }
 
 async function fetchUserPositionSnapshotsFromPonder(

@@ -86,7 +86,7 @@ export function transformPortfolioToSnapshots(
 
     return {
       chainId,
-      timestamp: position.timestamp,
+      timestamp: position.timestamp * 1000, // Convert unix timestamp (seconds) to milliseconds
       totalSupplyUsd,
       totalBorrowsUsd,
       totalCollateralUsd: totalSupplyUsd, // Assuming all supplies are collateral
