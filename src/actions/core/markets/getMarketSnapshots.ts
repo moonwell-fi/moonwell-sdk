@@ -12,6 +12,7 @@ import type { Chain, Environment } from "../../../environments/index.js";
 import type { MarketSnapshot } from "../../../types/market.js";
 import { buildMarketId } from "../../../utils/lunar-indexer-helpers.js";
 import {
+  DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
   shouldFallback,
 } from "../../lunar-indexer-client.js";
@@ -66,10 +67,13 @@ async function fetchCoreMarketSnapshots(
       );
       return result;
     } catch (error) {
-      if (shouldFallback(error)) {
-      } else {
+      if (!shouldFallback(error)) {
         throw error;
       }
+      console.debug(
+        "[Lunar fallback] Falling back to Ponder for snapshots:",
+        error,
+      );
     }
   }
 
@@ -90,7 +94,7 @@ async function fetchCoreMarketSnapshotsFromLunar(
 
   const client = createLunarIndexerClient({
     baseUrl: environment.lunarIndexerUrl,
-    timeout: 10000,
+    timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
   const marketId = buildMarketId(environment.chainId, marketAddress);

@@ -8,6 +8,7 @@ import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { UserPositionSnapshot } from "../../../types/userPosition.js";
 import {
+  DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
   shouldFallback,
 } from "../../lunar-indexer-client.js";
@@ -140,10 +141,13 @@ async function fetchUserPositionSnapshots(
       );
       return result;
     } catch (error) {
-      if (shouldFallback(error)) {
-      } else {
+      if (!shouldFallback(error)) {
         throw error;
       }
+      console.debug(
+        "[Lunar fallback] Falling back to Ponder for user snapshots:",
+        error,
+      );
     }
   }
 
@@ -169,7 +173,7 @@ async function fetchUserPositionSnapshotsFromLunar(
 
   const client = createLunarIndexerClient({
     baseUrl: environment.lunarIndexerUrl,
-    timeout: 10000,
+    timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
   const { startTime, endTime } = calculateTimeRange(

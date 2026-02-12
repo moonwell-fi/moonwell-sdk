@@ -30,10 +30,10 @@ export const getMarketsData = async (environment: Environment) => {
       // Import shouldFallback dynamically
       const { shouldFallback } = await import("../../lunar-indexer-client.js");
 
-      if (shouldFallback(error)) {
-      } else {
+      if (!shouldFallback(error)) {
         throw error;
       }
+      console.debug("[Lunar fallback] Falling back to RPC/Ponder:", error);
     }
   }
 
@@ -203,6 +203,8 @@ export const getMarketsData = async (environment: Environment) => {
               : tokenPrice;
 
           if (price) {
+            // USDC on-chain returns borrowIncentivesPerSec=1 (1 wei) as a
+            // placeholder when there are no active borrow incentives. Treat as zero.
             if (token.symbol === "USDC" && borrowIncentivesPerSec === 1n) {
               borrowIncentivesPerSec = 0n;
             }
@@ -220,6 +222,7 @@ export const getMarketsData = async (environment: Environment) => {
                 : (supplyRewardsPerDayUsd / totalSupplyUsd) *
                   DAYS_PER_YEAR *
                   100;
+            // Negative: borrow reward APR reduces the effective borrowing cost
             const borrowApr =
               totalBorrowsUsd === 0
                 ? 0
@@ -270,13 +273,13 @@ async function fetchMarketsFromLunar(
   }
 
   // Import client dynamically to avoid circular dependencies
-  const { createLunarIndexerClient } = await import(
+  const { createLunarIndexerClient, DEFAULT_LUNAR_TIMEOUT_MS } = await import(
     "../../lunar-indexer-client.js"
   );
 
   const client = createLunarIndexerClient({
     baseUrl: environment.lunarIndexerUrl,
-    timeout: 10000,
+    timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
   const lunarMarketsResponse = await client.listMarkets(environment.chainId);
@@ -451,6 +454,8 @@ async function fetchMarketsFromLunar(
         let borrowIncentivesPerSec = BigInt(incentive.borrowIncentivesPerSec);
         const supplyIncentivesPerSec = BigInt(incentive.supplyIncentivesPerSec);
 
+        // USDC on-chain returns borrowIncentivesPerSec=1 (1 wei) as a
+        // placeholder when there are no active borrow incentives. Treat as zero.
         if (token.symbol === "USDC" && borrowIncentivesPerSec === 1n) {
           borrowIncentivesPerSec = 0n;
         }
@@ -468,6 +473,7 @@ async function fetchMarketsFromLunar(
             : (supplyRewardsPerDayUsd / lunarMarket.totalSupplyUsd) *
               DAYS_PER_YEAR *
               100;
+        // Negative: borrow reward APR reduces the effective borrowing cost
         borrowApr =
           lunarMarket.totalBorrowsUsd === 0
             ? 0

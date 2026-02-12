@@ -205,6 +205,8 @@ export function shouldFallback(error: unknown): boolean {
   return true;
 }
 
+export const DEFAULT_LUNAR_TIMEOUT_MS = 10_000;
+
 // ============================================================================
 // Lunar Indexer Client Class
 // ============================================================================
@@ -215,7 +217,7 @@ export class LunarIndexerClient {
   constructor(config: LunarIndexerConfig) {
     this.client = axios.create({
       baseURL: `${config.baseUrl}/api/v1/lending`,
-      timeout: config.timeout || 10000,
+      timeout: config.timeout || DEFAULT_LUNAR_TIMEOUT_MS,
       headers: {
         "Content-Type": "application/json",
       },
