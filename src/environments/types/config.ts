@@ -231,6 +231,7 @@ export const createEnvironmentConfig = <
   transport: Transport;
   indexerUrl: string;
   governanceIndexerUrl: string;
+  lunarIndexerUrl?: string;
   tokens: TokensConfig<tokens>;
   markets: MarketsConfig<markets, tokens>;
   vaults: VaultsConfig<vaults, tokens>;
@@ -494,6 +495,7 @@ export const createEnvironmentConfig = <
     chain: config.chain,
     indexerUrl: config.indexerUrl,
     governanceIndexerUrl: config.governanceIndexerUrl,
+    lunarIndexerUrl: config.lunarIndexerUrl,
     tokens: tokenContracts,
     markets: marketContracts,
     vaults: vaultsContracts,
@@ -531,6 +533,7 @@ export type Environment<
   chain: Chain;
   indexerUrl: string;
   governanceIndexerUrl: string;
+  lunarIndexerUrl?: string;
   tokens: {
     [name in keyof tokens]: TokenContractReturnType;
   };
