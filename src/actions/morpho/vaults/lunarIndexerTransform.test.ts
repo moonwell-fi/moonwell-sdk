@@ -4,8 +4,10 @@ import { createEnvironment as createBaseEnvironment } from "../../../environment
 import {
   fetchTokenMap,
   fetchVaultFromIndexer,
+  fetchVaultSnapshotsFromIndexer,
   fetchVaultsFromIndexer,
   transformVaultFromIndexer,
+  transformVaultSnapshotsFromIndexer,
   transformVaultsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
@@ -469,5 +471,166 @@ describe("Lunar Indexer Transformation Tests", () => {
       expect(vault.rewards).toBeDefined();
       expect(Array.isArray(vault.rewards)).toBe(true);
     });
+  });
+
+  // Test fetching vault snapshots from Lunar Indexer
+  test("Fetch vault snapshots from Lunar Indexer", async () => {
+    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
+    const response = await fetchVaultSnapshotsFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+
+    expect(response).toBeDefined();
+    expect(response.results).toBeDefined();
+    expect(Array.isArray(response.results)).toBe(true);
+    expect(response.results.length).toBeGreaterThan(0);
+
+    // Check structure of first snapshot
+    const snapshot = response.results[0];
+    expect(snapshot.chainId).toBe(BASE_CHAIN_ID);
+    expect(snapshot.vaultAddress).toBeDefined();
+    expect(snapshot.timestamp).toBeDefined();
+    expect(typeof snapshot.timestamp).toBe("number");
+    expect(snapshot.totalAssets).toBeDefined();
+    expect(snapshot.totalAssetsUsd).toBeDefined();
+    expect(snapshot.totalLiquidity).toBeDefined();
+    expect(snapshot.totalLiquidityUsd).toBeDefined();
+    expect(snapshot.underlyingPrice).toBeDefined();
+    expect(snapshot.baseApy).toBeDefined();
+    expect(typeof snapshot.timeInterval).toBe("number");
+  });
+
+  // Test snapshot pagination
+  test("Fetch vault snapshots supports pagination", async () => {
+    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
+    const firstPage = await fetchVaultSnapshotsFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+
+    expect(firstPage.results.length).toBeGreaterThan(0);
+
+    // If there's a next page, fetch it
+    if (firstPage.nextCursor) {
+      const secondPage = await fetchVaultSnapshotsFromIndexer(
+        LUNAR_INDEXER_URL,
+        vaultId,
+        { cursor: firstPage.nextCursor },
+      );
+
+      expect(secondPage.results).toBeDefined();
+      expect(Array.isArray(secondPage.results)).toBe(true);
+
+      // Second page timestamps should be older than first page
+      if (secondPage.results.length > 0) {
+        const firstPageOldest =
+          firstPage.results[firstPage.results.length - 1].timestamp;
+        const secondPageNewest = secondPage.results[0].timestamp;
+        expect(secondPageNewest).toBeLessThanOrEqual(firstPageOldest);
+      }
+    }
+  });
+
+  // Test snapshot transformation
+  test("Transform vault snapshots from Lunar Indexer", async () => {
+    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
+    const response = await fetchVaultSnapshotsFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+
+    const transformed = transformVaultSnapshotsFromIndexer(
+      response.results,
+      BASE_CHAIN_ID,
+    );
+
+    expect(transformed.length).toBe(response.results.length);
+
+    transformed.forEach((snapshot, index) => {
+      const raw = response.results[index];
+
+      // Check chainId
+      expect(snapshot.chainId).toBe(BASE_CHAIN_ID);
+
+      // Check vaultAddress is lowercase
+      expect(snapshot.vaultAddress).toBe(raw.vaultAddress.toLowerCase());
+
+      // Check timestamp is converted to milliseconds
+      expect(snapshot.timestamp).toBe(raw.timestamp * 1000);
+
+      // Check totalSupply maps from totalAssets
+      expect(snapshot.totalSupply).toBeCloseTo(
+        Number.parseFloat(raw.totalAssets),
+        6,
+      );
+      expect(snapshot.totalSupplyUsd).toBeCloseTo(
+        Number.parseFloat(raw.totalAssetsUsd),
+        6,
+      );
+
+      // Check totalLiquidity
+      expect(snapshot.totalLiquidity).toBeCloseTo(
+        Number.parseFloat(raw.totalLiquidity),
+        6,
+      );
+      expect(snapshot.totalLiquidityUsd).toBeCloseTo(
+        Number.parseFloat(raw.totalLiquidityUsd),
+        6,
+      );
+
+      // Check totalBorrows = totalAssets - totalLiquidity
+      const expectedBorrows =
+        Number.parseFloat(raw.totalAssets) -
+        Number.parseFloat(raw.totalLiquidity);
+      expect(snapshot.totalBorrows).toBeCloseTo(expectedBorrows, 6);
+
+      const expectedBorrowsUsd =
+        Number.parseFloat(raw.totalAssetsUsd) -
+        Number.parseFloat(raw.totalLiquidityUsd);
+      expect(snapshot.totalBorrowsUsd).toBeCloseTo(expectedBorrowsUsd, 6);
+    });
+  });
+
+  // Test snapshot MorphoVaultSnapshot type structure
+  test("Verify transformed snapshots match MorphoVaultSnapshot type", async () => {
+    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
+    const response = await fetchVaultSnapshotsFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+
+    const transformed = transformVaultSnapshotsFromIndexer(
+      response.results,
+      BASE_CHAIN_ID,
+    );
+
+    expect(transformed.length).toBeGreaterThan(0);
+
+    const snapshot = transformed[0];
+    const requiredFields = [
+      "chainId",
+      "vaultAddress",
+      "totalSupply",
+      "totalSupplyUsd",
+      "totalBorrows",
+      "totalBorrowsUsd",
+      "totalLiquidity",
+      "totalLiquidityUsd",
+      "timestamp",
+    ];
+
+    requiredFields.forEach((field) => {
+      expect(snapshot).toHaveProperty(field);
+    });
+
+    // All numeric values should be numbers
+    expect(typeof snapshot.totalSupply).toBe("number");
+    expect(typeof snapshot.totalSupplyUsd).toBe("number");
+    expect(typeof snapshot.totalBorrows).toBe("number");
+    expect(typeof snapshot.totalBorrowsUsd).toBe("number");
+    expect(typeof snapshot.totalLiquidity).toBe("number");
+    expect(typeof snapshot.totalLiquidityUsd).toBe("number");
+    expect(typeof snapshot.timestamp).toBe("number");
   });
 });

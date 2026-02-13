@@ -13,6 +13,7 @@ import type { Environment, TokenConfig } from "../../../environments/index.js";
 import type {
   MorphoVault,
   MorphoVaultMarket,
+  MorphoVaultSnapshot,
 } from "../../../types/morphoVault.js";
 
 /**
@@ -418,4 +419,94 @@ export async function fetchVaultFromIndexer(
   }
 
   return response.json();
+}
+
+/**
+ * Lunar Indexer Vault Snapshot Types
+ */
+
+export type LunarIndexerVaultSnapshot = {
+  id: string;
+  chainId: number;
+  vaultAddress: string;
+  timestamp: number;
+  blockNumber: string;
+  totalSupply: string;
+  totalAssets: string;
+  totalAssetsUsd: string;
+  totalLiquidity: string;
+  totalLiquidityUsd: string;
+  underlyingPrice: string;
+  vaultTokenPrice: string;
+  performanceFee: string;
+  baseApy: string;
+  timeInterval: number;
+};
+
+export type LunarIndexerVaultSnapshotsResponse = {
+  results: LunarIndexerVaultSnapshot[];
+  nextCursor: string | null;
+};
+
+/**
+ * Fetch vault snapshots from Lunar Indexer
+ *
+ * @param lunarIndexerUrl - Base URL for Lunar Indexer API
+ * @param vaultId - Vault ID in format "chainId-address"
+ * @param options - Optional query parameters
+ * @returns Lunar Indexer vault snapshots response
+ */
+export async function fetchVaultSnapshotsFromIndexer(
+  lunarIndexerUrl: string,
+  vaultId: string,
+  options?: {
+    cursor?: string;
+  },
+): Promise<LunarIndexerVaultSnapshotsResponse> {
+  const params = new URLSearchParams();
+  if (options?.cursor) params.set("cursor", options.cursor);
+
+  const queryString = params.toString();
+  const url = `${lunarIndexerUrl}/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch vault snapshots from Lunar Indexer: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Transform vault snapshots from Lunar Indexer format to SDK MorphoVaultSnapshot format
+ *
+ * @param snapshots - Array of snapshot data from Lunar Indexer
+ * @param chainId - Chain ID for the snapshots
+ * @returns Array of transformed MorphoVaultSnapshot objects
+ */
+export function transformVaultSnapshotsFromIndexer(
+  snapshots: LunarIndexerVaultSnapshot[],
+  chainId: number,
+): MorphoVaultSnapshot[] {
+  return snapshots.map((snapshot) => {
+    const totalAssets = Number.parseFloat(snapshot.totalAssets);
+    const totalAssetsUsd = Number.parseFloat(snapshot.totalAssetsUsd);
+    const totalLiquidity = Number.parseFloat(snapshot.totalLiquidity);
+    const totalLiquidityUsd = Number.parseFloat(snapshot.totalLiquidityUsd);
+
+    return {
+      chainId,
+      vaultAddress: snapshot.vaultAddress.toLowerCase(),
+      totalSupply: totalAssets,
+      totalSupplyUsd: totalAssetsUsd,
+      totalBorrows: totalAssets - totalLiquidity,
+      totalBorrowsUsd: totalAssetsUsd - totalLiquidityUsd,
+      totalLiquidity,
+      totalLiquidityUsd,
+      timestamp: snapshot.timestamp * 1000,
+    };
+  });
 }
