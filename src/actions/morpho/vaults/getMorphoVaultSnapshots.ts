@@ -9,6 +9,10 @@ import type {
 } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { MorphoVaultSnapshot } from "../../../types/morphoVault.js";
+import {
+  fetchVaultSnapshotsFromIndexer,
+  transformVaultSnapshotsFromIndexer,
+} from "./lunarIndexerTransform.js";
 
 dayjs.extend(utc);
 
@@ -33,14 +37,56 @@ export async function getMorphoVaultSnapshots<
     return [];
   }
 
-  return fetchVaultSnapshots(
-    (args as GetMorphoVaultSnapshotsParameters<environments, undefined>)
-      .vaultAddress,
-    environment,
-  );
+  const vaultAddress = (
+    args as GetMorphoVaultSnapshotsParameters<environments, undefined>
+  ).vaultAddress;
+
+  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+
+  if (lunarIndexerUrl) {
+    return fetchVaultSnapshotsFromLunarIndexer(
+      vaultAddress,
+      environment.chainId,
+      lunarIndexerUrl,
+    );
+  }
+
+  return fetchVaultSnapshotsFromPonder(vaultAddress, environment);
 }
 
-async function fetchVaultSnapshots(
+async function fetchVaultSnapshotsFromLunarIndexer(
+  vaultAddress: string,
+  chainId: number,
+  lunarIndexerUrl: string,
+): Promise<MorphoVaultSnapshot[]> {
+  const vaultId = `${chainId}-${vaultAddress.toLowerCase()}`;
+  const allSnapshots: MorphoVaultSnapshot[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const response = await fetchVaultSnapshotsFromIndexer(
+      lunarIndexerUrl,
+      vaultId,
+      cursor ? { cursor } : undefined,
+    );
+
+    const transformed = transformVaultSnapshotsFromIndexer(
+      response.results,
+      chainId,
+    );
+
+    const filtered = transformed.filter((snapshot) =>
+      isStartOfDay(Math.floor(snapshot.timestamp / 1000)),
+    );
+
+    allSnapshots.push(...filtered);
+    cursor = response.nextCursor;
+  } while (cursor !== null);
+
+  return allSnapshots;
+}
+
+async function fetchVaultSnapshotsFromPonder(
   vaultAddress: string,
   environment: Environment,
 ): Promise<MorphoVaultSnapshot[]> {
@@ -72,7 +118,7 @@ async function fetchVaultSnapshots(
     }>(environment.indexerUrl, {
       query: `
           query {
-            vaultDailySnapshots (        
+            vaultDailySnapshots (
               limit: 365,
               orderBy: "timestamp"
               orderDirection: "desc"
