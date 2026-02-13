@@ -1,8 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { Amount } from "../../../common/amount.js";
-import { base } from "../../../environments/index.js";
+import { createEnvironment as createBaseEnvironment } from "../../../environments/definitions/base/environment.js";
 import {
-  type LunarIndexerVault,
   fetchTokenMap,
   fetchVaultFromIndexer,
   fetchVaultsFromIndexer,
@@ -11,7 +10,8 @@ import {
 } from "./lunarIndexerTransform.js";
 
 describe("Lunar Indexer Transformation Tests", () => {
-  const LUNAR_INDEXER_URL = "https://3824f1941df5.ngrok.app/api/v1/morpho";
+  const LUNAR_INDEXER_URL =
+    "https://lunar-services-worker.moonwell.workers.dev/api/v1/morpho";
   const BASE_CHAIN_ID = 8453;
 
   // Test fetching tokens from Lunar Indexer
@@ -92,7 +92,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const transformedVault = transformVaultFromIndexer(
       indexerVault,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -178,7 +178,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const transformedVaults = transformVaultsFromIndexer(
       response.results,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -212,7 +212,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const transformedVault = transformVaultFromIndexer(
       indexerVault,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -270,7 +270,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const transformedVaults = transformVaultsFromIndexer(
       response.results,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -294,7 +294,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const transformedVaults = transformVaultsFromIndexer(
       response.results,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -318,7 +318,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const transformedVault = transformVaultFromIndexer(
       indexerVault,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -354,7 +354,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const transformedVaults = transformVaultsFromIndexer(
       response.results,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -393,7 +393,7 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     const vault = transformVaultFromIndexer(
       indexerVault,
-      base.createEnvironment(),
+      createBaseEnvironment(),
       tokenMap,
     );
 
@@ -446,7 +446,7 @@ describe("Lunar Indexer Transformation Tests", () => {
     expect(() =>
       transformVaultFromIndexer(
         indexerVault,
-        base.createEnvironment(),
+        createBaseEnvironment(),
         emptyTokenMap,
       ),
     ).toThrow("Underlying token not found");
