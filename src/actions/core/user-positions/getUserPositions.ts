@@ -1,6 +1,9 @@
 import type { Address, Chain } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { getEnvironmentsFromArgs } from "../../../common/index.js";
+import {
+  getEnvironmentsFromArgs,
+  settleAcrossEnvironments,
+} from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { UserPosition } from "../../../types/userPosition.js";
 import { getUserPositionData } from "./common.js";
@@ -26,18 +29,12 @@ export async function getUserPositions<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const settled = await Promise.allSettled(
-    environments.map((environment) =>
-      getUserPositionData({
-        environment,
-        account: userAddress,
-      }),
-    ),
+  const { data } = await settleAcrossEnvironments(
+    client,
+    "getUserPositions",
+    environments,
+    (environment) => getUserPositionData({ environment, account: userAddress }),
   );
 
-  const result = settled.flatMap((s) =>
-    s.status === "fulfilled" ? s.value : [],
-  );
-
-  return result;
+  return data.flat();
 }

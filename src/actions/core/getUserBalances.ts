@@ -6,7 +6,11 @@ import {
   zeroAddress,
 } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
-import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
+import {
+  Amount,
+  getEnvironmentsFromArgs,
+  settleAcrossEnvironments,
+} from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Environment } from "../../environments/index.js";
 import { findTokenByAddress } from "../../environments/utils/index.js";
@@ -104,7 +108,7 @@ async function getTokenBalancesFromEnvironment(
     return res;
   } catch (error) {
     console.error("getTokenBalancesFromEnvironment error", error);
-    return [];
+    throw error;
   }
 }
 
@@ -119,14 +123,11 @@ export async function getUserBalances<
 
   const environments = getEnvironmentsFromArgs(client, args, false);
 
-  const environmentsTokensBalancesSettled = await Promise.allSettled(
-    environments.map((env) =>
-      getTokenBalancesFromEnvironment(env, userAddress),
-    ),
-  );
-
-  const environmentsTokensBalances = environmentsTokensBalancesSettled.map(
-    (s) => (s.status === "fulfilled" ? [...s.value] : []),
+  const { data: environmentsTokensBalances } = await settleAcrossEnvironments(
+    client,
+    "getUserBalances",
+    environments,
+    (environment) => getTokenBalancesFromEnvironment(environment, userAddress),
   );
 
   // Fetch morpho staking balances
@@ -192,6 +193,8 @@ export async function getUserBalances<
 
     return userBalances;
   });
+
+  console.log("result", result, environmentsTokensBalances);
 
   return result;
 }
