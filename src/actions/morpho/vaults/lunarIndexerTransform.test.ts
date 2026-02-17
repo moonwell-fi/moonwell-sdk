@@ -526,13 +526,14 @@ describe("Lunar Indexer Transformation Tests", () => {
       vaultId,
     );
 
-    // Create empty token map to simulate missing tokens
+    // Simulate missing token by removing it from the vault and using empty map
+    const { underlyingToken: _, ...vaultWithoutToken } = indexerVault;
     const emptyTokenMap = new Map();
 
     // Should throw error if underlying token not found
     expect(() =>
       transformVaultFromIndexer(
-        indexerVault,
+        vaultWithoutToken,
         createBaseEnvironment(),
         emptyTokenMap,
       ),
