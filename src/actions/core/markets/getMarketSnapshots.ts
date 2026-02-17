@@ -10,6 +10,13 @@ import {
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { MarketSnapshot } from "../../../types/market.js";
+import { buildMarketId } from "../../../utils/lunar-indexer-helpers.js";
+import {
+  DEFAULT_LUNAR_TIMEOUT_MS,
+  createLunarIndexerClient,
+  shouldFallback,
+} from "../../lunar-indexer-client.js";
+import { transformMarketSnapshots } from "../../lunar-indexer-transformers.js";
 import { getSubgraph } from "../../morpho/utils/graphql.js";
 
 dayjs.extend(utc);
@@ -52,6 +59,87 @@ async function fetchCoreMarketSnapshots(
   marketAddress: string,
   environment: Environment,
 ): Promise<MarketSnapshot[]> {
+  if (environment.lunarIndexerUrl) {
+    try {
+      const result = await fetchCoreMarketSnapshotsFromLunar(
+        marketAddress,
+        environment,
+      );
+      return result;
+    } catch (error) {
+      if (!shouldFallback(error)) {
+        throw error;
+      }
+      console.debug(
+        "[Lunar fallback] Falling back to Ponder for snapshots:",
+        error,
+      );
+    }
+  }
+
+  const result = await fetchCoreMarketSnapshotsFromPonder(
+    marketAddress,
+    environment,
+  );
+  return result;
+}
+
+async function fetchCoreMarketSnapshotsFromLunar(
+  marketAddress: string,
+  environment: Environment,
+): Promise<MarketSnapshot[]> {
+  if (!environment.lunarIndexerUrl) {
+    throw new Error("Lunar Indexer URL not configured");
+  }
+
+  const client = createLunarIndexerClient({
+    baseUrl: environment.lunarIndexerUrl,
+    timeout: DEFAULT_LUNAR_TIMEOUT_MS,
+  });
+
+  const marketId = buildMarketId(environment.chainId, marketAddress);
+
+  const allSnapshots: MarketSnapshot[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const response = await client.getMarketSnapshots(marketId, {
+      limit: 1000,
+      ...(cursor && { cursor }),
+      granularity: "1d", // Match Ponder's daily behavior
+    });
+
+    const transformed = transformMarketSnapshots(
+      response.results,
+      environment.chainId,
+    );
+
+    const filteredSnapshots = transformed.filter((snapshot: MarketSnapshot) =>
+      isStartOfDay(Math.floor(snapshot.timestamp / 1000)),
+    );
+
+    allSnapshots.push(...filteredSnapshots);
+
+    cursor = response.nextCursor;
+  } while (cursor !== null);
+
+  return allSnapshots.map((snapshot) => {
+    const supplied = snapshot.totalSupply;
+    const suppliedUsd = snapshot.totalSupplyUsd;
+    const price = supplied > 0 ? suppliedUsd / supplied : 0;
+
+    return {
+      ...snapshot,
+      collateralTokenPrice: price,
+      loanTokenPrice: price,
+    };
+  });
+}
+
+async function fetchCoreMarketSnapshotsFromPonder(
+  marketAddress: string,
+  environment: Environment,
+): Promise<MarketSnapshot[]> {
   const dailyData: MarketDailyData[] = [];
   let hasNextPage = true;
   let endCursor: string | undefined;
@@ -82,7 +170,7 @@ async function fetchCoreMarketSnapshots(
     }>(environment.indexerUrl, {
       query: `
           query {
-            marketDailySnapshots (        
+            marketDailySnapshots (
               limit: 1000,
               orderBy: "timestamp"
               orderDirection: "desc"
