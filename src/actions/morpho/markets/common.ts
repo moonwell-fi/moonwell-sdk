@@ -8,8 +8,36 @@ import type {
 } from "../../../types/morphoMarket.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
 import { getGraphQL, getSubgraph } from "../utils/graphql.js";
+import {
+  type GetMorphoMarketsRewardsReturnType as LunarIndexerRewardsType,
+  fetchMarketsFromIndexer,
+  transformMarketsFromIndexer,
+} from "./lunarIndexerTransform.js";
 
 export async function getMorphoMarketsData(params: {
+  environments: Environment[];
+  markets?: string[] | undefined;
+  includeRewards?: boolean | undefined;
+}): Promise<MorphoMarket[]> {
+  const { environments } = params;
+
+  const hasLunarIndexer = environments.some(
+    (env) => env.custom?.morpho?.lunarIndexerUrl,
+  );
+
+  // Use Lunar Indexer implementation if available (with automatic fallback to on-chain on failure)
+  if (hasLunarIndexer) {
+    return getMorphoMarketsDataFromIndexer(params);
+  }
+
+  // Fall back to on-chain contract queries (legacy implementation)
+  return getMorphoMarketsDataFromOnChain(params);
+}
+
+/**
+ * Fetch markets from on-chain contracts (original implementation)
+ */
+async function getMorphoMarketsDataFromOnChain(params: {
   environments: Environment[];
   markets?: string[] | undefined;
   includeRewards?: boolean | undefined;
@@ -21,6 +49,10 @@ export async function getMorphoMarketsData(params: {
       Object.keys(environment.config.morphoMarkets).length > 0 &&
       environment.contracts.morphoViews,
   );
+
+  if (environmentsWithMarkets.length === 0) {
+    return [];
+  }
 
   const marketInfoSettlements = await Promise.allSettled(
     environmentsWithMarkets.map((environment) => {
@@ -372,7 +404,7 @@ export async function getMorphoMarketsData(params: {
     });
   }
 
-  return environments.flatMap((environment) => {
+  return environmentsWithMarkets.flatMap((environment) => {
     return result[environment.chainId] || [];
   });
 }
@@ -878,4 +910,170 @@ async function getMorphoMarketRewards(
   } else {
     return [];
   }
+}
+
+/**
+ * Fetch markets from Lunar Indexer for environments that have the lunar indexer URL configured
+ * Falls back to on-chain if indexer fails
+ */
+async function getMorphoMarketsDataFromIndexer(params: {
+  environments: Environment[];
+  markets?: string[] | undefined;
+  includeRewards?: boolean | undefined;
+}): Promise<MorphoMarket[]> {
+  const { environments } = params;
+
+  // Filter environments that have lunar-indexer URL configured
+  const environmentsWithIndexer = environments.filter(
+    (environment) =>
+      environment.custom?.morpho?.lunarIndexerUrl &&
+      Object.keys(environment.config.morphoMarkets).length > 0,
+  );
+
+  if (environmentsWithIndexer.length === 0) {
+    return [];
+  }
+
+  // Fetch markets from lunar-indexer for each environment
+  const marketsSettlements = await Promise.allSettled(
+    environmentsWithIndexer.map(async (environment) => {
+      const lunarIndexerUrl = environment.custom.morpho!.lunarIndexerUrl!;
+
+      try {
+        const response = await fetchMarketsFromIndexer(
+          lunarIndexerUrl,
+          environment.chainId,
+        );
+
+        // Filter markets if specific ones were requested
+        let markets = response.results;
+        if (params.markets) {
+          const requestedMarkets = params.markets.map((id) => id.toLowerCase());
+          markets = markets.filter((market) =>
+            requestedMarkets.includes(market.marketId.toLowerCase()),
+          );
+        }
+
+        return { environment, markets };
+      } catch (error) {
+        console.warn(
+          `Failed to fetch markets from Lunar Indexer for chain ${environment.chainId}, falling back to on-chain:`,
+          error,
+        );
+        // Return rejection so we can fall back to on-chain for this environment
+        return Promise.reject({ environment, error });
+      }
+    }),
+  );
+
+  const fulfilledMarkets = marketsSettlements.flatMap((s) =>
+    s.status === "fulfilled" ? [s.value] : [],
+  );
+
+  // Collect environments that failed to fetch from indexer for fallback
+  const failedEnvironments = marketsSettlements
+    .filter((s) => s.status === "rejected")
+    .map((s: any) => s.reason?.environment)
+    .filter((env) => env !== undefined);
+
+  // Fall back to on-chain for environments where indexer failed
+  let fallbackMarkets: MorphoMarket[] = [];
+  if (failedEnvironments.length > 0) {
+    console.warn(
+      `Falling back to on-chain for ${failedEnvironments.length} environment(s)`,
+    );
+    fallbackMarkets = await getMorphoMarketsDataFromOnChain({
+      environments: failedEnvironments,
+      markets: params.markets,
+      includeRewards: params.includeRewards,
+    });
+  }
+
+  // Fetch shared liquidity data from subgraph
+  const sharedLiquiditySettlements = await Promise.allSettled(
+    fulfilledMarkets.map(({ environment, markets }) => {
+      const marketIds = markets.map((m) => m.marketId as Address);
+      return getMorphoMarketPublicAllocatorSharedLiquidity(
+        environment,
+        marketIds,
+      ).then((data) => ({ environment, data }));
+    }),
+  );
+
+  const fulfilledSharedLiquidity = sharedLiquiditySettlements.flatMap((s) =>
+    s.status === "fulfilled" ? [s.value] : [],
+  );
+
+  // Create shared liquidity map by chainId and marketId
+  const sharedLiquidityMap = new Map<
+    string,
+    PublicAllocatorSharedLiquidityType[]
+  >();
+  fulfilledSharedLiquidity.forEach(({ environment, data }) => {
+    data.forEach((item) => {
+      const key = `${environment.chainId}-${item.marketId.toLowerCase()}`;
+      sharedLiquidityMap.set(key, item.publicAllocatorSharedLiquidity);
+    });
+  });
+
+  // Build initial markets list for rewards fetch
+  const initialMarkets: MorphoMarket[] = [];
+  fulfilledMarkets.forEach(({ environment, markets }) => {
+    markets.forEach((market) => {
+      const marketKey = Object.keys(environment.config.morphoMarkets).find(
+        (key) =>
+          environment.config.morphoMarkets[key].id.toLowerCase() ===
+          market.marketId.toLowerCase(),
+      );
+      if (marketKey) {
+        initialMarkets.push({
+          chainId: environment.chainId,
+          marketId: market.marketId,
+          marketKey,
+        } as MorphoMarket);
+      }
+    });
+  });
+
+  // Fetch rewards data if requested
+  const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
+  if (params.includeRewards && initialMarkets.length > 0) {
+    const rewardsData = await getMorphoMarketRewards(
+      params.environments[0],
+      initialMarkets,
+    );
+    rewardsData.forEach((reward) => {
+      const key = `${reward.chainId}-${reward.marketId.toLowerCase()}`;
+      rewardsDataMap.set(key, {
+        chainId: reward.chainId,
+        marketId: reward.marketId,
+        collateralAssets: reward.collateralAssets,
+        collateralAssetsUsd: reward.collateralAssetsUsd,
+        rewardsSupplyApy: reward.rewards.reduce(
+          (acc, curr) => acc + curr.supplyApr,
+          0,
+        ),
+        rewardsBorrowApy: reward.rewards.reduce(
+          (acc, curr) => acc + curr.borrowApr,
+          0,
+        ),
+        rewards: reward.rewards,
+      });
+    });
+  }
+
+  // Transform markets from indexer format to SDK format
+  const transformedMarkets = fulfilledMarkets.flatMap(
+    ({ environment, markets }) => {
+      return transformMarketsFromIndexer(
+        markets,
+        environment,
+        rewardsDataMap,
+        sharedLiquidityMap,
+      );
+    },
+  );
+
+  // Combine indexer results with fallback results
+  return [...transformedMarkets, ...fallbackMarkets];
 }
