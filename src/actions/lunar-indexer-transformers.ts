@@ -30,15 +30,15 @@ export function transformMarketSnapshot(
   return {
     chainId,
     marketId: lunar.marketAddress,
-    totalSupply: lunar.totalSupplies,
-    totalSupplyUsd: lunar.totalSuppliesUSD,
-    totalBorrows: lunar.totalBorrows,
-    totalBorrowsUsd: lunar.totalBorrowsUSD,
-    totalLiquidity: lunar.totalLiquidity,
-    totalLiquidityUsd: lunar.totalLiquidityUSD,
-    baseSupplyApy: lunar.baseSupplyApy,
-    baseBorrowApy: lunar.baseBorrowApy,
-    timestamp: lunar.timestamp * 1000, // Convert unix timestamp to milliseconds
+    totalSupply: Number(lunar.totalSupplies),
+    totalSupplyUsd: Number(lunar.totalSuppliesUSD),
+    totalBorrows: Number(lunar.totalBorrows),
+    totalBorrowsUsd: Number(lunar.totalBorrowsUSD),
+    totalLiquidity: Number(lunar.totalLiquidity),
+    totalLiquidityUsd: Number(lunar.totalLiquidityUSD),
+    baseSupplyApy: Number(lunar.baseSupplyApy),
+    baseBorrowApy: Number(lunar.baseBorrowApy),
+    timestamp: Number(lunar.timestamp) * 1000, // Convert unix timestamp to milliseconds
     loanTokenPrice: 0, // Calculated in getMarketSnapshots
     collateralTokenPrice: 0, // Calculated in getMarketSnapshots
   };

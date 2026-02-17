@@ -334,47 +334,65 @@ async function fetchMarketsFromLunar(
       marketFound;
 
     // Transform Lunar decimal numbers to SDK Amount types
+    // Note: Number() wrapping is defensive — the Lunar API may return numeric
+    // fields as strings, which would break BigInt conversion via Math.floor.
     const totalSupply = new Amount(
       BigInt(
-        Math.floor(lunarMarket.totalSupply * 10 ** underlyingToken.decimals),
+        Math.floor(
+          Number(lunarMarket.totalSupply) * 10 ** underlyingToken.decimals,
+        ),
       ),
       underlyingToken.decimals,
     );
 
     const totalBorrows = new Amount(
       BigInt(
-        Math.floor(lunarMarket.totalBorrows * 10 ** underlyingToken.decimals),
+        Math.floor(
+          Number(lunarMarket.totalBorrows) * 10 ** underlyingToken.decimals,
+        ),
       ),
       underlyingToken.decimals,
     );
 
     const totalReserves = new Amount(
       BigInt(
-        Math.floor(lunarMarket.totalReserves * 10 ** underlyingToken.decimals),
+        Math.floor(
+          Number(lunarMarket.totalReserves) * 10 ** underlyingToken.decimals,
+        ),
       ),
       underlyingToken.decimals,
     );
 
     const cash = new Amount(
-      BigInt(Math.floor(lunarMarket.cash * 10 ** underlyingToken.decimals)),
+      BigInt(
+        Math.floor(Number(lunarMarket.cash) * 10 ** underlyingToken.decimals),
+      ),
       underlyingToken.decimals,
     );
 
     const badDebt = new Amount(
-      BigInt(Math.floor(lunarMarket.badDebt * 10 ** underlyingToken.decimals)),
+      BigInt(
+        Math.floor(
+          Number(lunarMarket.badDebt) * 10 ** underlyingToken.decimals,
+        ),
+      ),
       underlyingToken.decimals,
     );
 
     const supplyCaps = new Amount(
       BigInt(
-        Math.floor(lunarMarket.supplyCap * 10 ** underlyingToken.decimals),
+        Math.floor(
+          Number(lunarMarket.supplyCap) * 10 ** underlyingToken.decimals,
+        ),
       ),
       underlyingToken.decimals,
     );
 
     const borrowCaps = new Amount(
       BigInt(
-        Math.floor(lunarMarket.borrowCap * 10 ** underlyingToken.decimals),
+        Math.floor(
+          Number(lunarMarket.borrowCap) * 10 ** underlyingToken.decimals,
+        ),
       ),
       underlyingToken.decimals,
     );
@@ -392,26 +410,28 @@ async function fetchMarketsFromLunar(
       borrowPaused: lunarMarket.borrowPaused,
       deprecated: marketConfig.deprecated === true,
       borrowCaps,
-      borrowCapsUsd: lunarMarket.borrowCap * lunarMarket.priceUsd,
+      borrowCapsUsd:
+        Number(lunarMarket.borrowCap) * Number(lunarMarket.priceUsd),
       cash,
-      collateralFactor: lunarMarket.collateralFactor,
-      exchangeRate: lunarMarket.exchangeRate,
+      collateralFactor: Number(lunarMarket.collateralFactor),
+      exchangeRate: Number(lunarMarket.exchangeRate),
       marketToken,
       reserveFactor,
       supplyCaps,
-      supplyCapsUsd: lunarMarket.supplyCap * lunarMarket.priceUsd,
+      supplyCapsUsd:
+        Number(lunarMarket.supplyCap) * Number(lunarMarket.priceUsd),
       badDebt,
-      badDebtUsd: lunarMarket.badDebtUsd,
+      badDebtUsd: Number(lunarMarket.badDebtUsd),
       totalBorrows,
-      totalBorrowsUsd: lunarMarket.totalBorrowsUsd,
+      totalBorrowsUsd: Number(lunarMarket.totalBorrowsUsd),
       totalReserves,
-      totalReservesUsd: lunarMarket.totalReservesUsd,
+      totalReservesUsd: Number(lunarMarket.totalReservesUsd),
       totalSupply,
-      totalSupplyUsd: lunarMarket.totalSupplyUsd,
-      underlyingPrice: lunarMarket.priceUsd,
+      totalSupplyUsd: Number(lunarMarket.totalSupplyUsd),
+      underlyingPrice: Number(lunarMarket.priceUsd),
       underlyingToken,
-      baseBorrowApy: lunarMarket.baseBorrowApy,
-      baseSupplyApy: lunarMarket.baseSupplyApy,
+      baseBorrowApy: Number(lunarMarket.baseBorrowApy),
+      baseSupplyApy: Number(lunarMarket.baseSupplyApy),
       totalBorrowApr: 0,
       totalSupplyApr: 0,
       rewards: [],
@@ -434,8 +454,8 @@ async function fetchMarketsFromLunar(
         incentive.supplyApr !== null &&
         incentive.borrowApr !== null
       ) {
-        supplyApr = incentive.supplyApr;
-        borrowApr = incentive.borrowApr;
+        supplyApr = Number(incentive.supplyApr);
+        borrowApr = Number(incentive.borrowApr);
       } else {
         const isGovernanceToken =
           token.symbol === environment.custom?.governance?.token;
@@ -468,16 +488,16 @@ async function fetchMarketsFromLunar(
           price;
 
         supplyApr =
-          lunarMarket.totalSupplyUsd === 0
+          Number(lunarMarket.totalSupplyUsd) === 0
             ? 0
-            : (supplyRewardsPerDayUsd / lunarMarket.totalSupplyUsd) *
+            : (supplyRewardsPerDayUsd / Number(lunarMarket.totalSupplyUsd)) *
               DAYS_PER_YEAR *
               100;
         // Negative: borrow reward APR reduces the effective borrowing cost
         borrowApr =
-          lunarMarket.totalBorrowsUsd === 0
+          Number(lunarMarket.totalBorrowsUsd) === 0
             ? 0
-            : (borrowRewardsPerDayUsd / lunarMarket.totalBorrowsUsd) *
+            : (borrowRewardsPerDayUsd / Number(lunarMarket.totalBorrowsUsd)) *
               DAYS_PER_YEAR *
               100 *
               -1;
