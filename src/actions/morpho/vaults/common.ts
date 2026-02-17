@@ -188,6 +188,17 @@ async function getMorphoVaultsDataFromIndexer(params: {
           );
         }
 
+        // Sort vaults by the order defined in environment config
+        const vaultKeyOrder = Object.keys(environment.config.vaults);
+        vaults.sort((a, b) => {
+          const indexA = vaultKeyOrder.indexOf(a.vaultKey);
+          const indexB = vaultKeyOrder.indexOf(b.vaultKey);
+          return (
+            (indexA === -1 ? Number.POSITIVE_INFINITY : indexA) -
+            (indexB === -1 ? Number.POSITIVE_INFINITY : indexB)
+          );
+        });
+
         return vaults;
       } catch (error) {
         console.error(

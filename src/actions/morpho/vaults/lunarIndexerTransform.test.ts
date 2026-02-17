@@ -107,7 +107,9 @@ describe("Lunar Indexer Transformation Tests", () => {
 
     // Check tokens
     expect(transformedVault.vaultToken).toBeDefined();
-    expect(transformedVault.vaultToken.address).toBe(indexerVault.address);
+    expect(transformedVault.vaultToken.address.toLowerCase()).toBe(
+      indexerVault.address.toLowerCase(),
+    );
     expect(transformedVault.vaultToken.symbol).toBe("mwcbBTC");
     expect(transformedVault.vaultToken.decimals).toBe(18);
 
@@ -382,6 +384,89 @@ describe("Lunar Indexer Transformation Tests", () => {
         "0x543257ef2161176d7c8cd90ba65c2d4caef5a796",
     );
     expect(frontierVault?.version).toBe(1);
+  });
+
+  // Test mwETH underlying token uses SDK config (ETH, not WETH)
+  test("mwETH vault shows ETH as underlying, not WETH", async () => {
+    const vaultId = "8453-0xa0e430870c4604ccfc7b38ca7845b1ff653d0ff1";
+    const indexerVault = await fetchVaultFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
+
+    const transformedVault = transformVaultFromIndexer(
+      indexerVault,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    expect(transformedVault.underlyingToken.symbol).toBe("ETH");
+    expect(transformedVault.underlyingToken.name).toBe("Ethereum");
+    expect(transformedVault.vaultKey).toBe("mwETH");
+  });
+
+  // Test meUSDCv1 vault name includes "V1" label from SDK config
+  test("meUSDCv1 vault name includes V1 label", async () => {
+    const vaultId = "8453-0xe1ba476304255353aef290e6474a417d06e7b773";
+    const indexerVault = await fetchVaultFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
+
+    const transformedVault = transformVaultFromIndexer(
+      indexerVault,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    expect(transformedVault.vaultToken.name).toBe(
+      "Moonwell Ecosystem USDC Vault V1",
+    );
+    expect(transformedVault.vaultToken.symbol).toBe("meUSDCv1");
+    expect(transformedVault.vaultKey).toBe("meUSDCv1");
+  }, 15000);
+
+  // Test vault sort order matches config key order
+  test("Vaults sorted by config order: mwETH, mwUSDC, mwEURC, mwcbBTC, meUSDC, meUSDCv1", async () => {
+    const response = await fetchVaultsFromIndexer(
+      LUNAR_INDEXER_URL,
+      BASE_CHAIN_ID,
+    );
+    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
+    const environment = createBaseEnvironment();
+
+    const transformedVaults = transformVaultsFromIndexer(
+      response.results,
+      environment,
+      tokenMap,
+    );
+
+    // Apply the same sort logic used in getMorphoVaultsDataFromIndexer
+    const vaultKeyOrder = Object.keys(environment.config.vaults);
+    transformedVaults.sort((a, b) => {
+      const indexA = vaultKeyOrder.indexOf(a.vaultKey);
+      const indexB = vaultKeyOrder.indexOf(b.vaultKey);
+      return (
+        (indexA === -1 ? Number.POSITIVE_INFINITY : indexA) -
+        (indexB === -1 ? Number.POSITIVE_INFINITY : indexB)
+      );
+    });
+
+    const expectedOrder = [
+      "mwETH",
+      "mwUSDC",
+      "mwEURC",
+      "mwcbBTC",
+      "meUSDC",
+      "meUSDCv1",
+    ];
+    const knownVaults = transformedVaults.filter((v) =>
+      expectedOrder.includes(v.vaultKey),
+    );
+
+    expect(knownVaults.map((v) => v.vaultKey)).toEqual(expectedOrder);
   });
 
   // Test that transformed output matches expected MorphoVault structure

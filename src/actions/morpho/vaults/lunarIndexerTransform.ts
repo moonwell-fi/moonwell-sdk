@@ -253,6 +253,14 @@ export function transformVaultFromIndexer(
     indexerVault.address,
   );
 
+  // Resolve SDK token configs (preferred over API data for known vaults)
+  const sdkVaultTokenConfig = vaultConfig
+    ? environment.config.tokens[vaultConfig.vaultToken as string]
+    : undefined;
+  const sdkUnderlyingTokenConfig = vaultConfig
+    ? environment.config.tokens[vaultConfig.underlyingToken as string]
+    : undefined;
+
   // Determine version
   const version =
     vaultConfig?.version ||
@@ -280,8 +288,9 @@ export function transformVaultFromIndexer(
     version,
     deprecated: vaultConfig?.deprecated ?? false,
 
-    vaultToken: buildVaultTokenConfig(indexerVault),
-    underlyingToken: buildTokenConfig(underlyingToken),
+    vaultToken: sdkVaultTokenConfig ?? buildVaultTokenConfig(indexerVault),
+    underlyingToken:
+      sdkUnderlyingTokenConfig ?? buildTokenConfig(underlyingToken),
 
     totalSupply: new Amount(totalAssetsValue, underlyingDecimals),
     totalLiquidity: new Amount(totalLiquidityValue, underlyingDecimals),
