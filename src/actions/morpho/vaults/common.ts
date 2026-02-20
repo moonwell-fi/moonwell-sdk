@@ -547,6 +547,21 @@ export async function getMorphoVaultsData(params: {
               },
             );
 
+            // For V2 vaults, normalize allocations to reflect deployed asset distribution
+            // V2 vaults may have idle capital not deployed to adapters, which causes
+            // raw allocations to sum to less than 100% of total vault assets
+            if (vaultConfig.version === 2) {
+              const totalAllocation = markets.reduce(
+                (sum, m) => sum + m.allocation,
+                0,
+              );
+              if (totalAllocation > 0) {
+                for (const market of markets) {
+                  market.allocation = market.allocation / totalAllocation;
+                }
+              }
+            }
+
             // Only calculate baseApy from markets for v1 vaults
             // v2 vaults already have baseApy from Morpho API
             if (vaultConfig.version !== 2) {
