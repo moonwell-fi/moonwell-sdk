@@ -9,10 +9,24 @@ export const vaults = createVaultConfig({
       vaultToken: "mwETH",
       campaignId:
         "0x1df9a935f6b928b4809c4fda483f16839140864b2b412cc5fea85fd5d9d00e57",
+      version: 2,
+    },
+    mwETHv1: {
+      underlyingToken: "ETH",
+      vaultToken: "mwETHv1",
+      campaignId:
+        "0x1df9a935f6b928b4809c4fda483f16839140864b2b412cc5fea85fd5d9d00e57",
     },
     mwUSDC: {
       underlyingToken: "USDC",
       vaultToken: "mwUSDC",
+      campaignId:
+        "0xec43a3d75ae25c5255eb06b3aac6b79ccb2cdb6b99740ea13553661b0f06b756",
+      version: 2,
+    },
+    mwUSDCv1: {
+      underlyingToken: "USDC",
+      vaultToken: "mwUSDCv1",
       campaignId:
         "0xec43a3d75ae25c5255eb06b3aac6b79ccb2cdb6b99740ea13553661b0f06b756",
     },
@@ -21,10 +35,24 @@ export const vaults = createVaultConfig({
       vaultToken: "mwEURC",
       campaignId:
         "0x03430078e052d58b6e80fa8e373c38a75736f1d24768b9c92a2e44bc4ce62b1d",
+      version: 2,
+    },
+    mwEURCv1: {
+      underlyingToken: "EURC",
+      vaultToken: "mwEURCv1",
+      campaignId:
+        "0x03430078e052d58b6e80fa8e373c38a75736f1d24768b9c92a2e44bc4ce62b1d",
     },
     mwcbBTC: {
       underlyingToken: "cbBTC",
       vaultToken: "mwcbBTC",
+      campaignId:
+        "0xb230a09331c22280ae3e02a65caad21a553274912352d8f93c7a92c0f9bb3da4",
+      version: 2,
+    },
+    mwcbBTCv1: {
+      underlyingToken: "cbBTC",
+      vaultToken: "mwcbBTCv1",
       campaignId:
         "0xb230a09331c22280ae3e02a65caad21a553274912352d8f93c7a92c0f9bb3da4",
     },

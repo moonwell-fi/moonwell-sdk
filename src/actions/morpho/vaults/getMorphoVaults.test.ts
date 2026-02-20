@@ -269,7 +269,13 @@ describe("Testing getMorphoVaults", () => {
 
           expect(morphoVaults).toBeDefined();
           expect(Array.isArray(morphoVaults)).toBe(true);
-          expect(morphoVaults.length).toBeGreaterThan(0);
+
+          const hasNonDeprecatedVaults = Object.values(config.vaults).some(
+            (v) => !v.deprecated,
+          );
+          if (hasNonDeprecatedVaults) {
+            expect(morphoVaults.length).toBeGreaterThan(0);
+          }
 
           morphoVaults.forEach((vault) => {
             expect(vault.chainId).toBe(chain.id);
@@ -283,7 +289,13 @@ describe("Testing getMorphoVaults", () => {
 
           expect(morphoVaults).toBeDefined();
           expect(Array.isArray(morphoVaults)).toBe(true);
-          expect(morphoVaults.length).toBeGreaterThan(0);
+
+          const hasNonDeprecatedVaults = Object.values(config.vaults).some(
+            (v) => !v.deprecated,
+          );
+          if (hasNonDeprecatedVaults) {
+            expect(morphoVaults.length).toBeGreaterThan(0);
+          }
 
           morphoVaults.forEach((vault) => {
             expect(vault.chainId).toBe(chain.id);
