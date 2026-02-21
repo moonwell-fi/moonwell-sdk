@@ -8,6 +8,8 @@ export const custom = createCustomConfig({
     blueApiUrl: "https://blue-api.morpho.org/graphql",
     apiUrl: "https://api.morpho.org/graphql",
     rewardsApiUrl: "https://rewards.morpho.org",
+    lunarIndexerUrl:
+      "https://lunar-services-worker.moonwell.workers.dev/api/v1/morpho",
   },
   governance: {
     token: "WELL",

@@ -27,6 +27,11 @@ import {
   toAssetsDown,
   wMulDown,
 } from "../utils/math.js";
+import {
+  fetchTokenMap,
+  fetchVaultsFromIndexer,
+  transformVaultsFromIndexer,
+} from "./lunarIndexerTransform.js";
 
 /**
  * Morpho Vault Data Aggregation
@@ -130,6 +135,263 @@ function scaleV1MarketPositionByV2Ownership(
   return mulDivDown(v1VaultSupplied, v2RealAssets, v1VaultTotalAssets);
 }
 
+/**
+ * Fetch Morpho vaults data from Lunar Indexer
+ * This is the new implementation that replaces on-chain contract queries
+ *
+ * @param params - Parameters including environments and options
+ * @returns Array of MorphoVault objects with data from Lunar Indexer
+ */
+async function getMorphoVaultsDataFromIndexer(params: {
+  environments: Environment[];
+  vaults?: string[];
+  includeRewards?: boolean;
+  currentChainRewardsOnly?: boolean;
+}): Promise<MorphoVault[]> {
+  const { environments } = params;
+
+  // Filter environments that have vaults and Lunar Indexer URL configured
+  const environmentsWithVaults = environments.filter(
+    (environment) =>
+      Object.keys(environment.vaults).length > 0 &&
+      environment.custom?.morpho?.lunarIndexerUrl,
+  );
+
+  // Fetch vaults from Lunar Indexer for each environment
+  const environmentsVaultsSettlements = await Promise.allSettled(
+    environmentsWithVaults.map(async (environment) => {
+      const lunarIndexerUrl = environment.custom.morpho!.lunarIndexerUrl!;
+
+      try {
+        // Fetch tokens and vaults in parallel
+        const [tokenMap, vaultsResponse] = await Promise.all([
+          fetchTokenMap(lunarIndexerUrl, environment.chainId),
+          fetchVaultsFromIndexer(
+            lunarIndexerUrl,
+            environment.chainId,
+            params.includeRewards ? { includeRewards: true } : undefined,
+          ),
+        ]);
+
+        // Transform vaults from indexer format to SDK format
+        let vaults = transformVaultsFromIndexer(
+          vaultsResponse.results,
+          environment,
+          tokenMap,
+        );
+
+        // Filter by specific vault addresses if requested
+        if (params.vaults) {
+          const requestedVaults = params.vaults.map((id) => id.toLowerCase());
+          vaults = vaults.filter((vault) =>
+            requestedVaults.includes(vault.vaultToken.address.toLowerCase()),
+          );
+        }
+
+        // Sort vaults by the order defined in environment config
+        const vaultKeyOrder = Object.keys(environment.config.vaults);
+        vaults.sort((a, b) => {
+          const indexA = vaultKeyOrder.indexOf(a.vaultKey);
+          const indexB = vaultKeyOrder.indexOf(b.vaultKey);
+          return (
+            (indexA === -1 ? Number.POSITIVE_INFINITY : indexA) -
+            (indexB === -1 ? Number.POSITIVE_INFINITY : indexB)
+          );
+        });
+
+        return vaults;
+      } catch (error) {
+        console.error(
+          `Failed to fetch vaults from Lunar Indexer for chain ${environment.chainId}:`,
+          error,
+        );
+        return [];
+      }
+    }),
+  );
+
+  // Extract successful results
+  const allVaults = environmentsVaultsSettlements.flatMap((settlement) =>
+    settlement.status === "fulfilled" ? settlement.value : [],
+  );
+
+  // Add staking data if configured
+  for (const vault of allVaults) {
+    const environment = environments.find(
+      (env) => env.chainId === vault.chainId,
+    );
+    if (!environment) continue;
+
+    const vaultConfig = environment.config.vaults[vault.vaultKey];
+    if (!vaultConfig?.multiReward) continue;
+
+    try {
+      const [distributorTotalSupply, vaultTotalSupply, vaultTotalAssets] =
+        await Promise.all([
+          getTotalSupplyData(environment, vaultConfig.multiReward),
+          getTotalSupplyData(environment, vault.vaultToken.address),
+          getTotalAssetsData(environment, vault.vaultToken.address),
+        ]);
+
+      const stakedAssets = toAssetsDown(
+        distributorTotalSupply,
+        vaultTotalAssets,
+        vaultTotalSupply,
+      );
+
+      vault.totalStaked = new Amount(
+        stakedAssets,
+        vault.underlyingToken.decimals,
+      );
+      vault.totalStakedUsd = vault.totalStaked.value * vault.underlyingPrice;
+    } catch (error) {
+      // Staking data is optional, continue if it fails
+      console.warn(
+        `Failed to fetch staking data for vault ${vault.vaultKey}:`,
+        error,
+      );
+    }
+  }
+
+  // Add staking rewards if includeRewards is true
+  if (params.includeRewards) {
+    for (const vault of allVaults) {
+      const environment = environments.find(
+        (env) => env.chainId === vault.chainId,
+      );
+      if (!environment) continue;
+
+      const vaultConfig = environment.config.vaults[vault.vaultKey];
+      if (!vaultConfig?.multiReward) continue;
+
+      try {
+        // Fetch market prices from the views contract to calculate rewards
+        const homeEnvironment =
+          (Object.values(publicEnvironments) as Environment[]).find((e) =>
+            e.custom?.governance?.chainIds?.includes(environment.chainId),
+          ) || environment;
+
+        const viewsContract = environment.contracts.views;
+        const homeViewsContract = homeEnvironment.contracts.views;
+
+        const data = await Promise.all([
+          viewsContract?.read.getAllMarketsInfo(),
+          homeViewsContract?.read.getNativeTokenPrice(),
+          homeViewsContract?.read.getGovernanceTokenPrice(),
+        ]);
+
+        const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
+
+        const governanceTokenPrice = new Amount(
+          governanceTokenPriceRaw || 0n,
+          18,
+        );
+        const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+
+        let tokenPrices =
+          allMarkets
+            ?.map((marketInfo) => {
+              const marketFound = findMarketByAddress(
+                environment,
+                marketInfo.market,
+              );
+              if (marketFound) {
+                return {
+                  token: marketFound.underlyingToken,
+                  tokenPrice: new Amount(
+                    marketInfo.underlyingPrice,
+                    36 - marketFound.underlyingToken.decimals,
+                  ),
+                };
+              } else {
+                return;
+              }
+            })
+            .filter((token) => !!token) || [];
+
+        // Add governance token to token prices
+        if (environment.custom?.governance?.token) {
+          tokenPrices = [
+            ...tokenPrices,
+            {
+              token:
+                environment.config.tokens[environment.custom.governance.token]!,
+              tokenPrice: governanceTokenPrice,
+            },
+          ];
+        }
+
+        // Add native token to token prices
+        tokenPrices = [
+          ...tokenPrices,
+          {
+            token: findTokenByAddress(environment, zeroAddress)!,
+            tokenPrice: nativeTokenPrice,
+          },
+        ];
+
+        const rewards = await getRewardsData(
+          environment,
+          vaultConfig.multiReward,
+        );
+
+        const distributorTotalSupply = await getTotalSupplyData(
+          environment,
+          vaultConfig.multiReward,
+        );
+
+        rewards
+          .filter(
+            (reward) =>
+              reward?.periodFinish &&
+              dayjs.utc().isBefore(dayjs.unix(Number(reward.periodFinish))),
+          )
+          .forEach((reward) => {
+            const token = Object.values(environment.config.tokens).find(
+              (token) => token.address === reward?.token,
+            );
+            if (!token || !reward?.rewardRate) return;
+
+            const market = tokenPrices.find(
+              (m) => m?.token.address === reward.token,
+            );
+
+            const rewardPriceUsd = market?.tokenPrice.value ?? 0;
+
+            const rewardsPerYear =
+              new Amount(reward.rewardRate, market?.token.decimals ?? 18)
+                .value *
+              SECONDS_PER_YEAR *
+              rewardPriceUsd;
+
+            vault.stakingRewards.push({
+              apr:
+                (rewardsPerYear /
+                  (new Amount(distributorTotalSupply, vault.vaultToken.decimals)
+                    .value *
+                    vault.underlyingPrice)) *
+                100,
+              token: token,
+            });
+          });
+
+        vault.stakingRewardsApr = vault.stakingRewards.reduce(
+          (acc, curr) => acc + curr.apr,
+          0,
+        );
+        vault.totalStakingApr = vault.stakingRewardsApr + vault.baseApy;
+      } catch (error) {
+        console.warn(
+          `Failed to fetch staking rewards for vault ${vault.vaultKey}:`,
+          error,
+        );
+      }
+    }
+  }
+
+  return allVaults;
+}
+
 export async function getMorphoVaultsData(params: {
   environments: Environment[];
   vaults?: string[];
@@ -138,6 +400,17 @@ export async function getMorphoVaultsData(params: {
 }): Promise<MorphoVault[]> {
   const { environments } = params;
 
+  // Check if any environment has Lunar Indexer URL configured
+  const hasLunarIndexer = environments.some(
+    (env) => env.custom?.morpho?.lunarIndexerUrl,
+  );
+
+  // Use Lunar Indexer implementation if available
+  if (hasLunarIndexer) {
+    return getMorphoVaultsDataFromIndexer(params);
+  }
+
+  // Fall back to on-chain contract queries (legacy implementation)
   const environmentsWithVaults = environments.filter(
     (environment) =>
       Object.keys(environment.vaults).length > 0 &&
