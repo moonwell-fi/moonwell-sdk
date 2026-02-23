@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.24
+
+### Patch Changes
+
+- [#214](https://github.com/moonwell-fi/moonwell-sdk/pull/214) [`1b40e6ce2c3aad6e91205272c799c08f41f4158b`](https://github.com/moonwell-fi/moonwell-sdk/commit/1b40e6ce2c3aad6e91205272c799c08f41f4158b) Thanks [@avp1598](https://github.com/avp1598)! - fix proposal response shape
+
 ## 0.9.23
 
 ### Patch Changes
