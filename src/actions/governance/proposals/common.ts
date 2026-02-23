@@ -121,21 +121,21 @@ export type ApiProposalFormatted = {
 export const formatApiProposalData = (
   apiProposal: ApiProposal,
 ): ApiProposalFormatted => {
-  const forVotes = new Amount(
-    BigInt(Math.floor(apiProposal.forVotes * 1e18)),
-    18,
-  );
+  const forVotesNum = Number(apiProposal.forVotes);
+  const againstVotesNum = Number(apiProposal.againstVotes);
+  const abstainVotesNum = Number(apiProposal.abstainVotes);
+
+  const forVotes = new Amount(BigInt(Math.floor(forVotesNum * 1e18)), 18);
   const againstVotes = new Amount(
-    BigInt(Math.floor(apiProposal.againstVotes * 1e18)),
+    BigInt(Math.floor(againstVotesNum * 1e18)),
     18,
   );
   const abstainVotes = new Amount(
-    BigInt(Math.floor(apiProposal.abstainVotes * 1e18)),
+    BigInt(Math.floor(abstainVotesNum * 1e18)),
     18,
   );
 
-  const totalVotesValue =
-    apiProposal.forVotes + apiProposal.againstVotes + apiProposal.abstainVotes;
+  const totalVotesValue = forVotesNum + againstVotesNum + abstainVotesNum;
   const totalVotes = new Amount(BigInt(Math.floor(totalVotesValue * 1e18)), 18);
 
   const canceled =
