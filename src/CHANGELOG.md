@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.25
+
+### Patch Changes
+
+- [#216](https://github.com/moonwell-fi/moonwell-sdk/pull/216) [`05618b60da5c3ce77c909389df0671c4157d9c68`](https://github.com/moonwell-fi/moonwell-sdk/commit/05618b60da5c3ce77c909389df0671c4157d9c68) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix governance token price logic
+
 ## 0.9.24
 
 ### Patch Changes
