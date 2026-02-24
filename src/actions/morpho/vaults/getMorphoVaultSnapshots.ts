@@ -67,7 +67,11 @@ async function fetchVaultSnapshotsFromLunarIndexer(
     const response = await fetchVaultSnapshotsFromIndexer(
       lunarIndexerUrl,
       vaultId,
-      cursor ? { cursor } : undefined,
+      {
+        limit: 1000,
+        granularity: "1d",
+        ...(cursor && { cursor }),
+      },
     );
 
     const transformed = transformVaultSnapshotsFromIndexer(

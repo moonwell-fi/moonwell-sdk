@@ -470,10 +470,14 @@ export async function fetchVaultSnapshotsFromIndexer(
   vaultId: string,
   options?: {
     cursor?: string;
+    limit?: number;
+    granularity?: string;
   },
 ): Promise<LunarIndexerVaultSnapshotsResponse> {
   const params = new URLSearchParams();
   if (options?.cursor) params.set("cursor", options.cursor);
+  if (options?.limit) params.set("limit", options.limit.toString());
+  if (options?.granularity) params.set("granularity", options.granularity);
 
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
