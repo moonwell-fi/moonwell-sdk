@@ -13,7 +13,7 @@ import {
 
 describe("Lunar Indexer Transformation Tests", () => {
   const LUNAR_INDEXER_URL =
-    "https://lunar-services-worker.moonwell.workers.dev/api/v1/morpho";
+    "https://lunar-services-worker.moonwell.workers.dev";
   const BASE_CHAIN_ID = 8453;
 
   // Test fetching tokens from Lunar Indexer

@@ -351,7 +351,7 @@ export async function fetchTokenMap(
   lunarIndexerUrl: string,
   chainId: number,
 ): Promise<Map<string, LunarIndexerToken>> {
-  const url = `${lunarIndexerUrl}/tokens/${chainId}`;
+  const url = `${lunarIndexerUrl}/api/v1/vaults/tokens/${chainId}`;
 
   const response = await fetch(url);
 
@@ -393,7 +393,7 @@ export async function fetchVaultsFromIndexer(
   if (options?.cursor) params.set("cursor", options.cursor);
   if (options?.includeRewards) params.set("includeRewards", "true");
 
-  const url = `${lunarIndexerUrl}/vaults/${chainId}${params.toString() ? `?${params.toString()}` : ""}`;
+  const url = `${lunarIndexerUrl}/api/v1/vaults/vaults/${chainId}${params.toString() ? `?${params.toString()}` : ""}`;
 
   const response = await fetch(url);
 
@@ -417,7 +417,7 @@ export async function fetchVaultFromIndexer(
   lunarIndexerUrl: string,
   vaultId: string,
 ): Promise<LunarIndexerVault> {
-  const url = `${lunarIndexerUrl}/vault/${vaultId}`;
+  const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}`;
 
   const response = await fetch(url);
 
@@ -480,7 +480,7 @@ export async function fetchVaultSnapshotsFromIndexer(
   if (options?.granularity) params.set("granularity", options.granularity);
 
   const queryString = params.toString();
-  const url = `${lunarIndexerUrl}/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
+  const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
 
   const response = await fetch(url);
 
