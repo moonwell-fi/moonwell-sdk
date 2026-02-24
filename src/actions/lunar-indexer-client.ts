@@ -216,7 +216,7 @@ export class LunarIndexerClient {
 
   constructor(config: LunarIndexerConfig) {
     this.client = axios.create({
-      baseURL: `${config.baseUrl}/api/v1/lending`,
+      baseURL: `${config.baseUrl}/api/v1/core`,
       timeout: config.timeout || DEFAULT_LUNAR_TIMEOUT_MS,
       headers: {
         "Content-Type": "application/json",
