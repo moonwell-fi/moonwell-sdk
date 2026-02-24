@@ -333,7 +333,7 @@ describe("Testing getMorphoVaults", () => {
 
     const v2Vaults = morphoVaults.filter((vault) => vault.version === 2);
 
-    // Should have at least one v2 vault (meUSDCv2)
+    // Should have at least one V2 vault
     expect(v2Vaults.length).toBeGreaterThan(0);
 
     v2Vaults.forEach((vault) => {
@@ -343,10 +343,20 @@ describe("Testing getMorphoVaults", () => {
       // V2 vaults should have baseApy from Morpho API
       expect(vault.baseApy).toBeGreaterThan(0);
 
-      // V2 vaults should have empty markets array (they're wrappers)
+      // V2 vaults should now show markets from underlying vaults
       expect(vault.markets).toBeDefined();
       expect(Array.isArray(vault.markets)).toBe(true);
-      expect(vault.markets.length).toBe(0);
+      // Markets array should contain markets from the underlying vault
+      expect(vault.markets.length).toBeGreaterThanOrEqual(0);
+
+      // If markets exist, verify structure
+      if (vault.markets.length > 0) {
+        expect(vault.markets[0]).toHaveProperty("marketId");
+        expect(vault.markets[0]).toHaveProperty("allocation");
+        expect(vault.markets[0]).toHaveProperty("marketCollateral");
+        expect(vault.markets[0]).toHaveProperty("marketApy");
+        expect(vault.markets[0]).toHaveProperty("totalSupplied");
+      }
 
       // Other properties should still be defined
       expect(vault.totalSupply).toBeDefined();

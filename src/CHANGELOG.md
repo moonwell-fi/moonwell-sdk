@@ -1,5 +1,31 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.25
+
+### Patch Changes
+
+- [#216](https://github.com/moonwell-fi/moonwell-sdk/pull/216) [`05618b60da5c3ce77c909389df0671c4157d9c68`](https://github.com/moonwell-fi/moonwell-sdk/commit/05618b60da5c3ce77c909389df0671c4157d9c68) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix governance token price logic
+
+## 0.9.24
+
+### Patch Changes
+
+- [#214](https://github.com/moonwell-fi/moonwell-sdk/pull/214) [`1b40e6ce2c3aad6e91205272c799c08f41f4158b`](https://github.com/moonwell-fi/moonwell-sdk/commit/1b40e6ce2c3aad6e91205272c799c08f41f4158b) Thanks [@avp1598](https://github.com/avp1598)! - fix proposal response shape
+
+## 0.9.23
+
+### Patch Changes
+
+- [#212](https://github.com/moonwell-fi/moonwell-sdk/pull/212) [`c7d45deb94d892b883e45cd6ffa4806cda544676`](https://github.com/moonwell-fi/moonwell-sdk/commit/c7d45deb94d892b883e45cd6ffa4806cda544676) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix rewards breakdown
+
+## 0.9.22
+
+### Patch Changes
+
+- [#207](https://github.com/moonwell-fi/moonwell-sdk/pull/207) [`d703dea0a142f35b0b0ae6ab10a425cfc8b0427d`](https://github.com/moonwell-fi/moonwell-sdk/commit/d703dea0a142f35b0b0ae6ab10a425cfc8b0427d) Thanks [@bprofiro](https://github.com/bprofiro)! - fix v2 vaults allocation
+
+- [#207](https://github.com/moonwell-fi/moonwell-sdk/pull/207) [`2c9b2abad07aef1f8a55cd3c1fce905bdc574be8`](https://github.com/moonwell-fi/moonwell-sdk/commit/2c9b2abad07aef1f8a55cd3c1fce905bdc574be8) Thanks [@bprofiro](https://github.com/bprofiro)! - remove unused market
+
 ## 0.9.21
 
 ### Patch Changes

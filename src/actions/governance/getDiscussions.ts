@@ -33,7 +33,7 @@ export async function getDiscussions(
         posts_count: number;
         created_at: string;
         featured_link: string;
-        tags: string[];
+        tags: Array<{ id: number; name: string; slug: string }>;
       }[];
     };
   };
@@ -71,7 +71,7 @@ export async function getDiscussions(
         views: topic.views,
         replies: topic.posts_count - 1,
         createdAt: new Date(topic.created_at).getTime(),
-        tags: topic.tags,
+        tags: topic.tags.map((tag) => tag.name),
         link: `https://forum.moonwell.fi/t/${topic.id}`,
       };
       return result;

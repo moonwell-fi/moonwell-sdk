@@ -59,7 +59,7 @@ export const getEnvironmentsFromArgs = (
       network?: keyof typeof client.environments;
     };
 
-    if (chainId) {
+    if (Number.isInteger(chainId)) {
       return [
         Object.values(client.environments).find(
           (env) => env.chainId === chainId,

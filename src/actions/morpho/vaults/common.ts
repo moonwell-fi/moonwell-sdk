@@ -28,6 +28,108 @@ import {
   wMulDown,
 } from "../utils/math.js";
 
+/**
+ * Morpho Vault Data Aggregation
+ *
+ * This module handles data retrieval for both V1 (MetaMorpho) and V2 (Morpho Vault) vaults.
+ *
+ * IMPORTANT: Vault Key Naming Convention
+ * ------------------------------------------
+ * V2 vaults wrap V1 vaults, creating a nested structure. The naming convention reflects this:
+ *
+ * - `meUSDC` = V2 vault (version 2) - wraps the V1 vault below
+ * - `meUSDCv1` = V1 vault (version 1) - the underlying vault wrapped by V2
+ *
+ * The V2 vault allocates its assets to one or more V1 vaults via adapters.
+ * Market allocations for V2 vaults are calculated by scaling the V1 vault's
+ * market positions based on V2's ownership percentage in the V1 vault.
+ *
+ * Example:
+ * - meUSDC (V2) owns 60% of meUSDCv1 (V1)
+ * - meUSDCv1 (V1) has 100 USDC supplied to Market A
+ * - meUSDC's (V2) effective supply to Market A = 60 USDC
+ *
+ * @module morpho/vaults/common
+ */
+
+// Type definitions for V2 vault data structures
+type MorphoViewsV2GetVaultsInfoReturn = readonly {
+  readonly vault: Address;
+  readonly totalSupply: bigint;
+  readonly totalAssets: bigint;
+  readonly underlyingPrice: bigint;
+  readonly adapters: readonly {
+    readonly adapter: Address;
+    readonly realAssets: bigint;
+    readonly underlyingVault: Address;
+    readonly underlyingVaultName: string;
+    readonly underlyingVaultTotalAssets: bigint;
+    readonly underlyingVaultFee: bigint;
+    readonly underlyingVaultTimelock: bigint;
+    readonly allocationPercentage: bigint;
+    readonly underlyingMarkets: readonly {
+      readonly marketId: `0x${string}`;
+      readonly collateralToken: Address;
+      readonly collateralName: string;
+      readonly collateralSymbol: string;
+      readonly marketLiquidity: bigint;
+      readonly marketLltv: bigint;
+      readonly marketSupplyApy: bigint;
+      readonly marketBorrowApy: bigint;
+    }[];
+  }[];
+}[];
+
+type V2VaultInfo = MorphoViewsV2GetVaultsInfoReturn[number];
+type AdapterInfo = V2VaultInfo["adapters"][number];
+type UnderlyingMarket = AdapterInfo["underlyingMarkets"][number];
+
+// Type definitions for V1 vault data structures
+type MorphoViewsGetVaultsInfoReturn = readonly {
+  readonly vault: Address;
+  readonly totalSupply: bigint;
+  readonly totalAssets: bigint;
+  readonly underlyingPrice: bigint;
+  readonly fee: bigint;
+  readonly timelock: bigint;
+  readonly markets: readonly {
+    readonly marketId: `0x${string}`;
+    readonly marketCollateral: Address;
+    readonly marketCollateralName: string;
+    readonly marketCollateralSymbol: string;
+    readonly marketLltv: bigint;
+    readonly marketApy: bigint;
+    readonly marketLiquidity: bigint;
+    readonly vaultSupplied: bigint;
+  }[];
+}[];
+
+type V1VaultInfo = MorphoViewsGetVaultsInfoReturn[number];
+type V1MarketInfo = V1VaultInfo["markets"][number];
+
+/**
+ * Scales a V1 vault's market position by V2's ownership percentage.
+ *
+ * V2 vaults wrap V1 vaults - this calculates the V2 vault's effective
+ * position in a V1 vault's market by scaling based on ownership:
+ * V2 ownership = realAssets / underlyingVaultTotalAssets
+ *
+ * @param v1VaultSupplied - The V1 vault's supplied amount in the market
+ * @param v2RealAssets - The V2 vault's real assets in the V1 vault
+ * @param v1VaultTotalAssets - Total assets in the underlying V1 vault
+ * @returns Scaled vault supplied amount, or 0n if V1 vault has no assets
+ */
+function scaleV1MarketPositionByV2Ownership(
+  v1VaultSupplied: bigint,
+  v2RealAssets: bigint,
+  v1VaultTotalAssets: bigint,
+): bigint {
+  if (v1VaultTotalAssets === 0n) {
+    return 0n;
+  }
+  return mulDivDown(v1VaultSupplied, v2RealAssets, v1VaultTotalAssets);
+}
+
 export async function getMorphoVaultsData(params: {
   environments: Environment[];
   vaults?: string[];
@@ -111,6 +213,8 @@ export async function getMorphoVaultsData(params: {
       }
 
       // Query v2 vaults with morphoViewsV2
+      // Note: V2 vaults (e.g., meUSDC) wrap V1 vaults (e.g., meUSDCv1).
+      // The V2 vault allocates its assets to underlying V1 vaults via adapters.
       if (v2VaultsAddresses.length > 0 && environment.contracts.morphoViewsV2) {
         queryPromises.push(
           (async () => {
@@ -120,8 +224,45 @@ export async function getMorphoVaultsData(params: {
                   v2VaultsAddresses,
                 ]);
 
+              // Extract unique underlying vault addresses from V2 adapters
+              const underlyingVaultAddresses =
+                (vaultInfoV2 as MorphoViewsV2GetVaultsInfoReturn | undefined)
+                  ?.flatMap((v2Vault) =>
+                    v2Vault.adapters?.map((adapter) => adapter.underlyingVault),
+                  )
+                  .filter((addr) => addr && addr !== zeroAddress) || [];
+
+              const uniqueUnderlyingAddresses = [
+                ...new Set(underlyingVaultAddresses),
+              ] as `0x${string}`[];
+
+              // Query underlying V1 vaults to get their market positions
+              const underlyingVaultsData: Map<string, V1VaultInfo> = new Map();
+              if (
+                uniqueUnderlyingAddresses.length > 0 &&
+                environment.contracts.morphoViews
+              ) {
+                const underlyingInfo =
+                  await environment.contracts.morphoViews.read.getVaultsInfo([
+                    uniqueUnderlyingAddresses,
+                  ]);
+
+                // Map by vault address for quick lookup
+                underlyingInfo?.forEach(
+                  (vaultData: V1VaultInfo, index: number) => {
+                    underlyingVaultsData.set(
+                      uniqueUnderlyingAddresses[index].toLowerCase(),
+                      vaultData,
+                    );
+                  },
+                );
+              }
+
               // Transform v2 structure to v1 structure
-              const transformedVaults = vaultInfoV2?.map((v2Vault: any) => {
+              // V2 vaults wrap V1 vaults - we fetch the V1 data and scale allocations
+              const transformedVaults = (
+                vaultInfoV2 as MorphoViewsV2GetVaultsInfoReturn | undefined
+              )?.map((v2Vault) => {
                 // Get the first adapter (assuming single adapter for now)
                 const adapter = v2Vault.adapters?.[0];
 
@@ -137,11 +278,55 @@ export async function getMorphoVaultsData(params: {
                   };
                 }
 
-                // For v2 vaults, markets are not included since they are wrappers
-                // around v1 vaults and we don't have accurate per-market allocations
-                // from the v2 API. Users should query the underlying vault directly
-                // if they need market-level data.
-                const markets: any[] = [];
+                // Get underlying vault data for accurate market allocations
+                const underlyingVaultData = underlyingVaultsData.get(
+                  adapter.underlyingVault.toLowerCase(),
+                );
+
+                let markets: V1MarketInfo[] = [];
+
+                if (underlyingVaultData?.markets) {
+                  // Map V1 vault's markets with scaled allocations
+                  markets = underlyingVaultData.markets.map(
+                    (v1Market: V1MarketInfo) => {
+                      // Scale the V1 vault's position by V2's ownership
+                      // V2 ownership = realAssets / underlyingVaultTotalAssets
+                      const scaledVaultSupplied =
+                        scaleV1MarketPositionByV2Ownership(
+                          v1Market.vaultSupplied,
+                          adapter.realAssets,
+                          adapter.underlyingVaultTotalAssets,
+                        );
+
+                      return {
+                        marketId: v1Market.marketId,
+                        marketCollateral: v1Market.marketCollateral,
+                        marketCollateralName: v1Market.marketCollateralName,
+                        marketCollateralSymbol: v1Market.marketCollateralSymbol,
+                        marketLltv: v1Market.marketLltv,
+                        marketApy: v1Market.marketApy,
+                        marketLiquidity: v1Market.marketLiquidity,
+                        vaultSupplied: scaledVaultSupplied,
+                      };
+                    },
+                  );
+                } else {
+                  // Fallback: if we can't get V1 data, use underlyingMarkets with 0 allocations
+                  markets =
+                    (adapter.underlyingMarkets || []).map(
+                      (underlyingMarket: UnderlyingMarket) => ({
+                        marketId: underlyingMarket.marketId,
+                        marketCollateral: underlyingMarket.collateralToken,
+                        marketCollateralName: underlyingMarket.collateralName,
+                        marketCollateralSymbol:
+                          underlyingMarket.collateralSymbol,
+                        marketLltv: underlyingMarket.marketLltv,
+                        marketApy: underlyingMarket.marketSupplyApy,
+                        marketLiquidity: underlyingMarket.marketLiquidity,
+                        vaultSupplied: 0n,
+                      }),
+                    ) || [];
+                }
 
                 return {
                   vault: v2Vault.vault,
@@ -167,7 +352,23 @@ export async function getMorphoVaultsData(params: {
         .filter((r): r is NonNullable<typeof r> => r !== undefined)
         .flat();
 
-      return results;
+      // Sort results to match the order in environment.config.vaults
+      const vaultKeys = Object.keys(environment.config.vaults);
+      const sortedResults = results.sort((a, b) => {
+        const aIndex = vaultKeys.findIndex(
+          (key) =>
+            environment.vaults[key]?.address.toLowerCase() ===
+            a.vault.toLowerCase(),
+        );
+        const bIndex = vaultKeys.findIndex(
+          (key) =>
+            environment.vaults[key]?.address.toLowerCase() ===
+            b.vault.toLowerCase(),
+        );
+        return aIndex - bIndex;
+      });
+
+      return sortedResults;
     }),
   );
 

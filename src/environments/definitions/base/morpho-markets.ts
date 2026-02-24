@@ -45,11 +45,6 @@ export const morphoMarkets = createMorphoMarketConfig({
       id: "0xa066f3893b780833699043f824e5bb88b8df039886f524f62b9a1ac83cb7f1f0",
       deprecated: true,
     },
-    "rETH-USDC": {
-      collateralToken: "rETH",
-      loanToken: "USDC",
-      id: "0xdb0bc9f10a174f29a345c5f30a719933f71ccea7a2a75a632a281929bba1b535",
-    },
     "cbBTC-USDC": {
       collateralToken: "cbBTC",
       loanToken: "USDC",

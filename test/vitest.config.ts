@@ -33,6 +33,7 @@ export default defineConfig({
       "src/**/getBeamTokenLimits.test.ts",
       "src/actions/morpho/**/*.test.ts",
       "src/actions/lunar-indexer-client.test.ts",
+      "src/actions/governance/getMerklRewardsData.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,
