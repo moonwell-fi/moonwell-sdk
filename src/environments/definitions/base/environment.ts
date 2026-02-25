@@ -17,6 +17,7 @@ const createEnvironment = (
   rpcUrls?: string[],
   indexerUrl?: string,
   governanceIndexerUrl?: string,
+  lunarIndexerUrl?: string,
 ): Environment<
   typeof tokens,
   typeof markets,
@@ -40,6 +41,8 @@ const createEnvironment = (
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",
+    lunarIndexerUrl:
+      lunarIndexerUrl || "https://lunar-services-worker.moonwell.workers.dev",
     tokens,
     markets,
     vaults,
