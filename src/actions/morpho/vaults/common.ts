@@ -201,11 +201,11 @@ async function getMorphoVaultsDataFromIndexer(params: {
 
         return vaults;
       } catch (error) {
-        console.error(
-          `Failed to fetch vaults from Lunar Indexer for chain ${environment.chainId}:`,
+        console.warn(
+          `Failed to fetch vaults from Lunar Indexer for chain ${environment.chainId}, falling back to on-chain:`,
           error,
         );
-        return [];
+        return Promise.reject({ environment, error });
       }
     }),
   );
@@ -214,6 +214,24 @@ async function getMorphoVaultsDataFromIndexer(params: {
   const allVaults = environmentsVaultsSettlements.flatMap((settlement) =>
     settlement.status === "fulfilled" ? settlement.value : [],
   );
+
+  // Collect environments that failed to fetch from indexer for fallback
+  const failedEnvironments = environmentsVaultsSettlements
+    .filter((s): s is PromiseRejectedResult => s.status === "rejected")
+    .map((s) => (s.reason as { environment: Environment })?.environment)
+    .filter((env): env is Environment => env !== undefined);
+
+  // Fall back to on-chain for environments where indexer failed
+  let fallbackVaults: MorphoVault[] = [];
+  if (failedEnvironments.length > 0) {
+    console.warn(
+      `Falling back to on-chain for ${failedEnvironments.length} environment(s)`,
+    );
+    fallbackVaults = await getMorphoVaultsDataFromOnChain({
+      ...params,
+      environments: failedEnvironments,
+    });
+  }
 
   // Add staking data if configured
   for (const vault of allVaults) {
@@ -389,7 +407,7 @@ async function getMorphoVaultsDataFromIndexer(params: {
     }
   }
 
-  return allVaults;
+  return [...allVaults, ...fallbackVaults];
 }
 
 export async function getMorphoVaultsData(params: {
@@ -411,6 +429,16 @@ export async function getMorphoVaultsData(params: {
   }
 
   // Fall back to on-chain contract queries (legacy implementation)
+  return getMorphoVaultsDataFromOnChain(params);
+}
+
+async function getMorphoVaultsDataFromOnChain(params: {
+  environments: Environment[];
+  vaults?: string[];
+  includeRewards?: boolean;
+  currentChainRewardsOnly?: boolean;
+}): Promise<MorphoVault[]> {
+  const { environments } = params;
   const environmentsWithVaults = environments.filter(
     (environment) =>
       Object.keys(environment.vaults).length > 0 &&
