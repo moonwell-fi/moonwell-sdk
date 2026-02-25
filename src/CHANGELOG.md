@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.27
+
+### Patch Changes
+
+- [#220](https://github.com/moonwell-fi/moonwell-sdk/pull/220) [`24d39b2ca3215d74d36e888cb811df8f0792c13d`](https://github.com/moonwell-fi/moonwell-sdk/commit/24d39b2ca3215d74d36e888cb811df8f0792c13d) Thanks [@lyoungblood](https://github.com/lyoungblood)! - Use official Moonwell RPCs
+
+- [#206](https://github.com/moonwell-fi/moonwell-sdk/pull/206) [`5044b6d58427e9c1f968fa4130254a449a8651a6`](https://github.com/moonwell-fi/moonwell-sdk/commit/5044b6d58427e9c1f968fa4130254a449a8651a6) Thanks [@bprofiro](https://github.com/bprofiro)! - migrate markets fetch to use lunar-indexer
+
 ## 0.9.25
 
 ### Patch Changes
