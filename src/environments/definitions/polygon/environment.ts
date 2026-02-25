@@ -17,12 +17,12 @@ const createEnvironment = (
     chain: {
       ...polygon,
       rpcUrls: {
-        default: { http: rpcUrls || polygon.rpcUrls.default.http },
+        default: { http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/137"] },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(polygon.rpcUrls.default.http[0]),
+      : http("https://rpc.moonwell.fi/main/evm/137"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||
