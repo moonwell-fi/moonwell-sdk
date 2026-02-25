@@ -17,12 +17,12 @@ const createEnvironment = (
     chain: {
       ...moonriver,
       rpcUrls: {
-        default: { http: rpcUrls || moonriver.rpcUrls.default.http },
+        default: { http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/1285"] },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(moonriver.rpcUrls.default.http[0]),
+      : http("https://rpc.moonwell.fi/main/evm/1285"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||

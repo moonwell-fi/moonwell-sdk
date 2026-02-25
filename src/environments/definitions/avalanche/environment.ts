@@ -17,12 +17,14 @@ const createEnvironment = (
     chain: {
       ...avalanche,
       rpcUrls: {
-        default: { http: rpcUrls || avalanche.rpcUrls.default.http },
+        default: {
+          http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/43114"],
+        },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(avalanche.rpcUrls.default.http[0]),
+      : http("https://rpc.moonwell.fi/main/evm/43114"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||

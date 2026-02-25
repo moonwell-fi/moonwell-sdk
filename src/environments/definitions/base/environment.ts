@@ -30,17 +30,12 @@ const createEnvironment = (
     chain: {
       ...base,
       rpcUrls: {
-        default: { http: rpcUrls || base.rpcUrls.default.http },
+        default: { http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/8453"] },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : fallback([
-          http(base.rpcUrls.default.http[0]),
-          http("https://base.llamarpc.com"),
-          http("https://rpc.moonwell.fi/main/evm/8453"),
-          http("https://base.lava.build"),
-        ]),
+      : http("https://rpc.moonwell.fi/main/evm/8453"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||

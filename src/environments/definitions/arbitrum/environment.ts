@@ -17,12 +17,14 @@ const createEnvironment = (
     chain: {
       ...arbitrum,
       rpcUrls: {
-        default: { http: rpcUrls || arbitrum.rpcUrls.default.http },
+        default: {
+          http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/42161"],
+        },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(arbitrum.rpcUrls.default.http[0]),
+      : http("https://rpc.moonwell.fi/main/evm/42161"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||

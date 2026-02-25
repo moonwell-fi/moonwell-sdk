@@ -20,12 +20,12 @@ const createEnvironment = (
     chain: {
       ...optimism,
       rpcUrls: {
-        default: { http: rpcUrls || optimism.rpcUrls.default.http },
+        default: { http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/10"] },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(optimism.rpcUrls.default.http[0]),
+      : http("https://rpc.moonwell.fi/main/evm/10"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||
