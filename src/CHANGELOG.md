@@ -1,5 +1,39 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.28
+
+### Patch Changes
+
+- [#224](https://github.com/moonwell-fi/moonwell-sdk/pull/224) [`e05dec50f5b625f3f635ffe7e3ba40631c63abd8`](https://github.com/moonwell-fi/moonwell-sdk/commit/e05dec50f5b625f3f635ffe7e3ba40631c63abd8) Thanks [@bprofiro](https://github.com/bprofiro)! - fix markets snapshots
+
+- [#222](https://github.com/moonwell-fi/moonwell-sdk/pull/222) [`31fea7b3cb46c807604c01e57ea8ae5b73b8995c`](https://github.com/moonwell-fi/moonwell-sdk/commit/31fea7b3cb46c807604c01e57ea8ae5b73b8995c) Thanks [@bprofiro](https://github.com/bprofiro)! - add fallback to failed oracle prices
+
+## 0.9.27
+
+### Patch Changes
+
+- [#220](https://github.com/moonwell-fi/moonwell-sdk/pull/220) [`24d39b2ca3215d74d36e888cb811df8f0792c13d`](https://github.com/moonwell-fi/moonwell-sdk/commit/24d39b2ca3215d74d36e888cb811df8f0792c13d) Thanks [@lyoungblood](https://github.com/lyoungblood)! - Use official Moonwell RPCs
+
+- [#206](https://github.com/moonwell-fi/moonwell-sdk/pull/206) [`5044b6d58427e9c1f968fa4130254a449a8651a6`](https://github.com/moonwell-fi/moonwell-sdk/commit/5044b6d58427e9c1f968fa4130254a449a8651a6) Thanks [@bprofiro](https://github.com/bprofiro)! - migrate markets fetch to use lunar-indexer
+
+## 0.9.25
+
+### Patch Changes
+
+- [#216](https://github.com/moonwell-fi/moonwell-sdk/pull/216) [`05618b60da5c3ce77c909389df0671c4157d9c68`](https://github.com/moonwell-fi/moonwell-sdk/commit/05618b60da5c3ce77c909389df0671c4157d9c68) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix governance token price logic
+
+## 0.9.24
+
+### Patch Changes
+
+- [#214](https://github.com/moonwell-fi/moonwell-sdk/pull/214) [`1b40e6ce2c3aad6e91205272c799c08f41f4158b`](https://github.com/moonwell-fi/moonwell-sdk/commit/1b40e6ce2c3aad6e91205272c799c08f41f4158b) Thanks [@avp1598](https://github.com/avp1598)! - fix proposal response shape
+
+## 0.9.23
+
+### Patch Changes
+
+- [#212](https://github.com/moonwell-fi/moonwell-sdk/pull/212) [`c7d45deb94d892b883e45cd6ffa4806cda544676`](https://github.com/moonwell-fi/moonwell-sdk/commit/c7d45deb94d892b883e45cd6ffa4806cda544676) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix rewards breakdown
+
 ## 0.9.22
 
 ### Patch Changes

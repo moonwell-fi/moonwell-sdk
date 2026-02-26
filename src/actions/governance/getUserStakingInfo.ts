@@ -80,11 +80,16 @@ export async function getUserStakingInfo<
         curr.config.contracts.stakingToken as keyof TokensType<typeof curr>
       ]!;
 
-    const userStakingInfoData = envStakingInfo[index]![0]! as {
-      cooldown: bigint;
-      pendingRewards: bigint;
-      totalStaked: bigint;
-    };
+    const userStakingInfoData = envStakingInfo[index]?.[0] as
+      | {
+          cooldown: bigint;
+          pendingRewards: bigint;
+          totalStaked: bigint;
+        }
+      | undefined;
+
+    if (!userStakingInfoData) return [];
+
     const { cooldown, pendingRewards, totalStaked } = userStakingInfoData;
 
     // merkl rewards (only for base)
@@ -97,14 +102,20 @@ export async function getUserStakingInfo<
     }, 0n);
     const merklPendingRewards = isBase ? merklReward : 0n;
 
-    const tokenBalance = envStakingInfo[index]![1]! as bigint;
+    const tokenBalance = (envStakingInfo[index]?.[1] ?? 0n) as bigint;
 
-    const governanceTokenPriceRaw = envStakingInfo[index]?.[2]! as bigint;
+    const governanceTokenPriceRaw = (envStakingInfo[index]?.[2] ??
+      0n) as bigint;
 
-    const stakingInfoData = envStakingInfo[index]?.[3] as {
-      cooldown: bigint;
-      unstakeWindow: bigint;
-    };
+    const stakingInfoData = envStakingInfo[index]?.[3] as
+      | {
+          cooldown: bigint;
+          unstakeWindow: bigint;
+        }
+      | undefined;
+
+    if (!stakingInfoData) return [];
+
     const { cooldown: cooldownSeconds, unstakeWindow } = stakingInfoData;
 
     const cooldownEnding = cooldown > 0n ? cooldown + cooldownSeconds : 0n;

@@ -17,12 +17,12 @@ const createEnvironment = (
     chain: {
       ...ethereum,
       rpcUrls: {
-        default: { http: rpcUrls || ethereum.rpcUrls.default.http },
+        default: { http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/1"] },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http(ethereum.rpcUrls.default.http[0]),
+      : http("https://rpc.moonwell.fi/main/evm/1"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||

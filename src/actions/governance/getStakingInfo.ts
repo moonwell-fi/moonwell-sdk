@@ -45,7 +45,7 @@ export async function getStakingInfo<
 
       const isBase = environment.chainId === base.id;
 
-      const promises = [
+      const settlements = await Promise.allSettled([
         environment.contracts.views?.read.getStakingInfo(),
         homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
         ...(isBase
@@ -55,9 +55,8 @@ export async function getStakingInfo<
               }),
             ]
           : []),
-      ];
+      ]);
 
-      const settlements = await Promise.allSettled(promises);
       return settlements.map((s) =>
         s.status === "fulfilled" ? s.value : undefined,
       );
@@ -103,13 +102,12 @@ export async function getStakingInfo<
       ]!;
 
     const envStakingInfoData = envStakingInfo[index]![0]!;
-    const envGovernanceTokenPriceData = envStakingInfo[index]![1]!;
+    const envGovernanceTokenPriceData = envStakingInfo[index]![1];
     const envStakingInfoDataAfterX28Proposal = envStakingInfo[index]![2]!;
     const isBase = curr.chainId === base.id;
 
     if (
       !envStakingInfoData ||
-      !envGovernanceTokenPriceData ||
       (isBase && !envStakingInfoDataAfterX28Proposal)
     ) {
       return [];
@@ -130,9 +128,8 @@ export async function getStakingInfo<
     };
 
     //Quick workaround to get governance token price from some other environment
-    const governanceTokenPriceRaw = envGovernanceTokenPriceData;
     const governanceTokenPrice = new Amount(
-      governanceTokenPriceRaw as bigint,
+      (envGovernanceTokenPriceData ?? 0n) as bigint,
       18,
     );
 

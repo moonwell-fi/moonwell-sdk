@@ -10,6 +10,7 @@ const createEnvironment = (
   rpcUrls?: string[],
   indexerUrl?: string,
   governanceIndexerUrl?: string,
+  lunarIndexerUrl?: string,
 ) =>
   createEnvironmentConfig({
     key: "moonbeam",
@@ -17,13 +18,15 @@ const createEnvironment = (
     chain: {
       ...moonbeam,
       rpcUrls: {
-        default: { http: rpcUrls || moonbeam.rpcUrls.default.http },
+        default: { http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/1284"] },
       },
     },
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
-      : http("https://rpc.api.moonbeam.network"),
+      : http("https://rpc.moonwell.fi/main/evm/1284"),
     indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
+    lunarIndexerUrl:
+      lunarIndexerUrl || "https://lunar-services-worker.moonwell.workers.dev",
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",
