@@ -39,9 +39,9 @@ export type ApiProposal = {
   votingStartTime: number;
   votingEndTime: number;
   description: string;
-  forVotes: number;
-  againstVotes: number;
-  abstainVotes: number;
+  forVotes: string;
+  againstVotes: string;
+  abstainVotes: string;
   blockNumber: string;
   timestamp: number;
   transactionHash: string;
@@ -57,9 +57,9 @@ export type ApiVote = {
   blockNumber: string;
   chainId: number;
   timestamp: number;
-  proposalForVotes: number;
-  proposalAgainstVotes: number;
-  proposalAbstainVotes: number;
+  proposalForVotes: string;
+  proposalAgainstVotes: string;
+  proposalAbstainVotes: string;
 };
 
 export type ApiVoter = {
@@ -77,9 +77,9 @@ export type ApiProposalStateChange = {
   blockNumber: string;
   timestamp: number;
   transactionHash: string;
-  forVotes: number;
-  againstVotes: number;
-  abstainVotes: number;
+  forVotes: string;
+  againstVotes: string;
+  abstainVotes: string;
   chainId: number; // Chain ID where this state change occurred
 };
 

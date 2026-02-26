@@ -54,27 +54,74 @@ type MerklReward = {
   pending: string;
 };
 
+const MAX_BREAKDOWN_PAGES = 10;
+
 export async function getMerklRewardsData(
   campaignId: string[],
   chainId: number,
   account: Address,
 ): Promise<MerklReward[]> {
   try {
-    const response = await fetch(
+    const page0Response = await fetch(
       `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=0&reloadChainId=${chainId}`,
       {
         headers: MOONWELL_FETCH_JSON_HEADERS,
       },
     );
 
-    if (!response.ok) {
+    if (!page0Response.ok) {
       console.warn(
-        `Merkl API request failed: ${response.status} ${response.statusText}`,
+        `Merkl API request failed: ${page0Response.status} ${page0Response.statusText}`,
       );
       return [];
     }
 
-    const data = (await response.json()) as MerklRewardsResponse[];
+    const data = (await page0Response.json()) as MerklRewardsResponse[];
+
+    if (data.length === 0) {
+      return [];
+    }
+
+    // Paginate through remaining breakdown pages to collect all breakdowns
+    for (let page = 1; page < MAX_BREAKDOWN_PAGES; page++) {
+      const pageResponse = await fetch(
+        `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=${page}&reloadChainId=${chainId}`,
+        {
+          headers: MOONWELL_FETCH_JSON_HEADERS,
+        },
+      );
+
+      if (!pageResponse.ok) {
+        break;
+      }
+
+      const pageData = (await pageResponse.json()) as MerklRewardsResponse[];
+
+      const allBreakdownsEmpty = pageData.every((reward) =>
+        reward.rewards.every((r) => r.breakdowns.length === 0),
+      );
+
+      if (allBreakdownsEmpty) {
+        break;
+      }
+
+      // Merge breakdowns from this page into the page-0 data
+      for (const pageReward of pageData) {
+        const baseReward = data.find((d) => d.chain.id === pageReward.chain.id);
+        if (!baseReward) continue;
+
+        for (const pageRewardEntry of pageReward.rewards) {
+          const baseRewardEntry = baseReward.rewards.find(
+            (r) =>
+              r.token.address.toLowerCase() ===
+              pageRewardEntry.token.address.toLowerCase(),
+          );
+          if (baseRewardEntry) {
+            baseRewardEntry.breakdowns.push(...pageRewardEntry.breakdowns);
+          }
+        }
+      }
+    }
 
     return data
       .filter((reward) =>
