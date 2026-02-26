@@ -1,8 +1,10 @@
 import axios from "axios";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc.js";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { getEnvironmentFromArgs, isStartOfDay } from "../../../common/index.js";
+import {
+  calculateTimeRange,
+  getEnvironmentFromArgs,
+  isStartOfDay,
+} from "../../../common/index.js";
 import type {
   MorphoVaultParameterType,
   NetworkParameterType,
@@ -14,13 +16,15 @@ import {
   transformVaultSnapshotsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
-dayjs.extend(utc);
-
 export type GetMorphoVaultSnapshotsParameters<
   environments,
   network extends Chain | undefined,
 > = NetworkParameterType<environments, network> &
-  MorphoVaultParameterType<network>;
+  MorphoVaultParameterType<network> & {
+    period?: "1M" | "3M" | "1Y" | "ALL";
+    startTime?: number;
+    endTime?: number;
+  };
 
 export type GetMorphoVaultSnapshotsReturnType = Promise<MorphoVaultSnapshot[]>;
 
@@ -37,9 +41,12 @@ export async function getMorphoVaultSnapshots<
     return [];
   }
 
-  const vaultAddress = (
-    args as GetMorphoVaultSnapshotsParameters<environments, undefined>
-  ).vaultAddress;
+  const {
+    vaultAddress,
+    period,
+    startTime: customStartTime,
+    endTime: customEndTime,
+  } = args as GetMorphoVaultSnapshotsParameters<environments, undefined>;
 
   const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
 
@@ -48,6 +55,9 @@ export async function getMorphoVaultSnapshots<
       vaultAddress,
       environment.chainId,
       lunarIndexerUrl,
+      period,
+      customStartTime,
+      customEndTime,
     );
   }
 
@@ -58,10 +68,19 @@ async function fetchVaultSnapshotsFromLunarIndexer(
   vaultAddress: string,
   chainId: number,
   lunarIndexerUrl: string,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
 ): Promise<MorphoVaultSnapshot[]> {
   const vaultId = `${chainId}-${vaultAddress.toLowerCase()}`;
   const allSnapshots: MorphoVaultSnapshot[] = [];
   let cursor: string | null = null;
+
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
 
   do {
     const response = await fetchVaultSnapshotsFromIndexer(
@@ -70,6 +89,7 @@ async function fetchVaultSnapshotsFromLunarIndexer(
       {
         limit: 1000,
         granularity: "1d",
+        startTime,
         ...(cursor && { cursor }),
       },
     );
