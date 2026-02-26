@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.28
+
+### Patch Changes
+
+- [#224](https://github.com/moonwell-fi/moonwell-sdk/pull/224) [`e05dec50f5b625f3f635ffe7e3ba40631c63abd8`](https://github.com/moonwell-fi/moonwell-sdk/commit/e05dec50f5b625f3f635ffe7e3ba40631c63abd8) Thanks [@bprofiro](https://github.com/bprofiro)! - fix markets snapshots
+
+- [#222](https://github.com/moonwell-fi/moonwell-sdk/pull/222) [`31fea7b3cb46c807604c01e57ea8ae5b73b8995c`](https://github.com/moonwell-fi/moonwell-sdk/commit/31fea7b3cb46c807604c01e57ea8ae5b73b8995c) Thanks [@bprofiro](https://github.com/bprofiro)! - add fallback to failed oracle prices
+
 ## 0.9.27
 
 ### Patch Changes

@@ -27,7 +27,49 @@ export type GetMarketSnapshotsParameters<
 > = NetworkParameterType<environments, network> & {
   type: "core" | "isolated";
   marketId: `0x${string}`;
+  /** Predefined time period for snapshots */
+  period?: "1M" | "3M" | "1Y" | "ALL";
+  startTime?: number;
+  endTime?: number;
 };
+
+/**
+ * Calculate start and end times based on period or custom timestamps.
+ * Priority: custom timestamps > period > default (365 days)
+ */
+function calculateTimeRange(
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  startTime?: number,
+  endTime?: number,
+): { startTime: number; endTime: number } {
+  const now = dayjs.utc();
+  const end = endTime ?? now.unix();
+
+  if (startTime !== undefined && endTime !== undefined) {
+    return { startTime, endTime: end };
+  }
+
+  let start: number;
+  switch (period) {
+    case "1M":
+      start = now.subtract(31, "days").unix();
+      break;
+    case "3M":
+      start = now.subtract(91, "days").unix();
+      break;
+    case "1Y":
+      start = now.subtract(366, "days").unix();
+      break;
+    case "ALL":
+      start = now.subtract(10, "years").unix();
+      break;
+    default:
+      start = now.subtract(365, "days").unix();
+      break;
+  }
+
+  return { startTime: start, endTime: end };
+}
 
 export type GetMarketSnapshotsReturnType = Promise<MarketSnapshot[]>;
 
@@ -45,7 +87,13 @@ export async function getMarketSnapshots<
   }
 
   if (args?.type === "core") {
-    return fetchCoreMarketSnapshots(args.marketId, environment);
+    return fetchCoreMarketSnapshots(
+      args.marketId,
+      environment,
+      args.period,
+      args.startTime,
+      args.endTime,
+    );
   } else {
     if (environment.custom.morpho?.minimalDeployment === false) {
       return fetchIsolatedMarketSnapshots(args.marketId, environment);
@@ -58,12 +106,18 @@ export async function getMarketSnapshots<
 async function fetchCoreMarketSnapshots(
   marketAddress: string,
   environment: Environment,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  startTime?: number,
+  endTime?: number,
 ): Promise<MarketSnapshot[]> {
   if (environment.lunarIndexerUrl) {
     try {
       const result = await fetchCoreMarketSnapshotsFromLunar(
         marketAddress,
         environment,
+        period,
+        startTime,
+        endTime,
       );
       return result;
     } catch (error) {
@@ -87,6 +141,9 @@ async function fetchCoreMarketSnapshots(
 async function fetchCoreMarketSnapshotsFromLunar(
   marketAddress: string,
   environment: Environment,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
 ): Promise<MarketSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
     throw new Error("Lunar Indexer URL not configured");
@@ -98,6 +155,11 @@ async function fetchCoreMarketSnapshotsFromLunar(
   });
 
   const marketId = buildMarketId(environment.chainId, marketAddress);
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
 
   const allSnapshots: MarketSnapshot[] = [];
   let cursor: string | null = null;
@@ -106,7 +168,8 @@ async function fetchCoreMarketSnapshotsFromLunar(
     const response = await client.getMarketSnapshots(marketId, {
       limit: 1000,
       ...(cursor && { cursor }),
-      granularity: "1d", // Match Ponder's daily behavior
+      granularity: "1d",
+      startTime,
     });
 
     const transformed = transformMarketSnapshots(
