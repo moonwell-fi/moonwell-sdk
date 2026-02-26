@@ -195,12 +195,14 @@ async function getUserPositionsFromMTokenFallback(
     const mTokenContract = envAny.markets[marketKey] as
       | { read: Record<string, (...args: unknown[]) => Promise<bigint>> }
       | undefined;
+    const defaultExchangeRate = 10n ** BigInt(10 + underlyingToken.decimals);
     let exchangeRateRaw: bigint;
     try {
-      exchangeRateRaw = (await mTokenContract?.read.exchangeRateStored()) ?? 0n;
+      exchangeRateRaw =
+        (await mTokenContract?.read.exchangeRateStored()) ??
+        defaultExchangeRate;
     } catch {
-      // Default to 1.0: 10^(10 + underlyingDecimals)
-      exchangeRateRaw = 10n ** BigInt(10 + underlyingToken.decimals);
+      exchangeRateRaw = defaultExchangeRate;
     }
 
     const exchangeRate = new Amount(
