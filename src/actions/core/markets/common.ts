@@ -45,17 +45,50 @@ export const getMarketsData = async (environment: Environment) => {
   const viewsContract = environment.contracts.views;
   const homeViewsContract = homeEnvironment.contracts.views;
 
-  const marketData = await Promise.all([
+  const [
+    protocolInfoResult,
+    allMarketsInfoResult,
+    nativePriceResult,
+    govPriceResult,
+  ] = await Promise.allSettled([
     viewsContract?.read.getProtocolInfo(),
     viewsContract?.read.getAllMarketsInfo(),
     homeViewsContract?.read.getNativeTokenPrice(),
     homeViewsContract?.read.getGovernanceTokenPrice(),
   ]);
 
-  const { seizePaused, transferPaused } = marketData[0]!;
-  const allMarketsInfo = marketData[1]!;
-  const nativeTokenPriceRaw = marketData[2]!;
-  const governanceTokenPriceRaw = marketData[3]!;
+  // If getAllMarketsInfo failed (e.g. broken on-chain oracle), fall back to
+  // per-mToken RPC calls. This handles deprecated chains like Moonriver where
+  // the price oracle is non-functional but individual mToken data is readable.
+  if (allMarketsInfoResult.status === "rejected") {
+    console.debug(
+      "[mToken fallback] getAllMarketsInfo failed, using per-mToken fallback:",
+      allMarketsInfoResult.reason,
+    );
+    const seizePaused =
+      protocolInfoResult.status === "fulfilled"
+        ? protocolInfoResult.value!.seizePaused
+        : false;
+    const transferPaused =
+      protocolInfoResult.status === "fulfilled"
+        ? protocolInfoResult.value!.transferPaused
+        : false;
+    return await getMarketsFromMTokenFallback(
+      environment,
+      seizePaused,
+      transferPaused,
+    );
+  }
+
+  const { seizePaused, transferPaused } =
+    protocolInfoResult.status === "fulfilled"
+      ? protocolInfoResult.value!
+      : { seizePaused: false, transferPaused: false };
+  const allMarketsInfo = allMarketsInfoResult.value!;
+  const nativeTokenPriceRaw =
+    nativePriceResult.status === "fulfilled" ? nativePriceResult.value! : 0n;
+  const governanceTokenPriceRaw =
+    govPriceResult.status === "fulfilled" ? govPriceResult.value! : 0n;
 
   const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
   const nativeTokenPrice = new Amount(nativeTokenPriceRaw, 18);
@@ -256,6 +289,158 @@ export const getMarketsData = async (environment: Environment) => {
 
   return markets;
 };
+
+/**
+ * Fallback for chains whose on-chain price oracle is non-functional (e.g.
+ * deprecated Moonriver). Reads raw mToken contract data individually via
+ * Promise.allSettled so a single failed call does not abort the entire chain.
+ * All USD/price values are set to 0 since oracle prices are unavailable.
+ */
+async function getMarketsFromMTokenFallback(
+  environment: Environment,
+  seizePaused: boolean,
+  transferPaused: boolean,
+): Promise<Market[]> {
+  const markets: Market[] = [];
+
+  for (const marketKey of Object.keys(environment.config.markets)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const envAny = environment as any;
+    const marketConfig = envAny.config.markets[marketKey] as
+      | { underlyingToken: string; marketToken: string; deprecated?: boolean }
+      | undefined;
+    if (!marketConfig) continue;
+
+    const underlyingToken = envAny.config.tokens[
+      marketConfig.underlyingToken
+    ] as
+      | {
+          address: `0x${string}`;
+          decimals: number;
+          symbol: string;
+          name: string;
+        }
+      | undefined;
+    const marketToken = envAny.config.tokens[marketConfig.marketToken] as
+      | {
+          address: `0x${string}`;
+          decimals: number;
+          symbol: string;
+          name: string;
+        }
+      | undefined;
+    if (!underlyingToken || !marketToken) continue;
+
+    const mTokenContract = envAny.markets[marketKey] as
+      | { read: Record<string, (...args: unknown[]) => Promise<bigint>> }
+      | undefined;
+    if (!mTokenContract) continue;
+
+    const [
+      totalSupplyResult,
+      totalBorrowsResult,
+      totalReservesResult,
+      cashResult,
+      exchangeRateResult,
+      supplyRateResult,
+      borrowRateResult,
+      reserveFactorResult,
+    ] = await Promise.allSettled([
+      mTokenContract.read.totalSupply(),
+      mTokenContract.read.totalBorrows(),
+      mTokenContract.read.totalReserves(),
+      mTokenContract.read.getCash(),
+      mTokenContract.read.exchangeRateStored(),
+      mTokenContract.read.supplyRatePerTimestamp(),
+      mTokenContract.read.borrowRatePerTimestamp(),
+      mTokenContract.read.reserveFactorMantissa(),
+    ]);
+
+    const totalSupplyRaw =
+      totalSupplyResult.status === "fulfilled" ? totalSupplyResult.value : 0n;
+    const totalBorrowsRaw =
+      totalBorrowsResult.status === "fulfilled" ? totalBorrowsResult.value : 0n;
+    const totalReservesRaw =
+      totalReservesResult.status === "fulfilled"
+        ? totalReservesResult.value
+        : 0n;
+    const cashRaw = cashResult.status === "fulfilled" ? cashResult.value : 0n;
+    // Default exchange rate of 1.0: 10^(10 + underlyingDecimals) in raw form
+    const exchangeRateRaw =
+      exchangeRateResult.status === "fulfilled"
+        ? exchangeRateResult.value
+        : 10n ** BigInt(10 + underlyingToken.decimals);
+    const supplyRateRaw =
+      supplyRateResult.status === "fulfilled" ? supplyRateResult.value : 0n;
+    const borrowRateRaw =
+      borrowRateResult.status === "fulfilled" ? borrowRateResult.value : 0n;
+    const reserveFactorRaw =
+      reserveFactorResult.status === "fulfilled"
+        ? reserveFactorResult.value
+        : 0n;
+
+    const exchangeRate = new Amount(
+      exchangeRateRaw,
+      10 + underlyingToken.decimals,
+    ).value;
+    const marketTotalSupply = new Amount(totalSupplyRaw, marketToken.decimals);
+    const totalSupply = new Amount(
+      marketTotalSupply.value * exchangeRate,
+      underlyingToken.decimals,
+    );
+    const totalBorrows = new Amount(totalBorrowsRaw, underlyingToken.decimals);
+    const totalReserves = new Amount(
+      totalReservesRaw,
+      underlyingToken.decimals,
+    );
+    const cash = new Amount(cashRaw, underlyingToken.decimals);
+    const supplyRate = new Amount(supplyRateRaw, 18);
+    const borrowRate = new Amount(borrowRateRaw, 18);
+    const reserveFactor = new Amount(reserveFactorRaw, 18).value;
+
+    const baseSupplyApy = calculateApy(supplyRate.value);
+    const baseBorrowApy = calculateApy(borrowRate.value);
+
+    const market: Market = {
+      marketKey,
+      chainId: environment.chainId,
+      seizePaused,
+      transferPaused,
+      // Oracle is non-functional so supply/borrow would fail on-chain; mark paused
+      mintPaused: true,
+      borrowPaused: true,
+      deprecated: marketConfig.deprecated === true,
+      borrowCaps: new Amount(0n, underlyingToken.decimals),
+      borrowCapsUsd: 0,
+      cash,
+      collateralFactor: 0,
+      exchangeRate,
+      marketToken,
+      reserveFactor,
+      supplyCaps: new Amount(0n, underlyingToken.decimals),
+      supplyCapsUsd: 0,
+      badDebt: new Amount(0n, underlyingToken.decimals),
+      badDebtUsd: 0,
+      totalBorrows,
+      totalBorrowsUsd: 0,
+      totalReserves,
+      totalReservesUsd: 0,
+      totalSupply,
+      totalSupplyUsd: 0,
+      underlyingPrice: 0,
+      underlyingToken,
+      baseBorrowApy,
+      baseSupplyApy,
+      totalBorrowApr: baseBorrowApy,
+      totalSupplyApr: baseSupplyApy,
+      rewards: [],
+    };
+
+    markets.push(market);
+  }
+
+  return markets;
+}
 
 /**
  * Fetch markets data from Lunar Indexer (hybrid approach)
