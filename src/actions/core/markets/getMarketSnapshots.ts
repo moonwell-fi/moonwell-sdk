@@ -4,6 +4,7 @@ import utc from "dayjs/plugin/utc.js";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
   Amount,
+  calculateTimeRange,
   getEnvironmentFromArgs,
   isStartOfDay,
 } from "../../../common/index.js";
@@ -32,44 +33,6 @@ export type GetMarketSnapshotsParameters<
   startTime?: number;
   endTime?: number;
 };
-
-/**
- * Calculate start and end times based on period or custom timestamps.
- * Priority: custom timestamps > period > default (365 days)
- */
-function calculateTimeRange(
-  period?: "1M" | "3M" | "1Y" | "ALL",
-  startTime?: number,
-  endTime?: number,
-): { startTime: number; endTime: number } {
-  const now = dayjs.utc();
-  const end = endTime ?? now.unix();
-
-  if (startTime !== undefined && endTime !== undefined) {
-    return { startTime, endTime: end };
-  }
-
-  let start: number;
-  switch (period) {
-    case "1M":
-      start = now.subtract(31, "days").unix();
-      break;
-    case "3M":
-      start = now.subtract(91, "days").unix();
-      break;
-    case "1Y":
-      start = now.subtract(366, "days").unix();
-      break;
-    case "ALL":
-      start = now.subtract(10, "years").unix();
-      break;
-    default:
-      start = now.subtract(365, "days").unix();
-      break;
-  }
-
-  return { startTime: start, endTime: end };
-}
 
 export type GetMarketSnapshotsReturnType = Promise<MarketSnapshot[]>;
 
@@ -163,6 +126,8 @@ async function fetchCoreMarketSnapshotsFromLunar(
 
   const allSnapshots: MarketSnapshot[] = [];
   let cursor: string | null = null;
+  const MAX_PAGES = 100;
+  let page = 0;
 
   do {
     const response = await client.getMarketSnapshots(marketId, {
@@ -184,7 +149,8 @@ async function fetchCoreMarketSnapshotsFromLunar(
     allSnapshots.push(...filteredSnapshots);
 
     cursor = response.nextCursor;
-  } while (cursor !== null);
+    page++;
+  } while (cursor !== null && page < MAX_PAGES);
 
   return allSnapshots.map((snapshot) => {
     const supplied = snapshot.totalSupply;
