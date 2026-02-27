@@ -640,7 +640,7 @@ async function fetchMarketsFromLunar(
         incentive.borrowApr !== null
       ) {
         supplyApr = Number(incentive.supplyApr);
-        borrowApr = Number(incentive.borrowApr);
+        borrowApr = -Number(incentive.borrowApr);
       } else {
         const isGovernanceToken =
           token.symbol === environment.custom?.governance?.token;
