@@ -1,6 +1,9 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc.js";
 import type { MoonwellClient } from "../client/createMoonwellClient.js";
 import type { Environment } from "../environments/index.js";
+
+dayjs.extend(utc);
 export { Amount } from "./amount.js";
 export { BaseError, HttpRequestError } from "./error.js";
 export type { HttpRequestErrorType } from "./error.js";
@@ -21,6 +24,42 @@ export function isStartOfDay(timestamp: number): boolean {
 
 export const calculateApy = (value: number) =>
   ((value * SECONDS_PER_DAY + 1) ** DAYS_PER_YEAR - 1) * 100;
+
+export type SnapshotPeriod = "1M" | "3M" | "1Y" | "ALL";
+
+export function calculateTimeRange(
+  period?: SnapshotPeriod,
+  startTime?: number,
+  endTime?: number,
+): { startTime: number; endTime: number } {
+  const now = dayjs.utc();
+  const end = endTime ?? now.unix();
+
+  if (startTime !== undefined && endTime !== undefined) {
+    return { startTime, endTime: end };
+  }
+
+  let start: number;
+  switch (period) {
+    case "1M":
+      start = now.subtract(31, "days").unix();
+      break;
+    case "3M":
+      start = now.subtract(91, "days").unix();
+      break;
+    case "1Y":
+      start = now.subtract(366, "days").unix();
+      break;
+    case "ALL":
+      start = now.subtract(10, "years").unix();
+      break;
+    default:
+      start = now.subtract(366, "days").unix();
+      break;
+  }
+
+  return { startTime: start, endTime: end };
+}
 
 export const getEnvironmentFromArgs = (
   client: MoonwellClient,

@@ -3,7 +3,12 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc.js";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { getEnvironmentFromArgs, isStartOfDay } from "../../../common/index.js";
+import {
+  type SnapshotPeriod,
+  calculateTimeRange,
+  getEnvironmentFromArgs,
+  isStartOfDay,
+} from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { UserPositionSnapshot } from "../../../types/userPosition.js";
@@ -23,7 +28,7 @@ export type GetUserPositionSnapshotsParameters<
   /** User address*/
   userAddress: Address;
   /** Predefined time period for snapshots */
-  period?: "1M" | "3M" | "1Y" | "ALL";
+  period?: SnapshotPeriod;
   /** Custom start time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided. */
   startTime?: number;
   /** Custom end time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided. */
@@ -35,48 +40,6 @@ export type GetUserPositionSnapshotsParameters<
 export type GetUserPositionSnapshotsReturnType = Promise<
   UserPositionSnapshot[]
 >;
-
-/**
- * Calculate start and end times based on period or custom timestamps
- * Priority: custom timestamps > period > default (365 days)
- */
-function calculateTimeRange(
-  period?: "1M" | "3M" | "1Y" | "ALL",
-  startTime?: number,
-  endTime?: number,
-): { startTime: number; endTime: number } {
-  const now = dayjs.utc();
-  const end = endTime ?? now.unix();
-
-  // If both startTime and endTime are provided, use them (custom range)
-  if (startTime !== undefined && endTime !== undefined) {
-    return { startTime, endTime: end };
-  }
-
-  // Calculate based on period
-  let start: number;
-  switch (period) {
-    case "1M":
-      start = now.subtract(31, "days").unix();
-      break;
-    case "3M":
-      start = now.subtract(91, "days").unix();
-      break;
-    case "1Y":
-      start = now.subtract(366, "days").unix();
-      break;
-    case "ALL":
-      // Use a date far in the past to get all available data
-      start = now.subtract(10, "years").unix();
-      break;
-    default:
-      // Default to 365 days for backward compatibility
-      start = now.subtract(365, "days").unix();
-      break;
-  }
-
-  return { startTime: start, endTime: end };
-}
 
 /**
  * Get historical snapshots of a user's positions across all markets

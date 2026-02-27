@@ -1,22 +1,33 @@
 import axios from "axios";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc.js";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { getEnvironmentFromArgs, isStartOfDay } from "../../../common/index.js";
+import {
+  type SnapshotPeriod,
+  calculateTimeRange,
+  getEnvironmentFromArgs,
+  isStartOfDay,
+} from "../../../common/index.js";
 import type {
   MorphoVaultParameterType,
   NetworkParameterType,
 } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { MorphoVaultStakingSnapshot } from "../../../types/morphoVault.js";
-
-dayjs.extend(utc);
+import {
+  DEFAULT_LUNAR_TIMEOUT_MS,
+  createLunarIndexerClient,
+  shouldFallback,
+} from "../../lunar-indexer-client.js";
+import { transformVaultStakingSnapshots } from "../../lunar-indexer-transformers.js";
 
 export type GetMorphoVaultStakingSnapshotsParameters<
   environments,
   network extends Chain | undefined,
 > = NetworkParameterType<environments, network> &
-  MorphoVaultParameterType<network>;
+  MorphoVaultParameterType<network> & {
+    period?: SnapshotPeriod;
+    startTime?: number;
+    endTime?: number;
+  };
 
 export type GetMorphoVaultStakingSnapshotsReturnType = Promise<
   MorphoVaultStakingSnapshot[]
@@ -35,14 +46,77 @@ export async function getMorphoVaultStakingSnapshots<
     return [];
   }
 
-  return fetchVaultStakingSnapshots(
-    (args as GetMorphoVaultStakingSnapshotsParameters<environments, undefined>)
-      .vaultAddress,
-    environment,
-  );
+  const {
+    vaultAddress,
+    period,
+    startTime: customStartTime,
+    endTime: customEndTime,
+  } = args as GetMorphoVaultStakingSnapshotsParameters<environments, undefined>;
+
+  if (environment.lunarIndexerUrl) {
+    try {
+      return await fetchVaultStakingSnapshotsFromLunar(
+        vaultAddress,
+        environment,
+        period,
+        customStartTime,
+        customEndTime,
+      );
+    } catch (error) {
+      if (!shouldFallback(error)) {
+        throw error;
+      }
+      console.debug(
+        "[Lunar fallback] Falling back to Ponder for vault staking snapshots:",
+        error,
+      );
+    }
+  }
+
+  return fetchVaultStakingSnapshotsFromPonder(vaultAddress, environment);
 }
 
-async function fetchVaultStakingSnapshots(
+async function fetchVaultStakingSnapshotsFromLunar(
+  vaultAddress: string,
+  environment: Environment,
+  period?: SnapshotPeriod,
+  customStartTime?: number,
+  customEndTime?: number,
+): Promise<MorphoVaultStakingSnapshot[]> {
+  const lunarClient = createLunarIndexerClient({
+    baseUrl: environment.lunarIndexerUrl!,
+    timeout: DEFAULT_LUNAR_TIMEOUT_MS,
+  });
+
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
+
+  const allSnapshots: MorphoVaultStakingSnapshot[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const response = await lunarClient.getVaultStakingSnapshots(
+      environment.chainId,
+      {
+        limit: 1000,
+        granularity: "1d",
+        startTime,
+        vaultAddress: vaultAddress.toLowerCase(),
+        ...(cursor && { cursor }),
+      },
+    );
+
+    allSnapshots.push(...transformVaultStakingSnapshots(response.results));
+    cursor = response.nextCursor;
+  } while (cursor !== null);
+
+  return allSnapshots;
+}
+
+async function fetchVaultStakingSnapshotsFromPonder(
   vaultAddress: string,
   environment: Environment,
 ): Promise<MorphoVaultStakingSnapshot[]> {
@@ -70,7 +144,7 @@ async function fetchVaultStakingSnapshots(
     }>(environment.indexerUrl, {
       query: `
           query {
-            vaultStakingDailySnapshots (        
+            vaultStakingDailySnapshots (
               limit: 365,
               orderBy: "timestamp"
               orderDirection: "desc"
@@ -105,20 +179,13 @@ async function fetchVaultStakingSnapshots(
   }
 
   if (dailyData.length > 0) {
-    return dailyData.map((point: VaultStakingData) => {
-      const staked = Number(point.totalStaked);
-      const stakedUsd = Number(point.totalStakedUSD);
-
-      const result: MorphoVaultStakingSnapshot = {
-        vaultAddress: vaultAddress.toLowerCase(),
-        chainId: environment.chainId,
-        timestamp: point.timestamp * 1000,
-        totalStaked: staked,
-        totalStakedUsd: stakedUsd,
-      };
-
-      return result;
-    });
+    return dailyData.map((point: VaultStakingData) => ({
+      vaultAddress: vaultAddress.toLowerCase(),
+      chainId: environment.chainId,
+      timestamp: point.timestamp * 1000,
+      totalStaked: Number(point.totalStaked),
+      totalStakedUsd: Number(point.totalStakedUSD),
+    }));
   } else {
     return [];
   }
