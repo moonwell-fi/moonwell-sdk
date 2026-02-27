@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.29
+
+### Patch Changes
+
+- [#225](https://github.com/moonwell-fi/moonwell-sdk/pull/225) [`7c0014d3d5cdf4a3a6875c91addc0c80d9de4082`](https://github.com/moonwell-fi/moonwell-sdk/commit/7c0014d3d5cdf4a3a6875c91addc0c80d9de4082) Thanks [@bprofiro](https://github.com/bprofiro)! - fix rewards apy
+
 ## 0.9.28
 
 ### Patch Changes
