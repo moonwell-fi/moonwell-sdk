@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.31
+
+### Patch Changes
+
+- [#227](https://github.com/moonwell-fi/moonwell-sdk/pull/227) [`5c623087403b68c8d57d86ee992e73b25046a1a9`](https://github.com/moonwell-fi/moonwell-sdk/commit/5c623087403b68c8d57d86ee992e73b25046a1a9) Thanks [@bprofiro](https://github.com/bprofiro)! - replace moonriver views contract
+
 ## 0.9.30
 
 ### Patch Changes
