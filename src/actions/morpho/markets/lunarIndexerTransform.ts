@@ -11,6 +11,7 @@
 import type { Address } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { Environment } from "../../../environments/index.js";
+import type { MarketSnapshot } from "../../../types/market.js";
 import type {
   MorphoMarket,
   MorphoMarketParamsType,
@@ -81,6 +82,29 @@ export type LunarIndexerMarketSnapshotsResponse = {
   nextCursor?: string;
 };
 
+/**
+ * Transform a Lunar Indexer isolated market snapshot to SDK MarketSnapshot format
+ */
+export function transformIsolatedMarketSnapshotFromIndexer(
+  snapshot: LunarIndexerMarketSnapshot,
+): MarketSnapshot {
+  return {
+    chainId: snapshot.chainId,
+    marketId: snapshot.marketId.toLowerCase(),
+    timestamp: snapshot.timestamp * 1000,
+    totalSupply: Number.parseFloat(snapshot.totalSupplyAssets),
+    totalSupplyUsd: Number.parseFloat(snapshot.totalSupplyAssetsUsd),
+    totalBorrows: Number.parseFloat(snapshot.totalBorrowAssets),
+    totalBorrowsUsd: Number.parseFloat(snapshot.totalBorrowAssetsUsd),
+    totalLiquidity: Number.parseFloat(snapshot.totalLiquidity),
+    totalLiquidityUsd: Number.parseFloat(snapshot.totalLiquidityUsd),
+    baseSupplyApy: Number.parseFloat(snapshot.supplyApy),
+    baseBorrowApy: Number.parseFloat(snapshot.borrowApy),
+    loanTokenPrice: Number.parseFloat(snapshot.loanTokenPrice),
+    collateralTokenPrice: Number.parseFloat(snapshot.collateralTokenPrice),
+  };
+}
+
 export type LunarIndexerMarketPosition = {
   chainId: number;
   marketId: string;
@@ -106,7 +130,7 @@ export async function fetchMarketsFromIndexer(
   lunarIndexerUrl: string,
   chainId: number,
 ): Promise<LunarIndexerMarketsResponse> {
-  const url = `${lunarIndexerUrl}/api/v1/morpho/markets/${chainId}`;
+  const url = `${lunarIndexerUrl}/api/v1/isolated/markets/${chainId}`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -126,7 +150,7 @@ export async function fetchMarketFromIndexer(
   chainId: number,
   marketId: string,
 ): Promise<LunarIndexerMarket> {
-  const url = `${lunarIndexerUrl}/api/v1/morpho/market/${chainId}/${marketId.toLowerCase()}`;
+  const url = `${lunarIndexerUrl}/api/v1/isolated/market/${chainId}/${marketId.toLowerCase()}`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -155,24 +179,24 @@ export async function fetchMarketSnapshotsFromIndexer(
 ): Promise<LunarIndexerMarketSnapshotsResponse> {
   const params = new URLSearchParams();
 
-  if (options?.startTime) {
+  if (options?.startTime !== undefined) {
     params.set("startTime", options.startTime.toString());
   }
-  if (options?.endTime) {
+  if (options?.endTime !== undefined) {
     params.set("endTime", options.endTime.toString());
   }
-  if (options?.limit) {
+  if (options?.limit !== undefined) {
     params.set("limit", options.limit.toString());
   }
-  if (options?.cursor) {
+  if (options?.cursor !== undefined) {
     params.set("cursor", options.cursor);
   }
-  if (options?.granularity) {
+  if (options?.granularity !== undefined) {
     params.set("granularity", options.granularity);
   }
 
   const queryString = params.toString();
-  const url = `${lunarIndexerUrl}/api/v1/morpho/market/${chainId}/${marketId.toLowerCase()}/snapshots${
+  const url = `${lunarIndexerUrl}/api/v1/isolated/market/${chainId}/${marketId.toLowerCase()}/snapshots${
     queryString ? `?${queryString}` : ""
   }`;
 
@@ -203,24 +227,24 @@ export async function fetchAccountMarketPortfolioFromIndexer(
 ): Promise<LunarIndexerAccountPortfolioResponse> {
   const params = new URLSearchParams();
 
-  if (options?.chainId) {
+  if (options?.chainId !== undefined) {
     params.set("chainId", options.chainId.toString());
   }
-  if (options?.marketId) {
+  if (options?.marketId !== undefined) {
     params.set("marketId", options.marketId.toLowerCase());
   }
-  if (options?.startTime) {
+  if (options?.startTime !== undefined) {
     params.set("startTime", options.startTime.toString());
   }
-  if (options?.endTime) {
+  if (options?.endTime !== undefined) {
     params.set("endTime", options.endTime.toString());
   }
-  if (options?.granularity) {
+  if (options?.granularity !== undefined) {
     params.set("granularity", options.granularity);
   }
 
   const queryString = params.toString();
-  const url = `${lunarIndexerUrl}/api/v1/morpho/account/${accountAddress.toLowerCase()}/market-portfolio${
+  const url = `${lunarIndexerUrl}/api/v1/isolated/account/${accountAddress.toLowerCase()}/portfolio${
     queryString ? `?${queryString}` : ""
   }`;
 
@@ -256,7 +280,7 @@ export function transformMarketFromIndexer(
   environment: Environment,
   rewardsData?: GetMorphoMarketsRewardsReturnType,
   sharedLiquidityData?: PublicAllocatorSharedLiquidityType[],
-): MorphoMarket {
+): MorphoMarket | null {
   // Find the market configuration in the environment
   const marketKey = Object.keys(environment.config.morphoMarkets).find(
     (key) =>
@@ -265,9 +289,7 @@ export function transformMarketFromIndexer(
   );
 
   if (!marketKey) {
-    throw new Error(
-      `Market ${indexerMarket.marketId} not found in environment configuration`,
-    );
+    return null;
   }
 
   const marketConfig = environment.config.morphoMarkets[marketKey];
@@ -401,18 +423,18 @@ export function transformMarketsFromIndexer(
   rewardsDataMap?: Map<string, GetMorphoMarketsRewardsReturnType>,
   sharedLiquidityMap?: Map<string, PublicAllocatorSharedLiquidityType[]>,
 ): MorphoMarket[] {
-  return indexerMarkets.map((indexerMarket) => {
+  return indexerMarkets.flatMap((indexerMarket) => {
     const rewardKey = `${environment.chainId}-${indexerMarket.marketId.toLowerCase()}`;
     const rewardsData = rewardsDataMap?.get(rewardKey);
-    const sharedLiquidityData = sharedLiquidityMap?.get(
-      indexerMarket.marketId.toLowerCase(),
-    );
+    const sharedLiquidityData = sharedLiquidityMap?.get(rewardKey);
 
-    return transformMarketFromIndexer(
+    const market = transformMarketFromIndexer(
       indexerMarket,
       environment,
       rewardsData,
       sharedLiquidityData,
     );
+
+    return market ? [market] : [];
   });
 }

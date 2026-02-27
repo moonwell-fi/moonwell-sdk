@@ -146,8 +146,11 @@ async function getMorphoMarketsDataFromOnChain(params: {
     });
   });
 
+  const rewardEnvironment =
+    params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+    params.environments[0];
   const rewardsData = await getMorphoMarketRewards(
-    params.environments[0],
+    rewardEnvironment,
     initialMarkets,
   );
   const rewardsDataByChainAndMarket = new Map<
@@ -293,11 +296,11 @@ async function getMorphoMarketsDataFromOnChain(params: {
         // const supplyApy = new Amount(marketInfo.supplyApy, 18).value * 100;
         const borrowApy = new Amount(marketInfo.borrowApy, 18).value * 100;
 
-        const availableLiquidity =
-          publicAllocatorSharedLiquidity?.reallocatableLiquidityAssets ||
-          new Amount(0, 18);
-        const availableLiquidityUsd =
-          availableLiquidity?.value * loanTokenPrice;
+        const availableLiquidity = new Amount(
+          marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets,
+          loanToken.decimals,
+        );
+        const availableLiquidityUsd = availableLiquidity.value * loanTokenPrice;
 
         const rewardKey = `${environment.chainId}-${marketInfo.marketId.toLowerCase()}`;
         const marketRewardData = rewardsDataByChainAndMarket.get(rewardKey);
@@ -366,7 +369,8 @@ async function getMorphoMarketsDataFromOnChain(params: {
       });
 
     const rewards = await getMorphoMarketRewards(
-      params.environments[0],
+      params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+        params.environments[0],
       markets,
     );
 
@@ -1039,7 +1043,8 @@ async function getMorphoMarketsDataFromIndexer(params: {
   const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
   if (params.includeRewards && initialMarkets.length > 0) {
     const rewardsData = await getMorphoMarketRewards(
-      params.environments[0],
+      params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+        params.environments[0],
       initialMarkets,
     );
     rewardsData.forEach((reward) => {

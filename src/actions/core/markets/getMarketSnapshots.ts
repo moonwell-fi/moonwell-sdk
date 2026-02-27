@@ -17,6 +17,10 @@ import {
   shouldFallback,
 } from "../../lunar-indexer-client.js";
 import { transformMarketSnapshots } from "../../lunar-indexer-transformers.js";
+import {
+  fetchMarketSnapshotsFromIndexer,
+  transformIsolatedMarketSnapshotFromIndexer,
+} from "../../morpho/markets/lunarIndexerTransform.js";
 import { getSubgraph } from "../../morpho/utils/graphql.js";
 
 dayjs.extend(utc);
@@ -95,11 +99,13 @@ export async function getMarketSnapshots<
       args.endTime,
     );
   } else {
-    if (environment.custom.morpho?.minimalDeployment === false) {
-      return fetchIsolatedMarketSnapshots(args.marketId, environment);
-    } else {
-      return fetchIsolatedMarketSnapshotsSubgraph(args.marketId, environment);
-    }
+    return fetchIsolatedMarketSnapshots(
+      args.marketId,
+      environment,
+      args.period,
+      args.startTime,
+      args.endTime,
+    );
   }
 }
 
@@ -345,6 +351,78 @@ async function fetchMorphoGraphQL(
 async function fetchIsolatedMarketSnapshots(
   marketAddress: string,
   environment: Environment,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
+): Promise<MarketSnapshot[]> {
+  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+
+  if (lunarIndexerUrl) {
+    try {
+      const { startTime } = calculateTimeRange(
+        period,
+        customStartTime,
+        customEndTime,
+      );
+      const allSnapshots: MarketSnapshot[] = [];
+      let cursor: string | undefined;
+
+      do {
+        const response = await fetchMarketSnapshotsFromIndexer(
+          lunarIndexerUrl,
+          environment.chainId,
+          marketAddress,
+          {
+            startTime,
+            granularity: "1d",
+            limit: 1000,
+            ...(cursor && { cursor }),
+          },
+        );
+
+        allSnapshots.push(
+          ...response.results
+            .filter((s) => isStartOfDay(s.timestamp))
+            .map(transformIsolatedMarketSnapshotFromIndexer),
+        );
+
+        cursor = response.nextCursor ?? undefined;
+      } while (cursor !== undefined);
+
+      return allSnapshots;
+    } catch (error) {
+      console.debug(
+        "[Lunar fallback] Falling back for isolated market snapshots:",
+        error,
+      );
+    }
+  }
+
+  if (environment.custom.morpho?.minimalDeployment === false) {
+    return fetchIsolatedMarketSnapshotsFromBlueApi(
+      marketAddress,
+      environment,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  }
+
+  return fetchIsolatedMarketSnapshotsSubgraph(
+    marketAddress,
+    environment,
+    period,
+    customStartTime,
+    customEndTime,
+  );
+}
+
+async function fetchIsolatedMarketSnapshotsFromBlueApi(
+  marketAddress: string,
+  environment: Environment,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
 ): Promise<MarketSnapshot[]> {
   const marketConfig = Object.values(environment.config.morphoMarkets).find(
     (market) => market.id.toLowerCase() === marketAddress.toLowerCase(),
@@ -397,9 +475,14 @@ async function fetchIsolatedMarketSnapshots(
 
   const operationName = "getMarketTotalTimeseries";
 
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
   const variables = {
     options: {
-      startTimestamp: dayjs.utc().subtract(1, "year").unix(),
+      startTimestamp: startTime,
       interval: "DAY",
     },
   };
@@ -561,6 +644,9 @@ async function fetchIsolatedMarketSnapshots(
 async function fetchIsolatedMarketSnapshotsSubgraph(
   marketAddress: string,
   environment: Environment,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
 ): Promise<MarketSnapshot[]> {
   const marketConfig = Object.values(environment.config.morphoMarkets).find(
     (market) => market.id.toLowerCase() === marketAddress.toLowerCase(),
@@ -607,9 +693,14 @@ async function fetchIsolatedMarketSnapshotsSubgraph(
     }
   }
 
-  const query = `    
+  const { startTime: subgraphStartTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
+  const query = `
     {
-      marketDailySnapshots (where:{market:"${marketAddress.toLowerCase()}"}, orderBy:timestamp, orderDirection:desc, first: 365) {
+      marketDailySnapshots (where:{market:"${marketAddress.toLowerCase()}", timestamp_gte:${subgraphStartTime}}, orderBy:timestamp, orderDirection:desc, first: 1000) {
         market {
           maximumLTV
           inputToken {
