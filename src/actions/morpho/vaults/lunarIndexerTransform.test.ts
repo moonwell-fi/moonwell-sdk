@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Amount } from "../../../common/amount.js";
 import { createEnvironment as createBaseEnvironment } from "../../../environments/definitions/base/environment.js";
 import {
@@ -11,19 +11,362 @@ import {
   transformVaultsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
-describe("Lunar Indexer Transformation Tests", () => {
-  const LUNAR_INDEXER_URL =
-    "https://lunar-services-worker.moonwell.workers.dev";
-  const BASE_CHAIN_ID = 8453;
+// ─── Fixtures ────────────────────────────────────────────────────────────────
 
-  // Test fetching tokens from Lunar Indexer
+const BASE_CHAIN_ID = 8453;
+const LUNAR_INDEXER_URL = "https://lunar-services-worker.moonwell.workers.dev";
+
+const MOCK_TOKENS = [
+  {
+    id: "8453-0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+    chainId: BASE_CHAIN_ID,
+    address: "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+    name: "Coinbase Wrapped BTC",
+    symbol: "cbBTC",
+    decimals: 8,
+  },
+  {
+    id: "8453-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    chainId: BASE_CHAIN_ID,
+    address: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    name: "USD Coin",
+    symbol: "USDC",
+    decimals: 6,
+  },
+  {
+    id: "8453-0x4200000000000000000000000000000000000006",
+    chainId: BASE_CHAIN_ID,
+    address: "0x4200000000000000000000000000000000000006",
+    name: "Wrapped Ether",
+    symbol: "WETH",
+    decimals: 18,
+  },
+  {
+    id: "8453-0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+    chainId: BASE_CHAIN_ID,
+    address: "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+    name: "Euro Coin",
+    symbol: "EURC",
+    decimals: 6,
+  },
+];
+
+const CBBTC_UNDERLYING_TOKEN = MOCK_TOKENS[0];
+const USDC_UNDERLYING_TOKEN = MOCK_TOKENS[1];
+const WETH_UNDERLYING_TOKEN = MOCK_TOKENS[2];
+
+// mwcbBTC — V1 Frontier vault (no version field in config → defaults to 1)
+const MOCK_CBBTC_VAULT = {
+  id: "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796",
+  chainId: BASE_CHAIN_ID,
+  address: "0x543257ef2161176d7c8cd90ba65c2d4caef5a796",
+  name: "Moonwell Frontier cbBTC",
+  symbol: "mwcbBTC",
+  decimals: 18,
+  underlyingTokenAddress: "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+  initialOwner: "0x0000000000000000000000000000000000000001",
+  initialTimelock: "604800",
+  blockNumber: "12345678",
+  timestamp: 1_700_000_000,
+  totalSupply: "50.00000000",
+  totalAssets: "50.00000000",
+  totalAssetsUsd: "5000000.00",
+  totalLiquidity: "10.00000000",
+  totalLiquidityUsd: "1000000.00",
+  underlyingPrice: "100000.00",
+  performanceFee: "15",
+  timelock: "604800",
+  baseApy: "3.5",
+  rewardsApy: "1.2",
+  totalApy: "4.7",
+  markets: [
+    {
+      marketId: "0xabc123",
+      marketCollateral: "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      marketCollateralName: "Coinbase Wrapped BTC",
+      marketCollateralSymbol: "cbBTC",
+      marketLiquidity: "5.00000000",
+      marketLiquidityUsd: "500000.00",
+      marketLltv: "0.86",
+      marketApy: "3.5",
+      vaultAllocation: "0.8",
+      vaultSupplied: "40.00000000",
+      vaultSuppliedUsd: "4000000.00",
+    },
+    {
+      marketId: "0xdef456",
+      marketCollateral: "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+      marketCollateralName: "Coinbase Wrapped BTC",
+      marketCollateralSymbol: "cbBTC",
+      marketLiquidity: "5.00000000",
+      marketLiquidityUsd: "500000.00",
+      marketLltv: "0.77",
+      marketApy: "2.8",
+      vaultAllocation: "0.2",
+      vaultSupplied: "10.00000000",
+      vaultSuppliedUsd: "1000000.00",
+    },
+  ],
+  rewards: [
+    {
+      token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      tokenSymbol: "USDC",
+      apr: "1.2",
+    },
+  ],
+  underlyingToken: CBBTC_UNDERLYING_TOKEN,
+};
+
+// mwETH — no version field in config → defaults to 1
+const MOCK_MWETH_VAULT = {
+  id: "8453-0xa0e430870c4604ccfc7b38ca7845b1ff653d0ff1",
+  chainId: BASE_CHAIN_ID,
+  address: "0xa0e430870c4604ccfc7b38ca7845b1ff653d0ff1",
+  name: "Moonwell Flagship ETH",
+  symbol: "mwETH",
+  decimals: 18,
+  underlyingTokenAddress: "0x4200000000000000000000000000000000000006",
+  initialOwner: "0x0000000000000000000000000000000000000001",
+  initialTimelock: "604800",
+  blockNumber: "12345678",
+  timestamp: 1_700_000_000,
+  totalSupply: "1000.0",
+  totalAssets: "1000.0",
+  totalAssetsUsd: "3500000.00",
+  totalLiquidity: "200.0",
+  totalLiquidityUsd: "700000.00",
+  underlyingPrice: "3500.00",
+  performanceFee: "15",
+  timelock: "604800",
+  baseApy: "4.1",
+  rewardsApy: "0.5",
+  totalApy: "4.6",
+  markets: [],
+  rewards: [],
+  underlyingToken: WETH_UNDERLYING_TOKEN,
+};
+
+// mwUSDC — no version field in config → defaults to 1
+const MOCK_MWUSDC_VAULT = {
+  id: "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca",
+  chainId: BASE_CHAIN_ID,
+  address: "0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca",
+  name: "Moonwell Flagship USDC",
+  symbol: "mwUSDC",
+  decimals: 18,
+  underlyingTokenAddress: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  initialOwner: "0x0000000000000000000000000000000000000001",
+  initialTimelock: "604800",
+  blockNumber: "12345678",
+  timestamp: 1_700_000_000,
+  totalSupply: "1000000.0",
+  totalAssets: "1000000.0",
+  totalAssetsUsd: "1000000.00",
+  totalLiquidity: "200000.0",
+  totalLiquidityUsd: "200000.00",
+  underlyingPrice: "1.0001",
+  performanceFee: "15",
+  timelock: "604800",
+  baseApy: "5.2",
+  rewardsApy: "0.0",
+  totalApy: "5.2",
+  markets: [],
+  rewards: [],
+  underlyingToken: USDC_UNDERLYING_TOKEN,
+};
+
+// mwEURC — no version field in config → defaults to 1
+const MOCK_MWEURC_VAULT = {
+  id: "8453-0xf24608e0ccb972b0b0f4a6446a0bbf58c701a026",
+  chainId: BASE_CHAIN_ID,
+  address: "0xf24608e0ccb972b0b0f4a6446a0bbf58c701a026",
+  name: "Moonwell Flagship EURC",
+  symbol: "mwEURC",
+  decimals: 18,
+  underlyingTokenAddress: "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+  initialOwner: "0x0000000000000000000000000000000000000001",
+  initialTimelock: "604800",
+  blockNumber: "12345678",
+  timestamp: 1_700_000_000,
+  totalSupply: "500000.0",
+  totalAssets: "500000.0",
+  totalAssetsUsd: "540000.00",
+  totalLiquidity: "100000.0",
+  totalLiquidityUsd: "108000.00",
+  underlyingPrice: "1.08",
+  performanceFee: "15",
+  timelock: "604800",
+  baseApy: "3.8",
+  rewardsApy: "0.0",
+  totalApy: "3.8",
+  markets: [],
+  rewards: [],
+  underlyingToken: MOCK_TOKENS[3],
+};
+
+// meUSDC — version: 2 (from config)
+const MOCK_MEUSDC_VAULT = {
+  id: "8453-0xbb2f06ceae42cbcf5559ed0713538c8892d977c9",
+  chainId: BASE_CHAIN_ID,
+  address: "0xbb2f06ceae42cbcf5559ed0713538c8892d977c9",
+  name: "Moonwell Ecosystem USDC Vault",
+  symbol: "meUSDC",
+  decimals: 18,
+  underlyingTokenAddress: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  initialOwner: "0x0000000000000000000000000000000000000001",
+  initialTimelock: "604800",
+  blockNumber: "12345678",
+  timestamp: 1_700_000_000,
+  totalSupply: "2000000.0",
+  totalAssets: "2000000.0",
+  totalAssetsUsd: "2000000.00",
+  totalLiquidity: "400000.0",
+  totalLiquidityUsd: "400000.00",
+  underlyingPrice: "1.0001",
+  performanceFee: "15",
+  timelock: "604800",
+  baseApy: "6.0",
+  rewardsApy: "1.0",
+  totalApy: "7.0",
+  markets: [],
+  rewards: [],
+  underlyingToken: USDC_UNDERLYING_TOKEN,
+};
+
+// meUSDCv1 — no version field in config → defaults to 1
+const MOCK_MEUSDCV1_VAULT = {
+  id: "8453-0xe1ba476304255353aef290e6474a417d06e7b773",
+  chainId: BASE_CHAIN_ID,
+  address: "0xe1ba476304255353aef290e6474a417d06e7b773",
+  // Indexer returns its own name; SDK config overrides with "Moonwell Ecosystem USDC Vault V1"
+  name: "Moonwell Ecosystem USDC Vault",
+  symbol: "meUSDCv1",
+  decimals: 18,
+  underlyingTokenAddress: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  initialOwner: "0x0000000000000000000000000000000000000001",
+  initialTimelock: "604800",
+  blockNumber: "12345678",
+  timestamp: 1_700_000_000,
+  totalSupply: "500000.0",
+  totalAssets: "500000.0",
+  totalAssetsUsd: "500000.00",
+  totalLiquidity: "50000.0",
+  totalLiquidityUsd: "50000.00",
+  underlyingPrice: "1.0001",
+  performanceFee: "15",
+  timelock: "604800",
+  baseApy: "5.0",
+  rewardsApy: "2.0",
+  totalApy: "7.0",
+  markets: [],
+  rewards: [],
+  underlyingToken: USDC_UNDERLYING_TOKEN,
+};
+
+// Snapshot fixtures for mwUSDC vault
+const MOCK_VAULT_SNAPSHOT_1 = {
+  id: "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca-1700000000",
+  chainId: BASE_CHAIN_ID,
+  vaultAddress: "0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca",
+  timestamp: 1_700_000_000,
+  blockNumber: "12345678",
+  totalSupply: "1000000",
+  totalAssets: "1000000",
+  totalAssetsUsd: "1000000.00",
+  totalLiquidity: "200000",
+  totalLiquidityUsd: "200000.00",
+  underlyingPrice: "1.0001",
+  vaultTokenPrice: "1.0",
+  performanceFee: "15",
+  baseApy: "5.2",
+  timeInterval: 0,
+};
+
+const MOCK_VAULT_SNAPSHOT_2 = {
+  ...MOCK_VAULT_SNAPSHOT_1,
+  id: "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca-1699913600",
+  timestamp: 1_699_913_600,
+};
+
+// All vaults in the expected config sort order
+const ALL_MOCK_VAULTS = [
+  MOCK_MWETH_VAULT,
+  MOCK_MWUSDC_VAULT,
+  MOCK_MWEURC_VAULT,
+  MOCK_CBBTC_VAULT,
+  MOCK_MEUSDC_VAULT,
+  MOCK_MEUSDCV1_VAULT,
+];
+
+// ─── Mock fetch setup ─────────────────────────────────────────────────────────
+
+function makeJsonResponse(data: unknown, status = 200) {
+  return Promise.resolve(
+    new Response(JSON.stringify(data), {
+      status,
+      headers: { "content-type": "application/json" },
+    }),
+  );
+}
+
+function createMockFetch() {
+  return vi.fn((url: string) => {
+    // Snapshots endpoint (must come before single-vault check)
+    if (url.includes("/snapshots")) {
+      return makeJsonResponse({
+        results: [MOCK_VAULT_SNAPSHOT_1, MOCK_VAULT_SNAPSHOT_2],
+        nextCursor: null,
+      });
+    }
+
+    // Tokens list
+    if (url.includes("/api/v1/vaults/tokens/")) {
+      return makeJsonResponse({ results: MOCK_TOKENS, nextCursor: null });
+    }
+
+    // Single vault endpoints
+    if (url.includes("/api/v1/vaults/vault/8453-0x543257")) {
+      return makeJsonResponse(MOCK_CBBTC_VAULT);
+    }
+    if (url.includes("/api/v1/vaults/vault/8453-0xa0e430")) {
+      return makeJsonResponse(MOCK_MWETH_VAULT);
+    }
+    if (url.includes("/api/v1/vaults/vault/8453-0xc1256a")) {
+      return makeJsonResponse(MOCK_MWUSDC_VAULT);
+    }
+    if (url.includes("/api/v1/vaults/vault/8453-0xe1ba47")) {
+      return makeJsonResponse(MOCK_MEUSDCV1_VAULT);
+    }
+    if (url.includes("/api/v1/vaults/vault/8453-0xbb2f06")) {
+      return makeJsonResponse(MOCK_MEUSDC_VAULT);
+    }
+
+    // Vaults list
+    if (url.includes("/api/v1/vaults/vaults/")) {
+      return makeJsonResponse({ results: ALL_MOCK_VAULTS, nextCursor: null });
+    }
+
+    return Promise.reject(new Error(`Unmocked URL: ${url}`));
+  });
+}
+
+describe("Lunar Indexer Transformation Tests", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", createMockFetch());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // ─── Fetch function tests (mocked) ─────────────────────────────────────────
+
   test("Fetch tokens from Lunar Indexer", async () => {
     const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
 
     expect(tokenMap).toBeDefined();
     expect(tokenMap.size).toBeGreaterThan(0);
 
-    // Check that cbBTC is in the map
     const cbBTC = tokenMap.get(
       "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf".toLowerCase(),
     );
@@ -31,7 +374,6 @@ describe("Lunar Indexer Transformation Tests", () => {
     expect(cbBTC?.symbol).toBe("cbBTC");
     expect(cbBTC?.decimals).toBe(8);
 
-    // Check that USDC is in the map
     const usdc = tokenMap.get(
       "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913".toLowerCase(),
     );
@@ -40,7 +382,6 @@ describe("Lunar Indexer Transformation Tests", () => {
     expect(usdc?.decimals).toBe(6);
   });
 
-  // Test fetching vaults from Lunar Indexer
   test("Fetch vaults from Lunar Indexer", async () => {
     const response = await fetchVaultsFromIndexer(
       LUNAR_INDEXER_URL,
@@ -48,151 +389,178 @@ describe("Lunar Indexer Transformation Tests", () => {
     );
 
     expect(response).toBeDefined();
-    expect(response.results).toBeDefined();
     expect(Array.isArray(response.results)).toBe(true);
     expect(response.results.length).toBeGreaterThan(0);
 
-    // Check structure of first vault
     const vault = response.results[0];
     expect(vault.chainId).toBe(BASE_CHAIN_ID);
     expect(vault.address).toBeDefined();
     expect(vault.name).toBeDefined();
     expect(vault.symbol).toBeDefined();
-    expect(vault.decimals).toBeDefined();
-    expect(vault.totalSupply).toBeDefined();
     expect(vault.totalAssets).toBeDefined();
     expect(vault.baseApy).toBeDefined();
-    expect(vault.markets).toBeDefined();
     expect(Array.isArray(vault.markets)).toBe(true);
   });
 
-  // Test fetching single vault from Lunar Indexer
-  test("Fetch single vault from Lunar Indexer", async () => {
-    // Moonwell Frontier cbBTC
-    const vaultId = "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796";
-    const vault = await fetchVaultFromIndexer(LUNAR_INDEXER_URL, vaultId);
-
-    expect(vault).toBeDefined();
-    expect(vault.chainId).toBe(BASE_CHAIN_ID);
-    expect(vault.address).toBe("0x543257ef2161176d7c8cd90ba65c2d4caef5a796");
-    expect(vault.symbol).toBe("mwcbBTC");
-    expect(vault.underlyingToken).toBeDefined(); // Should be populated in single vault
-    expect(vault.underlyingToken?.symbol).toBe("cbBTC");
-    expect(vault.underlyingToken?.decimals).toBe(8);
-    expect(vault.rewards).toBeDefined();
-    expect(Array.isArray(vault.rewards)).toBe(true);
-  });
-
-  // Test transformation of single vault
-  test("Transform single vault from Lunar Indexer", async () => {
-    const vaultId = "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796";
-    const indexerVault = await fetchVaultFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVault = transformVaultFromIndexer(
-      indexerVault,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    // Check basic properties
-    expect(transformedVault.chainId).toBe(BASE_CHAIN_ID);
-    expect(transformedVault.vaultKey).toBeDefined();
-    expect(transformedVault.version).toBeGreaterThanOrEqual(1);
-    expect(transformedVault.version).toBeLessThanOrEqual(2);
-    expect(typeof transformedVault.deprecated).toBe("boolean");
-
-    // Check tokens
-    expect(transformedVault.vaultToken).toBeDefined();
-    expect(transformedVault.vaultToken.address.toLowerCase()).toBe(
-      indexerVault.address.toLowerCase(),
-    );
-    expect(transformedVault.vaultToken.symbol).toBe("mwcbBTC");
-    expect(transformedVault.vaultToken.decimals).toBe(18);
-
-    expect(transformedVault.underlyingToken).toBeDefined();
-    expect(transformedVault.underlyingToken.symbol).toBe("cbBTC");
-    expect(transformedVault.underlyingToken.decimals).toBe(8);
-
-    // Check Amount objects
-    expect(transformedVault.totalSupply).toBeInstanceOf(Amount);
-    expect(transformedVault.totalSupply.value).toBeGreaterThan(0);
-    expect(transformedVault.totalSupply.exponential).toBeGreaterThan(0n);
-    expect(transformedVault.totalSupply.base).toBe(8); // cbBTC decimals
-
-    expect(transformedVault.totalLiquidity).toBeInstanceOf(Amount);
-    expect(transformedVault.vaultSupply).toBeInstanceOf(Amount);
-
-    // Check numeric values
-    expect(typeof transformedVault.totalSupplyUsd).toBe("number");
-    expect(transformedVault.totalSupplyUsd).toBeGreaterThan(0);
-    expect(typeof transformedVault.underlyingPrice).toBe("number");
-    expect(transformedVault.underlyingPrice).toBeGreaterThan(0);
-    expect(typeof transformedVault.baseApy).toBe("number");
-    expect(transformedVault.baseApy).toBeGreaterThanOrEqual(0);
-    expect(typeof transformedVault.totalApy).toBe("number");
-    expect(typeof transformedVault.performanceFee).toBe("number");
-    expect(transformedVault.performanceFee).toBeGreaterThanOrEqual(0);
-    expect(transformedVault.performanceFee).toBeLessThanOrEqual(1); // Should be 0-1, not 0-100
-    expect(typeof transformedVault.timelock).toBe("number");
-
-    // Check arrays
-    expect(Array.isArray(transformedVault.markets)).toBe(true);
-    expect(Array.isArray(transformedVault.rewards)).toBe(true);
-    expect(Array.isArray(transformedVault.stakingRewards)).toBe(true);
-    expect(Array.isArray(transformedVault.curators)).toBe(true);
-
-    // Check markets structure
-    if (transformedVault.markets.length > 0) {
-      const market = transformedVault.markets[0];
-      expect(market.marketId).toBeDefined();
-      expect(typeof market.allocation).toBe("number");
-      expect(market.allocation).toBeGreaterThanOrEqual(0);
-      expect(market.allocation).toBeLessThanOrEqual(1);
-      expect(typeof market.marketApy).toBe("number");
-      expect(market.marketCollateral).toBeDefined();
-      expect(market.marketCollateral.address).toBeDefined();
-      expect(market.marketCollateral.decimals).toBeGreaterThan(0);
-      expect(market.marketLiquidity).toBeInstanceOf(Amount);
-      expect(typeof market.marketLiquidityUsd).toBe("number");
-      expect(market.totalSupplied).toBeInstanceOf(Amount);
-      expect(typeof market.totalSuppliedUsd).toBe("number");
-    }
-
-    // Check rewards structure if present
-    if (transformedVault.rewards.length > 0) {
-      const reward = transformedVault.rewards[0];
-      expect(reward.asset).toBeDefined();
-      expect(reward.asset.address).toBeDefined();
-      expect(reward.asset.symbol).toBeDefined();
-      expect(typeof reward.supplyApr).toBe("number");
-    }
-  });
-
-  // Test transformation of multiple vaults
-  test("Transform multiple vaults from Lunar Indexer", async () => {
+  test("Fetch vaults with includeRewards parameter", async () => {
     const response = await fetchVaultsFromIndexer(
       LUNAR_INDEXER_URL,
       BASE_CHAIN_ID,
+      { includeRewards: true },
     );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
 
-    const transformedVaults = transformVaultsFromIndexer(
-      response.results,
+    expect(response).toBeDefined();
+    expect(Array.isArray(response.results)).toBe(true);
+    response.results.forEach((vault) => {
+      expect(vault.rewards).toBeDefined();
+      expect(Array.isArray(vault.rewards)).toBe(true);
+    });
+  });
+
+  test("Fetch single vault from Lunar Indexer", async () => {
+    const vaultId = "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796";
+    const vault = await fetchVaultFromIndexer(LUNAR_INDEXER_URL, vaultId);
+
+    expect(vault.chainId).toBe(BASE_CHAIN_ID);
+    expect(vault.address).toBe("0x543257ef2161176d7c8cd90ba65c2d4caef5a796");
+    expect(vault.symbol).toBe("mwcbBTC");
+    expect(vault.underlyingToken).toBeDefined();
+    expect(vault.underlyingToken?.symbol).toBe("cbBTC");
+    expect(vault.underlyingToken?.decimals).toBe(8);
+    expect(Array.isArray(vault.rewards)).toBe(true);
+  });
+
+  test("Fetch vault snapshots from Lunar Indexer", async () => {
+    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
+    const response = await fetchVaultSnapshotsFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+
+    expect(Array.isArray(response.results)).toBe(true);
+    expect(response.results.length).toBeGreaterThan(0);
+
+    const snapshot = response.results[0];
+    expect(snapshot.chainId).toBe(BASE_CHAIN_ID);
+    expect(snapshot.vaultAddress).toBeDefined();
+    expect(typeof snapshot.timestamp).toBe("number");
+    expect(snapshot.totalAssets).toBeDefined();
+    expect(snapshot.totalAssetsUsd).toBeDefined();
+    expect(snapshot.totalLiquidity).toBeDefined();
+    expect(typeof snapshot.timeInterval).toBe("number");
+  });
+
+  test("Fetch vault snapshots supports pagination via cursor", async () => {
+    // Reconfigure mock: first call returns a cursor, second returns empty
+    const mockFetch = vi.fn((url: string) => {
+      if (url.includes("cursor=")) {
+        return makeJsonResponse({
+          results: [MOCK_VAULT_SNAPSHOT_2],
+          nextCursor: null,
+        });
+      }
+      return makeJsonResponse({
+        results: [MOCK_VAULT_SNAPSHOT_1],
+        nextCursor: "1699913600",
+      });
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
+    const firstPage = await fetchVaultSnapshotsFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+    );
+
+    expect(firstPage.nextCursor).toBe("1699913600");
+
+    const secondPage = await fetchVaultSnapshotsFromIndexer(
+      LUNAR_INDEXER_URL,
+      vaultId,
+      { cursor: firstPage.nextCursor! },
+    );
+
+    expect(Array.isArray(secondPage.results)).toBe(true);
+    // Second page timestamps should be older than first page
+    if (firstPage.results.length > 0 && secondPage.results.length > 0) {
+      expect(secondPage.results[0].timestamp).toBeLessThanOrEqual(
+        firstPage.results[firstPage.results.length - 1].timestamp,
+      );
+    }
+  });
+
+  test("Fetch throws on non-OK response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => makeJsonResponse({ error: "not found" }, 404)),
+    );
+    await expect(
+      fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toThrow("404");
+  });
+
+  // ─── Pure transformation unit tests ────────────────────────────────────────
+
+  test("Transform single vault from indexer fixture", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vault = transformVaultFromIndexer(
+      MOCK_CBBTC_VAULT,
       createBaseEnvironment(),
       tokenMap,
     );
 
-    expect(transformedVaults).toBeDefined();
-    expect(Array.isArray(transformedVaults)).toBe(true);
-    expect(transformedVaults.length).toBe(response.results.length);
-    expect(transformedVaults.length).toBeGreaterThan(0);
+    expect(vault.chainId).toBe(BASE_CHAIN_ID);
+    expect(vault.vaultKey).toBe("mwcbBTC");
+    expect(vault.version).toBe(1);
+    expect(typeof vault.deprecated).toBe("boolean");
 
-    // Check all vaults are properly transformed
-    transformedVaults.forEach((vault) => {
+    expect(vault.vaultToken.address.toLowerCase()).toBe(
+      MOCK_CBBTC_VAULT.address.toLowerCase(),
+    );
+    expect(vault.vaultToken.symbol).toBe("mwcbBTC");
+    expect(vault.vaultToken.decimals).toBe(18);
+
+    // SDK config overrides: mwcbBTC underlyingToken is "cbBTC" from config
+    expect(vault.underlyingToken.symbol).toBe("cbBTC");
+    expect(vault.underlyingToken.decimals).toBe(8);
+
+    expect(vault.totalSupply).toBeInstanceOf(Amount);
+    expect(vault.totalSupply.value).toBeCloseTo(50, 6);
+    expect(vault.totalSupply.base).toBe(8); // cbBTC decimals
+
+    expect(vault.totalLiquidity).toBeInstanceOf(Amount);
+    expect(vault.vaultSupply).toBeInstanceOf(Amount);
+    expect(vault.vaultSupply.value).toBeGreaterThanOrEqual(0); // must never be negative
+
+    expect(typeof vault.totalSupplyUsd).toBe("number");
+    expect(vault.totalSupplyUsd).toBeCloseTo(5_000_000, 0);
+    expect(typeof vault.underlyingPrice).toBe("number");
+    expect(vault.underlyingPrice).toBeCloseTo(100_000, 0);
+    expect(typeof vault.baseApy).toBe("number");
+    expect(typeof vault.totalApy).toBe("number");
+
+    expect(Array.isArray(vault.markets)).toBe(true);
+    expect(Array.isArray(vault.rewards)).toBe(true);
+    expect(Array.isArray(vault.stakingRewards)).toBe(true);
+    expect(Array.isArray(vault.curators)).toBe(true);
+  });
+
+  test("Transform multiple vaults from indexer fixtures", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vaults = transformVaultsFromIndexer(
+      ALL_MOCK_VAULTS,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    expect(vaults.length).toBe(ALL_MOCK_VAULTS.length);
+    for (const vault of vaults) {
       expect(vault.chainId).toBe(BASE_CHAIN_ID);
       expect(vault.vaultKey).toBeDefined();
       expect(vault.vaultToken).toBeDefined();
@@ -200,292 +568,23 @@ describe("Lunar Indexer Transformation Tests", () => {
       expect(vault.totalSupply).toBeInstanceOf(Amount);
       expect(vault.totalLiquidity).toBeInstanceOf(Amount);
       expect(vault.vaultSupply).toBeInstanceOf(Amount);
+      expect(vault.vaultSupply.value).toBeGreaterThanOrEqual(0);
       expect(typeof vault.baseApy).toBe("number");
       expect(Array.isArray(vault.markets)).toBe(true);
-    });
-  });
-
-  // Test Amount conversions are correct
-  test("Verify Amount conversions match indexer data", async () => {
-    const vaultId = "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796";
-    const indexerVault = await fetchVaultFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVault = transformVaultFromIndexer(
-      indexerVault,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    // Verify totalAssets conversion
-    const expectedTotalAssets = Number.parseFloat(indexerVault.totalAssets);
-    expect(transformedVault.totalSupply.value).toBeCloseTo(
-      expectedTotalAssets,
-      6,
-    );
-
-    // Verify totalLiquidity conversion
-    const expectedTotalLiquidity = Number.parseFloat(
-      indexerVault.totalLiquidity,
-    );
-    expect(transformedVault.totalLiquidity.value).toBeCloseTo(
-      expectedTotalLiquidity,
-      6,
-    );
-
-    // Verify vaultSupply is calculated correctly (totalAssets - totalLiquidity)
-    const expectedVaultSupply = expectedTotalAssets - expectedTotalLiquidity;
-    expect(transformedVault.vaultSupply.value).toBeCloseTo(
-      expectedVaultSupply,
-      6,
-    );
-
-    // Verify price conversion
-    expect(transformedVault.underlyingPrice).toBeCloseTo(
-      Number.parseFloat(indexerVault.underlyingPrice),
-      2,
-    );
-
-    // Verify APY conversions
-    expect(transformedVault.baseApy).toBeCloseTo(
-      Number.parseFloat(indexerVault.baseApy),
-      10,
-    );
-    expect(transformedVault.rewardsApy).toBeCloseTo(
-      Number.parseFloat(indexerVault.rewardsApy),
-      10,
-    );
-    expect(transformedVault.totalApy).toBeCloseTo(
-      Number.parseFloat(indexerVault.totalApy),
-      10,
-    );
-  });
-
-  // Test performance fee conversion (percentage to decimal)
-  test("Verify performance fee is converted correctly", async () => {
-    const response = await fetchVaultsFromIndexer(
-      LUNAR_INDEXER_URL,
-      BASE_CHAIN_ID,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVaults = transformVaultsFromIndexer(
-      response.results,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    transformedVaults.forEach((vault, index) => {
-      const indexerVault = response.results[index];
-      // Performance fee should be converted from "15" (15%) to 0.15 (decimal)
-      const expectedFee = Number.parseFloat(indexerVault.performanceFee) / 100;
-      expect(vault.performanceFee).toBeCloseTo(expectedFee, 10);
-      expect(vault.performanceFee).toBeGreaterThanOrEqual(0);
-      expect(vault.performanceFee).toBeLessThanOrEqual(1);
-    });
-  });
-
-  // Test timelock conversion (seconds to hours)
-  test("Verify timelock is converted correctly", async () => {
-    const response = await fetchVaultsFromIndexer(
-      LUNAR_INDEXER_URL,
-      BASE_CHAIN_ID,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVaults = transformVaultsFromIndexer(
-      response.results,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    transformedVaults.forEach((vault, index) => {
-      const indexerVault = response.results[index];
-      // Timelock should be converted from seconds to hours
-      const expectedTimelock =
-        Number.parseInt(indexerVault.timelock) / (60 * 60);
-      expect(vault.timelock).toBe(expectedTimelock);
-    });
-  });
-
-  // Test market allocation calculation
-  test("Verify market allocations are calculated correctly", async () => {
-    const vaultId = "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796";
-    const indexerVault = await fetchVaultFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVault = transformVaultFromIndexer(
-      indexerVault,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    const totalAssets = Number.parseFloat(indexerVault.totalAssets);
-
-    transformedVault.markets.forEach((market, index) => {
-      const indexerMarket = indexerVault.markets[index];
-      const vaultSupplied = Number.parseFloat(indexerMarket.vaultSupplied);
-      const expectedAllocation =
-        totalAssets > 0 ? vaultSupplied / totalAssets : 0;
-
-      expect(market.allocation).toBeCloseTo(expectedAllocation, 10);
-    });
-
-    // Total allocation should be approximately 1 (100%)
-    const totalAllocation = transformedVault.markets.reduce(
-      (sum, market) => sum + market.allocation,
-      0,
-    );
-    if (transformedVault.markets.length > 0 && totalAssets > 0) {
-      expect(totalAllocation).toBeGreaterThan(0);
-      expect(totalAllocation).toBeLessThanOrEqual(1.01); // Allow small floating point error
     }
   });
 
-  // Test V1 vs V2 vault detection
-  test("Verify V1 and V2 vaults are detected correctly", async () => {
-    const response = await fetchVaultsFromIndexer(
-      LUNAR_INDEXER_URL,
-      BASE_CHAIN_ID,
+  test("Transformed vault has all required MorphoVault fields", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
     );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVaults = transformVaultsFromIndexer(
-      response.results,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    // mwETH, mwUSDC, mwEURC should be V2 on Base
-    const v2VaultAddresses = [
-      "0xa0e430870c4604ccfc7b38ca7845b1ff653d0ff1", // mwETH
-      "0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca", // mwUSDC
-      "0xf24608e0ccb972b0b0f4a6446a0bbf58c701a026", // mwEURC
-    ];
-
-    const v2Vaults = transformedVaults.filter((v) =>
-      v2VaultAddresses.includes(v.vaultToken.address.toLowerCase()),
-    );
-
-    v2Vaults.forEach((vault) => {
-      expect(vault.version).toBe(2);
-    });
-
-    // mwcbBTC should be V1 (Frontier)
-    const frontierVault = transformedVaults.find(
-      (v) =>
-        v.vaultToken.address.toLowerCase() ===
-        "0x543257ef2161176d7c8cd90ba65c2d4caef5a796",
-    );
-    expect(frontierVault?.version).toBe(1);
-  });
-
-  // Test mwETH underlying token uses SDK config (ETH, not WETH)
-  test("mwETH vault shows ETH as underlying, not WETH", async () => {
-    const vaultId = "8453-0xa0e430870c4604ccfc7b38ca7845b1ff653d0ff1";
-    const indexerVault = await fetchVaultFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVault = transformVaultFromIndexer(
-      indexerVault,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    expect(transformedVault.underlyingToken.symbol).toBe("ETH");
-    expect(transformedVault.underlyingToken.name).toBe("Ethereum");
-    expect(transformedVault.vaultKey).toBe("mwETH");
-  });
-
-  // Test meUSDCv1 vault name includes "V1" label from SDK config
-  test("meUSDCv1 vault name includes V1 label", async () => {
-    const vaultId = "8453-0xe1ba476304255353aef290e6474a417d06e7b773";
-    const indexerVault = await fetchVaultFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
-    const transformedVault = transformVaultFromIndexer(
-      indexerVault,
-      createBaseEnvironment(),
-      tokenMap,
-    );
-
-    expect(transformedVault.vaultToken.name).toBe(
-      "Moonwell Ecosystem USDC Vault V1",
-    );
-    expect(transformedVault.vaultToken.symbol).toBe("meUSDCv1");
-    expect(transformedVault.vaultKey).toBe("meUSDCv1");
-  }, 15000);
-
-  // Test vault sort order matches config key order
-  test("Vaults sorted by config order: mwETH, mwUSDC, mwEURC, mwcbBTC, meUSDC, meUSDCv1", async () => {
-    const response = await fetchVaultsFromIndexer(
-      LUNAR_INDEXER_URL,
-      BASE_CHAIN_ID,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-    const environment = createBaseEnvironment();
-
-    const transformedVaults = transformVaultsFromIndexer(
-      response.results,
-      environment,
-      tokenMap,
-    );
-
-    // Apply the same sort logic used in getMorphoVaultsDataFromIndexer
-    const vaultKeyOrder = Object.keys(environment.config.vaults);
-    transformedVaults.sort((a, b) => {
-      const indexA = vaultKeyOrder.indexOf(a.vaultKey);
-      const indexB = vaultKeyOrder.indexOf(b.vaultKey);
-      return (
-        (indexA === -1 ? Number.POSITIVE_INFINITY : indexA) -
-        (indexB === -1 ? Number.POSITIVE_INFINITY : indexB)
-      );
-    });
-
-    const expectedOrder = [
-      "mwETH",
-      "mwUSDC",
-      "mwEURC",
-      "mwcbBTC",
-      "meUSDC",
-      "meUSDCv1",
-    ];
-    const knownVaults = transformedVaults.filter((v) =>
-      expectedOrder.includes(v.vaultKey),
-    );
-
-    expect(knownVaults.map((v) => v.vaultKey)).toEqual(expectedOrder);
-  });
-
-  // Test that transformed output matches expected MorphoVault structure
-  test("Verify transformed vault matches MorphoVault type structure", async () => {
-    const vaultId = "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796";
-    const indexerVault = await fetchVaultFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
-    );
-    const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
-
     const vault = transformVaultFromIndexer(
-      indexerVault,
+      MOCK_CBBTC_VAULT,
       createBaseEnvironment(),
       tokenMap,
     );
 
-    // All required fields from MorphoVault type
-    const requiredFields = [
+    const required = [
       "chainId",
       "vaultKey",
       "version",
@@ -512,189 +611,360 @@ describe("Lunar Indexer Transformation Tests", () => {
       "rewards",
       "stakingRewards",
     ];
+    for (const field of required) {
+      expect(vault, `missing field: ${field}`).toHaveProperty(field);
+    }
+  });
 
-    requiredFields.forEach((field) => {
-      expect(vault).toHaveProperty(field);
+  test("Amount conversions match indexer data", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vault = transformVaultFromIndexer(
+      MOCK_CBBTC_VAULT,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    expect(vault.totalSupply.value).toBeCloseTo(
+      Number.parseFloat(MOCK_CBBTC_VAULT.totalAssets),
+      6,
+    );
+    expect(vault.totalLiquidity.value).toBeCloseTo(
+      Number.parseFloat(MOCK_CBBTC_VAULT.totalLiquidity),
+      6,
+    );
+    expect(vault.vaultSupply.value).toBeCloseTo(
+      Number.parseFloat(MOCK_CBBTC_VAULT.totalAssets) -
+        Number.parseFloat(MOCK_CBBTC_VAULT.totalLiquidity),
+      6,
+    );
+    expect(vault.underlyingPrice).toBeCloseTo(
+      Number.parseFloat(MOCK_CBBTC_VAULT.underlyingPrice),
+      2,
+    );
+    expect(vault.baseApy).toBeCloseTo(
+      Number.parseFloat(MOCK_CBBTC_VAULT.baseApy),
+      10,
+    );
+    expect(vault.rewardsApy).toBeCloseTo(
+      Number.parseFloat(MOCK_CBBTC_VAULT.rewardsApy),
+      10,
+    );
+    expect(vault.totalApy).toBeCloseTo(
+      Number.parseFloat(MOCK_CBBTC_VAULT.totalApy),
+      10,
+    );
+  });
+
+  test("Performance fee converted from percentage to decimal (0-100 → 0-1)", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vaults = transformVaultsFromIndexer(
+      ALL_MOCK_VAULTS,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    vaults.forEach((vault, i) => {
+      const expectedFee =
+        Number.parseFloat(ALL_MOCK_VAULTS[i].performanceFee) / 100;
+      expect(vault.performanceFee).toBeCloseTo(expectedFee, 10);
+      expect(vault.performanceFee).toBeGreaterThanOrEqual(0);
+      expect(vault.performanceFee).toBeLessThanOrEqual(1);
     });
   });
 
-  // Test error handling for missing tokens
-  test("Handle missing token gracefully with fallback", async () => {
-    const vaultId = "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796";
-    const indexerVault = await fetchVaultFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
+  test("Timelock converted from seconds to hours", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
     );
 
-    // Simulate missing token by removing it from the vault and using empty map
-    const { underlyingToken: _, ...vaultWithoutToken } = indexerVault;
-    const emptyTokenMap = new Map();
+    const vaults = transformVaultsFromIndexer(
+      ALL_MOCK_VAULTS,
+      createBaseEnvironment(),
+      tokenMap,
+    );
 
-    // Should throw error if underlying token not found
+    vaults.forEach((vault, i) => {
+      const expectedHours =
+        Number.parseInt(ALL_MOCK_VAULTS[i].timelock) / (60 * 60);
+      expect(vault.timelock).toBe(expectedHours);
+    });
+  });
+
+  test("Market allocations calculated correctly", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vault = transformVaultFromIndexer(
+      MOCK_CBBTC_VAULT,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    const totalAssets = Number.parseFloat(MOCK_CBBTC_VAULT.totalAssets);
+
+    vault.markets.forEach((market, i) => {
+      const vaultSupplied = Number.parseFloat(
+        MOCK_CBBTC_VAULT.markets[i].vaultSupplied,
+      );
+      const expected = totalAssets > 0 ? vaultSupplied / totalAssets : 0;
+      expect(market.allocation).toBeCloseTo(expected, 10);
+      expect(market.allocation).toBeGreaterThanOrEqual(0);
+      expect(market.allocation).toBeLessThanOrEqual(1);
+    });
+
+    const total = vault.markets.reduce((sum, m) => sum + m.allocation, 0);
+    if (vault.markets.length > 0 && totalAssets > 0) {
+      expect(total).toBeLessThanOrEqual(1.01); // Allow small floating-point error
+    }
+  });
+
+  test("V2 vault detected from config version field (only meUSDC is V2)", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vaults = transformVaultsFromIndexer(
+      ALL_MOCK_VAULTS,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    // Only meUSDC has version:2 in config; everything else defaults to 1
+    const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
+    expect(meUSDC?.version).toBe(2);
+
+    const v1Keys = ["mwETH", "mwUSDC", "mwEURC", "mwcbBTC", "meUSDCv1"];
+    for (const key of v1Keys) {
+      const vault = vaults.find((v) => v.vaultKey === key);
+      expect(vault?.version, `${key} should be V1`).toBe(1);
+    }
+  });
+
+  test("mwETH vault uses ETH (not WETH) as underlying token from SDK config", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vault = transformVaultFromIndexer(
+      MOCK_MWETH_VAULT,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    // SDK config maps mwETH → underlyingToken: "ETH"
+    expect(vault.underlyingToken.symbol).toBe("ETH");
+    expect(vault.underlyingToken.name).toBe("Ethereum");
+    expect(vault.vaultKey).toBe("mwETH");
+  });
+
+  test("meUSDCv1 vault name comes from SDK config, not indexer", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const vault = transformVaultFromIndexer(
+      MOCK_MEUSDCV1_VAULT,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    // SDK config has name "Moonwell Ecosystem USDC Vault V1"
+    expect(vault.vaultToken.name).toBe("Moonwell Ecosystem USDC Vault V1");
+    expect(vault.vaultToken.symbol).toBe("meUSDCv1");
+    expect(vault.vaultKey).toBe("meUSDCv1");
+  });
+
+  test("Vaults sorted by config key order: mwETH, mwUSDC, mwEURC, mwcbBTC, meUSDC, meUSDCv1", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+    const environment = createBaseEnvironment();
+
+    const vaults = transformVaultsFromIndexer(
+      ALL_MOCK_VAULTS,
+      environment,
+      tokenMap,
+    );
+
+    // Apply same sort used in getMorphoVaultsDataFromIndexer
+    const order = Object.keys(environment.config.vaults);
+    vaults.sort((a, b) => {
+      const ai = order.indexOf(a.vaultKey);
+      const bi = order.indexOf(b.vaultKey);
+      return (
+        (ai === -1 ? Number.POSITIVE_INFINITY : ai) -
+        (bi === -1 ? Number.POSITIVE_INFINITY : bi)
+      );
+    });
+
+    const expectedOrder = [
+      "mwETH",
+      "mwUSDC",
+      "mwEURC",
+      "mwcbBTC",
+      "meUSDC",
+      "meUSDCv1",
+    ];
+    const known = vaults.filter((v) => expectedOrder.includes(v.vaultKey));
+    expect(known.map((v) => v.vaultKey)).toEqual(expectedOrder);
+  });
+
+  // ─── Edge case unit tests ───────────────────────────────────────────────────
+
+  test("Missing underlying token throws", () => {
+    const { underlyingToken: _, ...vaultWithoutToken } = MOCK_CBBTC_VAULT;
     expect(() =>
       transformVaultFromIndexer(
         vaultWithoutToken,
         createBaseEnvironment(),
-        emptyTokenMap,
+        new Map(), // empty map → token not found
       ),
     ).toThrow("Underlying token not found");
   });
 
-  // Test with includeRewards parameter (when indexer adds support)
-  test("Fetch vaults with includeRewards parameter", async () => {
-    const response = await fetchVaultsFromIndexer(
-      LUNAR_INDEXER_URL,
-      BASE_CHAIN_ID,
-      { includeRewards: true },
+  test("vaultSupply is never negative when totalLiquidity > totalAssets", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
     );
 
-    expect(response).toBeDefined();
-    expect(response.results).toBeDefined();
+    const vaultWithHighLiquidity = {
+      ...MOCK_CBBTC_VAULT,
+      totalAssets: "10.0",
+      totalLiquidity: "50.0", // liquidity > assets → would be negative without guard
+    };
 
-    // Note: Currently rewards are empty in list view
-    // This test will pass when indexer team adds rewards to list endpoint
-    response.results.forEach((vault) => {
-      expect(vault.rewards).toBeDefined();
-      expect(Array.isArray(vault.rewards)).toBe(true);
-    });
+    const vault = transformVaultFromIndexer(
+      vaultWithHighLiquidity,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    expect(vault.vaultSupply.value).toBe(0);
   });
 
-  // Test fetching vault snapshots from Lunar Indexer
-  test("Fetch vault snapshots from Lunar Indexer", async () => {
-    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
-    const response = await fetchVaultSnapshotsFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
+  test("Zero totalAssets results in zero allocation for all markets", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
     );
 
-    expect(response).toBeDefined();
-    expect(response.results).toBeDefined();
-    expect(Array.isArray(response.results)).toBe(true);
-    expect(response.results.length).toBeGreaterThan(0);
+    const emptyVault = {
+      ...MOCK_CBBTC_VAULT,
+      totalAssets: "0",
+      totalLiquidity: "0",
+    };
 
-    // Check structure of first snapshot
-    const snapshot = response.results[0];
-    expect(snapshot.chainId).toBe(BASE_CHAIN_ID);
-    expect(snapshot.vaultAddress).toBeDefined();
-    expect(snapshot.timestamp).toBeDefined();
-    expect(typeof snapshot.timestamp).toBe("number");
-    expect(snapshot.totalAssets).toBeDefined();
-    expect(snapshot.totalAssetsUsd).toBeDefined();
-    expect(snapshot.totalLiquidity).toBeDefined();
-    expect(snapshot.totalLiquidityUsd).toBeDefined();
-    expect(snapshot.underlyingPrice).toBeDefined();
-    expect(snapshot.baseApy).toBeDefined();
-    expect(typeof snapshot.timeInterval).toBe("number");
-  });
-
-  // Test snapshot pagination
-  test("Fetch vault snapshots supports pagination", async () => {
-    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
-    const firstPage = await fetchVaultSnapshotsFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
+    const vault = transformVaultFromIndexer(
+      emptyVault,
+      createBaseEnvironment(),
+      tokenMap,
     );
 
-    expect(firstPage.results.length).toBeGreaterThan(0);
-
-    // If there's a next page, fetch it
-    if (firstPage.nextCursor) {
-      const secondPage = await fetchVaultSnapshotsFromIndexer(
-        LUNAR_INDEXER_URL,
-        vaultId,
-        { cursor: firstPage.nextCursor },
-      );
-
-      expect(secondPage.results).toBeDefined();
-      expect(Array.isArray(secondPage.results)).toBe(true);
-
-      // Second page timestamps should be older than first page
-      if (secondPage.results.length > 0) {
-        const firstPageOldest =
-          firstPage.results[firstPage.results.length - 1].timestamp;
-        const secondPageNewest = secondPage.results[0].timestamp;
-        expect(secondPageNewest).toBeLessThanOrEqual(firstPageOldest);
-      }
+    for (const market of vault.markets) {
+      expect(market.allocation).toBe(0);
     }
   });
 
-  // Test snapshot transformation
-  test("Transform vault snapshots from Lunar Indexer", async () => {
-    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
-    const response = await fetchVaultSnapshotsFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
+  test("Vault with no markets transforms cleanly", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
     );
 
+    const vault = transformVaultFromIndexer(
+      MOCK_MWETH_VAULT, // has markets: []
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    expect(vault.markets).toEqual([]);
+  });
+
+  test("Unknown vault address uses indexer name/symbol and defaults to V1", () => {
+    const tokenMap = new Map(
+      MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+    );
+
+    const unknownVault = {
+      ...MOCK_CBBTC_VAULT,
+      address: "0x1111111111111111111111111111111111111111",
+      name: "Some Unknown Vault",
+      symbol: "SUV",
+    };
+
+    const vault = transformVaultFromIndexer(
+      unknownVault,
+      createBaseEnvironment(),
+      tokenMap,
+    );
+
+    expect(vault.version).toBe(1);
+    expect(vault.vaultToken.symbol).toBe("SUV");
+    expect(vault.deprecated).toBe(false);
+  });
+
+  // ─── Snapshot transformation tests ─────────────────────────────────────────
+
+  test("Transform vault snapshots from indexer fixtures", () => {
+    const snapshots = [MOCK_VAULT_SNAPSHOT_1, MOCK_VAULT_SNAPSHOT_2];
     const transformed = transformVaultSnapshotsFromIndexer(
-      response.results,
+      snapshots,
       BASE_CHAIN_ID,
     );
 
-    expect(transformed.length).toBe(response.results.length);
+    expect(transformed.length).toBe(snapshots.length);
 
-    transformed.forEach((snapshot, index) => {
-      const raw = response.results[index];
+    transformed.forEach((snap, i) => {
+      const raw = snapshots[i];
 
-      // Check chainId
-      expect(snapshot.chainId).toBe(BASE_CHAIN_ID);
+      expect(snap.chainId).toBe(BASE_CHAIN_ID);
+      expect(snap.vaultAddress).toBe(raw.vaultAddress.toLowerCase());
+      expect(snap.timestamp).toBe(raw.timestamp * 1000); // unix → ms
 
-      // Check vaultAddress is lowercase
-      expect(snapshot.vaultAddress).toBe(raw.vaultAddress.toLowerCase());
-
-      // Check timestamp is converted to milliseconds
-      expect(snapshot.timestamp).toBe(raw.timestamp * 1000);
-
-      // Check totalSupply maps from totalAssets
-      expect(snapshot.totalSupply).toBeCloseTo(
+      expect(snap.totalSupply).toBeCloseTo(
         Number.parseFloat(raw.totalAssets),
         6,
       );
-      expect(snapshot.totalSupplyUsd).toBeCloseTo(
+      expect(snap.totalSupplyUsd).toBeCloseTo(
         Number.parseFloat(raw.totalAssetsUsd),
         6,
       );
-
-      // Check totalLiquidity
-      expect(snapshot.totalLiquidity).toBeCloseTo(
+      expect(snap.totalLiquidity).toBeCloseTo(
         Number.parseFloat(raw.totalLiquidity),
         6,
       );
-      expect(snapshot.totalLiquidityUsd).toBeCloseTo(
+      expect(snap.totalLiquidityUsd).toBeCloseTo(
         Number.parseFloat(raw.totalLiquidityUsd),
         6,
       );
 
-      // Check totalBorrows = totalAssets - totalLiquidity
       const expectedBorrows =
         Number.parseFloat(raw.totalAssets) -
         Number.parseFloat(raw.totalLiquidity);
-      expect(snapshot.totalBorrows).toBeCloseTo(expectedBorrows, 6);
+      expect(snap.totalBorrows).toBeCloseTo(expectedBorrows, 6);
 
       const expectedBorrowsUsd =
         Number.parseFloat(raw.totalAssetsUsd) -
         Number.parseFloat(raw.totalLiquidityUsd);
-      expect(snapshot.totalBorrowsUsd).toBeCloseTo(expectedBorrowsUsd, 6);
+      expect(snap.totalBorrowsUsd).toBeCloseTo(expectedBorrowsUsd, 6);
     });
   });
 
-  // Test snapshot MorphoVaultSnapshot type structure
-  test("Verify transformed snapshots match MorphoVaultSnapshot type", async () => {
-    const vaultId = "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca";
-    const response = await fetchVaultSnapshotsFromIndexer(
-      LUNAR_INDEXER_URL,
-      vaultId,
-    );
-
+  test("Transformed snapshots have all required MorphoVaultSnapshot fields", () => {
     const transformed = transformVaultSnapshotsFromIndexer(
-      response.results,
+      [MOCK_VAULT_SNAPSHOT_1],
       BASE_CHAIN_ID,
     );
 
-    expect(transformed.length).toBeGreaterThan(0);
+    expect(transformed.length).toBe(1);
+    const snap = transformed[0];
 
-    const snapshot = transformed[0];
-    const requiredFields = [
+    const required = [
       "chainId",
       "vaultAddress",
       "totalSupply",
@@ -705,18 +975,16 @@ describe("Lunar Indexer Transformation Tests", () => {
       "totalLiquidityUsd",
       "timestamp",
     ];
+    for (const field of required) {
+      expect(snap, `missing field: ${field}`).toHaveProperty(field);
+    }
 
-    requiredFields.forEach((field) => {
-      expect(snapshot).toHaveProperty(field);
-    });
-
-    // All numeric values should be numbers
-    expect(typeof snapshot.totalSupply).toBe("number");
-    expect(typeof snapshot.totalSupplyUsd).toBe("number");
-    expect(typeof snapshot.totalBorrows).toBe("number");
-    expect(typeof snapshot.totalBorrowsUsd).toBe("number");
-    expect(typeof snapshot.totalLiquidity).toBe("number");
-    expect(typeof snapshot.totalLiquidityUsd).toBe("number");
-    expect(typeof snapshot.timestamp).toBe("number");
+    expect(typeof snap.totalSupply).toBe("number");
+    expect(typeof snap.totalSupplyUsd).toBe("number");
+    expect(typeof snap.totalBorrows).toBe("number");
+    expect(typeof snap.totalBorrowsUsd).toBe("number");
+    expect(typeof snap.totalLiquidity).toBe("number");
+    expect(typeof snap.totalLiquidityUsd).toBe("number");
+    expect(typeof snap.timestamp).toBe("number");
   });
 });

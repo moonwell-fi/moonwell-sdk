@@ -146,7 +146,6 @@ async function getMorphoVaultsDataFromIndexer(params: {
   environments: Environment[];
   vaults?: string[];
   includeRewards?: boolean;
-  currentChainRewardsOnly?: boolean;
 }): Promise<MorphoVault[]> {
   const { environments } = params;
 
@@ -205,7 +204,7 @@ async function getMorphoVaultsDataFromIndexer(params: {
           `Failed to fetch vaults from Lunar Indexer for chain ${environment.chainId}, falling back to on-chain:`,
           error,
         );
-        return Promise.reject({ environment, error });
+        throw { environment, error };
       }
     }),
   );

@@ -126,6 +126,8 @@ async function fetchCoreMarketSnapshotsFromLunar(
 
   const allSnapshots: MarketSnapshot[] = [];
   let cursor: string | null = null;
+  const MAX_PAGES = 100;
+  let page = 0;
 
   do {
     const response = await client.getMarketSnapshots(marketId, {
@@ -147,7 +149,8 @@ async function fetchCoreMarketSnapshotsFromLunar(
     allSnapshots.push(...filteredSnapshots);
 
     cursor = response.nextCursor;
-  } while (cursor !== null);
+    page++;
+  } while (cursor !== null && page < MAX_PAGES);
 
   return allSnapshots.map((snapshot) => {
     const supplied = snapshot.totalSupply;

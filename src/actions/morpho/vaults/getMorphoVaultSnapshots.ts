@@ -75,6 +75,8 @@ async function fetchVaultSnapshotsFromLunarIndexer(
   const vaultId = `${chainId}-${vaultAddress.toLowerCase()}`;
   const allSnapshots: MorphoVaultSnapshot[] = [];
   let cursor: string | null = null;
+  const MAX_PAGES = 100;
+  let page = 0;
 
   const { startTime } = calculateTimeRange(
     period,
@@ -105,7 +107,8 @@ async function fetchVaultSnapshotsFromLunarIndexer(
 
     allSnapshots.push(...filtered);
     cursor = response.nextCursor;
-  } while (cursor !== null);
+    page++;
+  } while (cursor !== null && page < MAX_PAGES);
 
   return allSnapshots;
 }

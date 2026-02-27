@@ -90,31 +90,6 @@ export type LunarIndexerTokensResponse = {
 };
 
 /**
- * Helper to check if a vault is V2 based on known V2 vault addresses
- * This should match the logic from @lunar-services/shared or be imported from there
- */
-function isV2Vault(chainId: number, address: string): boolean {
-  const v2Vaults: Record<number, string[]> = {
-    8453: [
-      // Base
-      "0xa0e430870c4604ccfc7b38ca7845b1ff653d0ff1", // mwETH
-      "0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca", // mwUSDC
-      "0xf24608e0ccb972b0b0f4a6446a0bbf58c701a026", // mwEURC
-    ],
-    10: [
-      // Optimism
-      "0x97e16db82e089d0c9c37bc07f23f42ec3be2ad84", // mwUSDC
-    ],
-  };
-
-  return (
-    v2Vaults[chainId]?.some(
-      (addr) => addr.toLowerCase() === address.toLowerCase(),
-    ) ?? false
-  );
-}
-
-/**
  * Build a TokenConfig from Lunar Indexer token data
  */
 function buildTokenConfig(token: LunarIndexerToken): TokenConfig {
@@ -261,17 +236,17 @@ export function transformVaultFromIndexer(
     ? environment.config.tokens[vaultConfig.underlyingToken as string]
     : undefined;
 
-  // Determine version
-  const version =
-    vaultConfig?.version ||
-    (isV2Vault(indexerVault.chainId, indexerVault.address) ? 2 : 1);
+  // Determine version from config; unknown vaults default to V1
+  const version = vaultConfig?.version ?? 1;
 
   // Parse numeric values
   const totalAssetsValue = Number.parseFloat(indexerVault.totalAssets);
   const totalLiquidityValue = Number.parseFloat(indexerVault.totalLiquidity);
 
-  // Calculate vault supply (total assets deployed, not in liquidity)
-  const vaultSupplyValue = totalAssetsValue - totalLiquidityValue;
+  // Calculate vault supply (total assets deployed, not in liquidity).
+  // Guard against negative values in case of transient data inconsistency
+  // where totalLiquidity briefly exceeds totalAssets.
+  const vaultSupplyValue = Math.max(0, totalAssetsValue - totalLiquidityValue);
 
   // Transform markets
   const markets = indexerVault.markets.map((market) =>
@@ -304,7 +279,10 @@ export function transformVaultFromIndexer(
     rewardsApy: Number.parseFloat(indexerVault.rewardsApy),
     totalApy: Number.parseFloat(indexerVault.totalApy),
 
-    performanceFee: Number.parseFloat(indexerVault.performanceFee) / 100, // Convert from 0-100 to 0-1
+    // Indexer returns performanceFee as a percentage string (e.g. "15" = 15%).
+    // SDK consumers expect a 0-1 fraction, so divide by 100.
+    // If the indexer ever changes to return 0-1 directly, remove the division.
+    performanceFee: Number.parseFloat(indexerVault.performanceFee) / 100,
     timelock: Number.parseInt(indexerVault.timelock) / (60 * 60), // Convert seconds to hours
     curators: indexerVault.curators || [], // Will be populated by indexer or empty
 
@@ -353,7 +331,7 @@ export async function fetchTokenMap(
 ): Promise<Map<string, LunarIndexerToken>> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/tokens/${chainId}`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
   if (!response.ok) {
     throw new Error(
@@ -395,7 +373,7 @@ export async function fetchVaultsFromIndexer(
 
   const url = `${lunarIndexerUrl}/api/v1/vaults/vaults/${chainId}${params.toString() ? `?${params.toString()}` : ""}`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
   if (!response.ok) {
     throw new Error(
@@ -419,7 +397,7 @@ export async function fetchVaultFromIndexer(
 ): Promise<LunarIndexerVault> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
   if (!response.ok) {
     throw new Error(
@@ -486,7 +464,7 @@ export async function fetchVaultSnapshotsFromIndexer(
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
   if (!response.ok) {
     throw new Error(
