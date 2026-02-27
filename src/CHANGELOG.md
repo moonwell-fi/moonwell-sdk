@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.30
+
+### Patch Changes
+
+- [#209](https://github.com/moonwell-fi/moonwell-sdk/pull/209) [`7eb01020485f8dab2883a5f9a0f0134ab8774272`](https://github.com/moonwell-fi/moonwell-sdk/commit/7eb01020485f8dab2883a5f9a0f0134ab8774272) Thanks [@bprofiro](https://github.com/bprofiro)! - migrate vaults fetching to lunar-indexer
+
 ## 0.9.29
 
 ### Patch Changes
