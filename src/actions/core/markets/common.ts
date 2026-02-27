@@ -708,26 +708,6 @@ async function fetchMarketsFromLunar(
     markets.push(market);
   }
 
-  // Still fetch liquid staking rewards from external APIs
-  const liquidStakingRewards = await fetchLiquidStakingRewards();
-
-  for (const market of markets) {
-    const symbol = market.underlyingToken.symbol;
-    if (symbol in liquidStakingRewards) {
-      const liquidStakingApr =
-        liquidStakingRewards[symbol as keyof typeof liquidStakingRewards];
-
-      market.rewards.push({
-        token: market.underlyingToken,
-        supplyApr: liquidStakingApr,
-        borrowApr: 0,
-        liquidStakingApr,
-      });
-
-      market.totalSupplyApr += liquidStakingApr;
-    }
-  }
-
   return markets;
 }
 
