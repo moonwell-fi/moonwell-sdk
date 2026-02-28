@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.32
+
+### Patch Changes
+
+- [#230](https://github.com/moonwell-fi/moonwell-sdk/pull/230) [`95a1eeec81c32340c663485327c3f57b557bb545`](https://github.com/moonwell-fi/moonwell-sdk/commit/95a1eeec81c32340c663485327c3f57b557bb545) Thanks [@bprofiro](https://github.com/bprofiro)! - update merkl id
+
 ## 0.9.31
 
 ### Patch Changes
