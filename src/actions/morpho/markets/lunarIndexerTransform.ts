@@ -9,6 +9,7 @@
  */
 
 import type { Address } from "viem";
+import { parseUnits } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { Environment } from "../../../environments/index.js";
 import type { MarketSnapshot } from "../../../types/market.js";
@@ -280,6 +281,7 @@ export function transformMarketFromIndexer(
   environment: Environment,
   rewardsData?: GetMorphoMarketsRewardsReturnType,
   sharedLiquidityData?: PublicAllocatorSharedLiquidityType[],
+  collateralPriceOverride?: number,
 ): MorphoMarket | null {
   // Find the market configuration in the environment
   const marketKey = Object.keys(environment.config.morphoMarkets).find(
@@ -301,42 +303,38 @@ export function transformMarketFromIndexer(
 
   // Parse prices from indexer
   const loanTokenPrice = Number.parseFloat(indexerMarket.loanTokenPrice);
-  const collateralTokenPrice = Number.parseFloat(
-    indexerMarket.collateralTokenPrice,
-  );
+  const collateralTokenPrice =
+    collateralPriceOverride ??
+    Number.parseFloat(indexerMarket.collateralTokenPrice);
 
   // Calculate oracle price
   const lltv = Number.parseFloat(indexerMarket.lltv);
   const lltvBigInt = BigInt(Math.floor(lltv * 10 ** 16)); // Convert percentage to 18 decimal bigint
 
-  // Convert string amounts to Amount objects
+  // Use parseUnits (viem) to convert decimal strings to BigInt — avoids float64
+  // precision loss for large USDC amounts (e.g. "1026834782.838286" * 10^6).
+  // parseUnits can throw on malformed strings (e.g. scientific notation), so we
+  // wrap each call and fall back to 0n to avoid crashing the entire market list.
+  const safeParseUnits = (value: string, decimals: number): bigint => {
+    try {
+      return parseUnits(value, decimals);
+    } catch {
+      return 0n;
+    }
+  };
+
   const totalSupplyInLoanToken = new Amount(
-    BigInt(
-      Math.floor(
-        Number.parseFloat(indexerMarket.totalSupplyAssets) *
-          10 ** loanToken.decimals,
-      ),
-    ),
+    safeParseUnits(indexerMarket.totalSupplyAssets, loanToken.decimals),
     loanToken.decimals,
   );
 
   const totalBorrows = new Amount(
-    BigInt(
-      Math.floor(
-        Number.parseFloat(indexerMarket.totalBorrowAssets) *
-          10 ** loanToken.decimals,
-      ),
-    ),
+    safeParseUnits(indexerMarket.totalBorrowAssets, loanToken.decimals),
     loanToken.decimals,
   );
 
   const availableLiquidity = new Amount(
-    BigInt(
-      Math.floor(
-        Number.parseFloat(indexerMarket.totalLiquidity) *
-          10 ** loanToken.decimals,
-      ),
-    ),
+    safeParseUnits(indexerMarket.totalLiquidity, loanToken.decimals),
     loanToken.decimals,
   );
 
@@ -345,14 +343,18 @@ export function transformMarketFromIndexer(
   const oraclePrice =
     loanTokenPrice > 0 ? collateralTokenPrice / loanTokenPrice : 0;
 
-  // Calculate total supply in collateral token terms
+  // Calculate total supply in collateral token terms.
+  // When oraclePrice = 0 (missing collateral price), return 0 rather than falling
+  // back to oraclePrice=1 which would produce a meaningless loan-token-sized number.
   const totalSupply = new Amount(
-    BigInt(
-      Math.floor(
-        (totalSupplyInLoanToken.value / (oraclePrice || 1)) *
-          10 ** collateralToken.decimals,
-      ),
-    ),
+    oraclePrice > 0
+      ? BigInt(
+          Math.floor(
+            (totalSupplyInLoanToken.value / oraclePrice) *
+              10 ** collateralToken.decimals,
+          ),
+        )
+      : 0n,
     collateralToken.decimals,
   );
 
@@ -417,22 +419,49 @@ export function transformMarketFromIndexer(
 /**
  * Transform multiple markets from Lunar Indexer format to SDK MorphoMarket types
  */
+// Map of token symbols that should inherit price from another token (e.g. stkWELL = WELL)
+export const PRICE_ALIAS: Record<string, string> = {
+  stkWELL: "WELL",
+};
+
 export function transformMarketsFromIndexer(
   indexerMarkets: LunarIndexerMarket[],
   environment: Environment,
   rewardsDataMap?: Map<string, GetMorphoMarketsRewardsReturnType>,
   sharedLiquidityMap?: Map<string, PublicAllocatorSharedLiquidityType[]>,
 ): MorphoMarket[] {
+  // Build symbol → price map from markets that have a known price
+  const tokenPriceBySymbol = new Map<string, number>();
+  for (const m of indexerMarkets) {
+    const loanPrice = Number.parseFloat(m.loanTokenPrice);
+    const collateralPrice = Number.parseFloat(m.collateralTokenPrice);
+    if (loanPrice > 0) tokenPriceBySymbol.set(m.loanToken.symbol, loanPrice);
+    if (collateralPrice > 0)
+      tokenPriceBySymbol.set(m.collateralToken.symbol, collateralPrice);
+  }
+
   return indexerMarkets.flatMap((indexerMarket) => {
     const rewardKey = `${environment.chainId}-${indexerMarket.marketId.toLowerCase()}`;
     const rewardsData = rewardsDataMap?.get(rewardKey);
     const sharedLiquidityData = sharedLiquidityMap?.get(rewardKey);
+
+    // Resolve price override for tokens that alias another token's price
+    const collateralSymbol = indexerMarket.collateralToken.symbol;
+    const collateralPrice = Number.parseFloat(
+      indexerMarket.collateralTokenPrice,
+    );
+    const aliasSymbol = PRICE_ALIAS[collateralSymbol];
+    const collateralPriceOverride =
+      collateralPrice === 0 && aliasSymbol
+        ? tokenPriceBySymbol.get(aliasSymbol)
+        : undefined;
 
     const market = transformMarketFromIndexer(
       indexerMarket,
       environment,
       rewardsData,
       sharedLiquidityData,
+      collateralPriceOverride,
     );
 
     return market ? [market] : [];

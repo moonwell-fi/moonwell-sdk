@@ -1039,9 +1039,10 @@ async function getMorphoMarketsDataFromIndexer(params: {
     });
   });
 
-  // Fetch rewards data if requested
+  // Always fetch from Morpho Blue API to get collateralAssets (not available in Lunar Indexer).
+  // Also fetches rewards data when includeRewards is true.
   const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
-  if (params.includeRewards && initialMarkets.length > 0) {
+  if (initialMarkets.length > 0) {
     const rewardsData = await getMorphoMarketRewards(
       params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
         params.environments[0],
@@ -1054,15 +1055,13 @@ async function getMorphoMarketsDataFromIndexer(params: {
         marketId: reward.marketId,
         collateralAssets: reward.collateralAssets,
         collateralAssetsUsd: reward.collateralAssetsUsd,
-        rewardsSupplyApy: reward.rewards.reduce(
-          (acc, curr) => acc + curr.supplyApr,
-          0,
-        ),
-        rewardsBorrowApy: reward.rewards.reduce(
-          (acc, curr) => acc + curr.borrowApr,
-          0,
-        ),
-        rewards: reward.rewards,
+        rewardsSupplyApy: params.includeRewards
+          ? reward.rewards.reduce((acc, curr) => acc + curr.supplyApr, 0)
+          : 0,
+        rewardsBorrowApy: params.includeRewards
+          ? reward.rewards.reduce((acc, curr) => acc + curr.borrowApr, 0)
+          : 0,
+        rewards: params.includeRewards ? reward.rewards : [],
       });
     });
   }

@@ -364,6 +364,7 @@ async function fetchIsolatedMarketSnapshots(
         customStartTime,
         customEndTime,
       );
+
       const allSnapshots: MarketSnapshot[] = [];
       let cursor: string | undefined;
 
