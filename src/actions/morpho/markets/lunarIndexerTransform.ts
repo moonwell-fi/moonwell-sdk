@@ -89,20 +89,43 @@ export type LunarIndexerMarketSnapshotsResponse = {
 export function transformIsolatedMarketSnapshotFromIndexer(
   snapshot: LunarIndexerMarketSnapshot,
 ): MarketSnapshot {
+  const collateralTokenPrice = Number.parseFloat(snapshot.collateralTokenPrice);
+  const loanTokenPrice = Number.parseFloat(snapshot.loanTokenPrice);
+  const totalSupplyAssetsUsd = Number.parseFloat(snapshot.totalSupplyAssetsUsd);
+  const totalLiquidityUsd = Number.parseFloat(snapshot.totalLiquidityUsd);
+
+  // For markets where the loan token is a non-stablecoin (e.g. USDC/ETH where loan = ETH ~$2000),
+  // totalSupplyAssets is in ETH units and must be converted to collateral-equivalent units to
+  // match the Blue API / subgraph formula: supplyAssets * loanTokenPrice / collateralTokenPrice.
+  // For stablecoin-loan markets (USDC, EURC ~$1), totalSupplyAssets already approximates USD
+  // value so no conversion is needed — and dividing by collateralTokenPrice would break those
+  // charts if the indexer ever returns a bad collateral price.
+  const needsUsdNormalization = loanTokenPrice > 10;
+
+  const totalSupply =
+    needsUsdNormalization && collateralTokenPrice > 0
+      ? totalSupplyAssetsUsd / collateralTokenPrice
+      : Number.parseFloat(snapshot.totalSupplyAssets);
+
+  const totalLiquidity =
+    needsUsdNormalization && collateralTokenPrice > 0
+      ? totalLiquidityUsd / collateralTokenPrice
+      : Number.parseFloat(snapshot.totalLiquidity);
+
   return {
     chainId: snapshot.chainId,
     marketId: snapshot.marketId.toLowerCase(),
     timestamp: snapshot.timestamp * 1000,
-    totalSupply: Number.parseFloat(snapshot.totalSupplyAssets),
-    totalSupplyUsd: Number.parseFloat(snapshot.totalSupplyAssetsUsd),
+    totalSupply,
+    totalSupplyUsd: totalSupplyAssetsUsd,
     totalBorrows: Number.parseFloat(snapshot.totalBorrowAssets),
     totalBorrowsUsd: Number.parseFloat(snapshot.totalBorrowAssetsUsd),
-    totalLiquidity: Number.parseFloat(snapshot.totalLiquidity),
-    totalLiquidityUsd: Number.parseFloat(snapshot.totalLiquidityUsd),
+    totalLiquidity,
+    totalLiquidityUsd,
     baseSupplyApy: Number.parseFloat(snapshot.supplyApy),
     baseBorrowApy: Number.parseFloat(snapshot.borrowApy),
-    loanTokenPrice: Number.parseFloat(snapshot.loanTokenPrice),
-    collateralTokenPrice: Number.parseFloat(snapshot.collateralTokenPrice),
+    loanTokenPrice,
+    collateralTokenPrice,
   };
 }
 
