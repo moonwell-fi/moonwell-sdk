@@ -142,7 +142,6 @@ export type CustomConfigType = {
     blueApiUrl?: string; // For blue-api.morpho.org/graphql
     apiUrl?: string; // For api.morpho.org/graphql
     rewardsApiUrl?: string; // For rewards.morpho.org
-    lunarIndexerUrl?: string; // For lunar-services indexer API
   };
   governance?: {
     token: GovernanceToken;

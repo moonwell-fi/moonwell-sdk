@@ -7,6 +7,7 @@ import type {
   NetworkParameterType,
 } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
+import { fetchIsolatedMarketSnapshots } from "../../core/markets/getMarketSnapshots.js";
 import { fetchMarketSnapshotsFromIndexer } from "./lunarIndexerTransform.js";
 
 export type MarketSnapshot = {
@@ -55,13 +56,8 @@ export async function getMarketSnapshots<
     throw new Error("Environment not found");
   }
 
-  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
-  if (!lunarIndexerUrl) {
-    throw new Error(
-      "Lunar Indexer URL not configured for this environment. Market snapshots require lunar-indexer.",
-    );
-  }
-
+  // Resolve marketId and token config before the URL check so they're available
+  // for both the indexer path and the fallback path.
   let { marketId, market } = args as unknown as {
     marketId: Address;
     market: string;
@@ -69,6 +65,57 @@ export async function getMarketSnapshots<
 
   if (!marketId) {
     marketId = environment.config.morphoMarkets[market].id;
+  }
+
+  const marketConfig = Object.values(environment.config.morphoMarkets).find(
+    (m) => m.id.toLowerCase() === marketId.toLowerCase(),
+  );
+
+  if (!marketConfig) {
+    throw new Error(`Market ${marketId} not found in configuration`);
+  }
+
+  const loanToken = environment.config.tokens[marketConfig.loanToken];
+
+  const lunarIndexerUrl = environment.lunarIndexerUrl;
+
+  if (!lunarIndexerUrl) {
+    // Fallback to Blue API → subgraph via the core fetchIsolatedMarketSnapshots.
+    // blockNumber is not available from these paths; set to 0n as a sentinel value.
+    const coreSnapshots = await fetchIsolatedMarketSnapshots(
+      marketId,
+      environment,
+      undefined,
+      args.startTime,
+      args.endTime,
+    );
+
+    const snapshots: MarketSnapshot[] = coreSnapshots.map((s) => ({
+      timestamp: s.timestamp,
+      blockNumber: 0n,
+      totalSupplyAssets: new Amount(
+        BigInt(Math.round(s.totalSupply * 10 ** loanToken.decimals)),
+        loanToken.decimals,
+      ),
+      totalBorrowAssets: new Amount(
+        BigInt(Math.round(s.totalBorrows * 10 ** loanToken.decimals)),
+        loanToken.decimals,
+      ),
+      totalLiquidity: new Amount(
+        BigInt(Math.round(s.totalLiquidity * 10 ** loanToken.decimals)),
+        loanToken.decimals,
+      ),
+      totalSupplyAssetsUsd: s.totalSupplyUsd,
+      totalBorrowAssetsUsd: s.totalBorrowsUsd,
+      totalLiquidityUsd: s.totalLiquidityUsd,
+      loanTokenPrice: s.loanTokenPrice,
+      collateralTokenPrice: s.collateralTokenPrice,
+      supplyApy: s.baseSupplyApy,
+      borrowApy: s.baseBorrowApy,
+      lltv: 0,
+    }));
+
+    return { snapshots };
   }
 
   // Build options object with only defined values
@@ -102,17 +149,6 @@ export async function getMarketSnapshots<
     marketId,
     options,
   );
-
-  // Get market config to determine token decimals
-  const marketConfig = Object.values(environment.config.morphoMarkets).find(
-    (m) => m.id.toLowerCase() === marketId.toLowerCase(),
-  );
-
-  if (!marketConfig) {
-    throw new Error(`Market ${marketId} not found in configuration`);
-  }
-
-  const loanToken = environment.config.tokens[marketConfig.loanToken];
 
   // Transform snapshots
   const snapshots: MarketSnapshot[] = response.results.map((snapshot) => {

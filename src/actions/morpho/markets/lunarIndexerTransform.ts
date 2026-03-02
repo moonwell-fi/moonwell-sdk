@@ -32,6 +32,15 @@ export type LunarIndexerToken = {
   decimals: number;
 };
 
+export type LunarIndexerMarketReward = {
+  token: string;
+  tokenSymbol: string;
+  tokenDecimals: number;
+  tokenName: string;
+  supplyApr: string;
+  borrowApr: string;
+};
+
 export type LunarIndexerMarket = {
   marketId: string;
   chainId: number;
@@ -51,6 +60,7 @@ export type LunarIndexerMarket = {
   irm: string;
   loanToken: LunarIndexerToken;
   collateralToken: LunarIndexerToken;
+  rewards?: LunarIndexerMarketReward[];
 };
 
 export type LunarIndexerMarketsResponse = {
@@ -85,22 +95,22 @@ export type LunarIndexerMarketSnapshotsResponse = {
 
 /**
  * Transform a Lunar Indexer isolated market snapshot to SDK MarketSnapshot format
+ *
+ * @param options.normalizeToCollateral - Set true for markets where totalSupplyAssets
+ *   is denominated in the loan token but the chart needs collateral-equivalent units
+ *   (e.g. the USDC/ETH market where loan = WETH and collateral = USDC: the indexer
+ *   returns supply in WETH units, but we need USDC units for the chart).
  */
 export function transformIsolatedMarketSnapshotFromIndexer(
   snapshot: LunarIndexerMarketSnapshot,
+  options?: { normalizeToCollateral?: boolean },
 ): MarketSnapshot {
   const collateralTokenPrice = Number.parseFloat(snapshot.collateralTokenPrice);
   const loanTokenPrice = Number.parseFloat(snapshot.loanTokenPrice);
   const totalSupplyAssetsUsd = Number.parseFloat(snapshot.totalSupplyAssetsUsd);
   const totalLiquidityUsd = Number.parseFloat(snapshot.totalLiquidityUsd);
 
-  // For markets where the loan token is a non-stablecoin (e.g. USDC/ETH where loan = ETH ~$2000),
-  // totalSupplyAssets is in ETH units and must be converted to collateral-equivalent units to
-  // match the Blue API / subgraph formula: supplyAssets * loanTokenPrice / collateralTokenPrice.
-  // For stablecoin-loan markets (USDC, EURC ~$1), totalSupplyAssets already approximates USD
-  // value so no conversion is needed — and dividing by collateralTokenPrice would break those
-  // charts if the indexer ever returns a bad collateral price.
-  const needsUsdNormalization = loanTokenPrice > 10;
+  const needsUsdNormalization = options?.normalizeToCollateral === true;
 
   const totalSupply =
     needsUsdNormalization && collateralTokenPrice > 0
@@ -153,8 +163,14 @@ export type LunarIndexerAccountPortfolioResponse = {
 export async function fetchMarketsFromIndexer(
   lunarIndexerUrl: string,
   chainId: number,
+  options?: { includeRewards?: boolean },
 ): Promise<LunarIndexerMarketsResponse> {
-  const url = `${lunarIndexerUrl}/api/v1/isolated/markets/${chainId}`;
+  const params = new URLSearchParams();
+  if (options?.includeRewards) {
+    params.set("includeRewards", "true");
+  }
+  const queryString = params.toString();
+  const url = `${lunarIndexerUrl}/api/v1/isolated/markets/${chainId}${queryString ? `?${queryString}` : ""}`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -442,7 +458,9 @@ export function transformMarketFromIndexer(
 /**
  * Transform multiple markets from Lunar Indexer format to SDK MorphoMarket types
  */
-// Map of token symbols that should inherit price from another token (e.g. stkWELL = WELL)
+// stkWELL is not priced correctly by the indexer: its oracle is the same as WELL's oracle
+// and the two tokens trade at the same price. Override with the WELL price to avoid
+// displaying zero or incorrect collateral prices for stkWELL markets.
 export const PRICE_ALIAS: Record<string, string> = {
   stkWELL: "WELL",
 };
@@ -453,14 +471,18 @@ export function transformMarketsFromIndexer(
   rewardsDataMap?: Map<string, GetMorphoMarketsRewardsReturnType>,
   sharedLiquidityMap?: Map<string, PublicAllocatorSharedLiquidityType[]>,
 ): MorphoMarket[] {
-  // Build symbol → price map from markets that have a known price
+  // Build symbol → price map from markets that have a known price.
   const tokenPriceBySymbol = new Map<string, number>();
+  const setPriceWithCheck = (symbol: string, price: number) => {
+    tokenPriceBySymbol.set(symbol, price);
+  };
+
   for (const m of indexerMarkets) {
     const loanPrice = Number.parseFloat(m.loanTokenPrice);
     const collateralPrice = Number.parseFloat(m.collateralTokenPrice);
-    if (loanPrice > 0) tokenPriceBySymbol.set(m.loanToken.symbol, loanPrice);
+    if (loanPrice > 0) setPriceWithCheck(m.loanToken.symbol, loanPrice);
     if (collateralPrice > 0)
-      tokenPriceBySymbol.set(m.collateralToken.symbol, collateralPrice);
+      setPriceWithCheck(m.collateralToken.symbol, collateralPrice);
   }
 
   return indexerMarkets.flatMap((indexerMarket) => {

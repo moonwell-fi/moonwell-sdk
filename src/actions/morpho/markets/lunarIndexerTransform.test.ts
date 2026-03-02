@@ -1,19 +1,174 @@
 import { describe, expect, test } from "vitest";
 import { testClient } from "../../../../test/client.js";
+import type {
+  LunarIndexerMarket,
+  LunarIndexerMarketSnapshot,
+} from "./lunarIndexerTransform.js";
 import {
   fetchAccountMarketPortfolioFromIndexer,
   fetchMarketFromIndexer,
   fetchMarketSnapshotsFromIndexer,
   fetchMarketsFromIndexer,
+  transformIsolatedMarketSnapshotFromIndexer,
   transformMarketFromIndexer,
   transformMarketsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
+// ---------------------------------------------------------------------------
+// Unit tests — no network required, use fixed mock data
+// ---------------------------------------------------------------------------
+
+describe("transformIsolatedMarketSnapshotFromIndexer (unit)", () => {
+  const mockSnapshot: LunarIndexerMarketSnapshot = {
+    id: "8453-snapshot-1",
+    chainId: 8453,
+    marketId:
+      "0x3a4048c64ba1b375330d376b1ce40e4047d03b47ab4d48af484edec9fec801ba",
+    timestamp: 1700000000,
+    blockNumber: "12345678",
+    totalSupplyAssets: "4237.378517",
+    totalBorrowAssets: "3328.849088",
+    totalLiquidity: "908.529429",
+    totalSupplyAssetsUsd: "8820396.72",
+    totalBorrowAssetsUsd: "6929229.83",
+    totalLiquidityUsd: "1891166.89",
+    loanTokenPrice: "2081.56",
+    collateralTokenPrice: "2445.00",
+    supplyApy: "0.02",
+    borrowApy: "0.025",
+    lltv: "94.5",
+    fee: "0.1",
+    timeInterval: 86400,
+  };
+
+  test("maps fields correctly without normalization", () => {
+    const result = transformIsolatedMarketSnapshotFromIndexer(mockSnapshot);
+
+    expect(result.chainId).toBe(8453);
+    expect(result.marketId).toBe(mockSnapshot.marketId.toLowerCase());
+    expect(result.timestamp).toBe(1700000000 * 1000);
+    expect(result.totalSupply).toBeCloseTo(4237.378517, 4);
+    expect(result.totalLiquidity).toBeCloseTo(908.529429, 4);
+    expect(result.totalBorrows).toBeCloseTo(3328.849088, 4);
+    expect(result.totalSupplyUsd).toBeCloseTo(8820396.72, 1);
+    expect(result.loanTokenPrice).toBeCloseTo(2081.56, 2);
+    expect(result.collateralTokenPrice).toBeCloseTo(2445.0, 2);
+    expect(result.baseSupplyApy).toBeCloseTo(0.02, 4);
+    expect(result.baseBorrowApy).toBeCloseTo(0.025, 4);
+  });
+
+  test("normalizes supply and liquidity to collateral units when normalizeToCollateral is true", () => {
+    // USDC/ETH market: loan = WETH, collateral = USDC. The indexer returns
+    // totalSupplyAssets in WETH units; we need USDC-equivalent units for the chart.
+    const result = transformIsolatedMarketSnapshotFromIndexer(mockSnapshot, {
+      normalizeToCollateral: true,
+    });
+
+    const expectedSupply = 8820396.72 / 2445.0;
+    const expectedLiquidity = 1891166.89 / 2445.0;
+    expect(result.totalSupply).toBeCloseTo(expectedSupply, 2);
+    expect(result.totalLiquidity).toBeCloseTo(expectedLiquidity, 2);
+    // USD values and prices should be unchanged
+    expect(result.totalSupplyUsd).toBeCloseTo(8820396.72, 1);
+    expect(result.loanTokenPrice).toBeCloseTo(2081.56, 2);
+  });
+
+  test("falls back to raw values when collateralTokenPrice is zero", () => {
+    const zeroCollateralSnapshot = {
+      ...mockSnapshot,
+      collateralTokenPrice: "0",
+    };
+    const result = transformIsolatedMarketSnapshotFromIndexer(
+      zeroCollateralSnapshot,
+      { normalizeToCollateral: true },
+    );
+    // normalizeToCollateral requires collateralTokenPrice > 0 to avoid division by zero
+    expect(result.totalSupply).toBeCloseTo(4237.378517, 4);
+  });
+});
+
+describe("transformMarketFromIndexer (unit)", () => {
+  const baseEnvironment = testClient.environments.base;
+
+  // wstETH/WETH market on Base — well-established market used as a stable test fixture
+  const wstEthWethMarketId =
+    "0x3a4048c64ba1b375330d376b1ce40e4047d03b47ab4d48af484edec9fec801ba";
+
+  const mockMarket: LunarIndexerMarket = {
+    marketId: wstEthWethMarketId,
+    chainId: 8453,
+    totalSupplyAssets: "4237.378517",
+    totalBorrowAssets: "3328.849088",
+    totalLiquidity: "908.529429",
+    totalSupplyAssetsUsd: "8820396.72",
+    totalBorrowAssetsUsd: "6929229.83",
+    totalLiquidityUsd: "1891166.89",
+    loanTokenPrice: "2081.56",
+    collateralTokenPrice: "2445.00",
+    supplyApy: "0.02",
+    borrowApy: "0.025",
+    lltv: "94.5",
+    fee: "0.1",
+    oracle: "0x0000000000000000000000000000000000000001",
+    irm: "0x0000000000000000000000000000000000000002",
+    loanToken: {
+      address: "0x4200000000000000000000000000000000000006",
+      name: "Wrapped Ether",
+      symbol: "WETH",
+      decimals: 18,
+    },
+    collateralToken: {
+      address: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+      name: "Wrapped liquid staked Ether 2.0",
+      symbol: "wstETH",
+      decimals: 18,
+    },
+  };
+
+  test("returns null for a market ID not present in the environment config", () => {
+    const unknownMarket = {
+      ...mockMarket,
+      marketId:
+        "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    };
+    const result = transformMarketFromIndexer(unknownMarket, baseEnvironment);
+    expect(result).toBeNull();
+  });
+
+  test("maps all core fields correctly", () => {
+    const result = transformMarketFromIndexer(mockMarket, baseEnvironment);
+
+    expect(result).not.toBeNull();
+    if (!result) return;
+
+    expect(result.chainId).toBe(8453);
+    expect(result.marketId.toLowerCase()).toBe(
+      wstEthWethMarketId.toLowerCase(),
+    );
+    expect(result.marketKey).toBeDefined();
+    expect(result.loanTokenPrice).toBeCloseTo(2081.56, 2);
+    expect(result.collateralTokenPrice).toBeCloseTo(2445.0, 2);
+    expect(result.baseSupplyApy).toBeCloseTo(0.02, 4);
+    expect(result.baseBorrowApy).toBeCloseTo(0.025, 4);
+    expect(result.loanToValue).toBeCloseTo(0.945, 3);
+    expect(result.totalSupplyUsd).toBeCloseTo(8820396.72, 1);
+    expect(result.totalBorrowsUsd).toBeCloseTo(6929229.83, 1);
+    expect(result.rewards).toEqual([]);
+    expect(result.collateralAssets).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration tests — require live lunar-indexer (skipped when URL is absent)
+// ---------------------------------------------------------------------------
+
 describe("Lunar Indexer Market Transformation Tests", () => {
   // Base chain market for testing
   const testChainId = 8453; // Base
+  // wstETH/WETH market on Base — well-established, used as a stable integration fixture
   const testMarketId =
     "0x3a4048c64ba1b375330d376b1ce40e4047d03b47ab4d48af484edec9fec801ba"; // wstETH/WETH market
+  // Known active account on Base with Morpho positions, used to verify portfolio endpoint
   const testAccountAddress = "0x45db397E443721D77480ADbFae4753D003D28F1D";
 
   // Get Base environment for testing
@@ -21,17 +176,17 @@ describe("Lunar Indexer Market Transformation Tests", () => {
 
   test("Environment has lunar indexer URL configured", () => {
     expect(baseEnvironment).toBeDefined();
-    expect(baseEnvironment?.custom?.morpho?.lunarIndexerUrl).toBeDefined();
+    expect(baseEnvironment?.lunarIndexerUrl).toBeDefined();
   });
 
   test("Fetch markets from Lunar Indexer", async () => {
-    if (!baseEnvironment?.custom?.morpho?.lunarIndexerUrl) {
+    if (!baseEnvironment?.lunarIndexerUrl) {
       console.log("Skipping test: Lunar indexer URL not configured");
       return;
     }
 
     const response = await fetchMarketsFromIndexer(
-      baseEnvironment.custom.morpho.lunarIndexerUrl,
+      baseEnvironment.lunarIndexerUrl!,
       testChainId,
     );
 
@@ -57,13 +212,13 @@ describe("Lunar Indexer Market Transformation Tests", () => {
   }, 30000);
 
   test("Fetch single market from Lunar Indexer", async () => {
-    if (!baseEnvironment?.custom?.morpho?.lunarIndexerUrl) {
+    if (!baseEnvironment?.lunarIndexerUrl) {
       console.log("Skipping test: Lunar indexer URL not configured");
       return;
     }
 
     const market = await fetchMarketFromIndexer(
-      baseEnvironment.custom.morpho.lunarIndexerUrl,
+      baseEnvironment.lunarIndexerUrl!,
       testChainId,
       testMarketId,
     );
@@ -80,13 +235,13 @@ describe("Lunar Indexer Market Transformation Tests", () => {
   }, 30000);
 
   test("Transform market from Lunar Indexer to SDK type", async () => {
-    if (!baseEnvironment?.custom?.morpho?.lunarIndexerUrl) {
+    if (!baseEnvironment?.lunarIndexerUrl) {
       console.log("Skipping test: Lunar indexer URL not configured");
       return;
     }
 
     const indexerMarket = await fetchMarketFromIndexer(
-      baseEnvironment.custom.morpho.lunarIndexerUrl,
+      baseEnvironment.lunarIndexerUrl!,
       testChainId,
       testMarketId,
     );
@@ -97,7 +252,8 @@ describe("Lunar Indexer Market Transformation Tests", () => {
     );
 
     // Verify SDK market structure
-    expect(sdkMarket).toBeDefined();
+    expect(sdkMarket).not.toBeNull();
+    if (!sdkMarket) return;
     expect(sdkMarket.chainId).toBe(testChainId);
     expect(sdkMarket.marketId.toLowerCase()).toBe(testMarketId.toLowerCase());
     expect(sdkMarket.marketKey).toBeDefined();
@@ -145,13 +301,13 @@ describe("Lunar Indexer Market Transformation Tests", () => {
   }, 30000);
 
   test("Transform multiple markets from Lunar Indexer", async () => {
-    if (!baseEnvironment?.custom?.morpho?.lunarIndexerUrl) {
+    if (!baseEnvironment?.lunarIndexerUrl) {
       console.log("Skipping test: Lunar indexer URL not configured");
       return;
     }
 
     const response = await fetchMarketsFromIndexer(
-      baseEnvironment.custom.morpho.lunarIndexerUrl,
+      baseEnvironment.lunarIndexerUrl!,
       testChainId,
     );
 
@@ -162,7 +318,10 @@ describe("Lunar Indexer Market Transformation Tests", () => {
 
     expect(sdkMarkets).toBeDefined();
     expect(Array.isArray(sdkMarkets)).toBe(true);
-    expect(sdkMarkets.length).toBe(response.results.length);
+    // Markets not present in the environment config are filtered out, so the
+    // transformed count may be less than the raw indexer count.
+    expect(sdkMarkets.length).toBeGreaterThan(0);
+    expect(sdkMarkets.length).toBeLessThanOrEqual(response.results.length);
 
     // Verify each market has correct structure
     sdkMarkets.forEach((market) => {
@@ -177,13 +336,13 @@ describe("Lunar Indexer Market Transformation Tests", () => {
   }, 30000);
 
   test("Fetch market snapshots from Lunar Indexer", async () => {
-    if (!baseEnvironment?.custom?.morpho?.lunarIndexerUrl) {
+    if (!baseEnvironment?.lunarIndexerUrl) {
       console.log("Skipping test: Lunar indexer URL not configured");
       return;
     }
 
     const response = await fetchMarketSnapshotsFromIndexer(
-      baseEnvironment.custom.morpho.lunarIndexerUrl,
+      baseEnvironment.lunarIndexerUrl!,
       testChainId,
       testMarketId,
       {
@@ -213,7 +372,7 @@ describe("Lunar Indexer Market Transformation Tests", () => {
   }, 30000);
 
   test("Fetch account market portfolio from Lunar Indexer", async () => {
-    if (!baseEnvironment?.custom?.morpho?.lunarIndexerUrl) {
+    if (!baseEnvironment?.lunarIndexerUrl) {
       console.log("Skipping test: Lunar indexer URL not configured");
       return;
     }
@@ -222,7 +381,7 @@ describe("Lunar Indexer Market Transformation Tests", () => {
     const thirtyDaysAgo = now - 86400 * 30;
 
     const response = await fetchAccountMarketPortfolioFromIndexer(
-      baseEnvironment.custom.morpho.lunarIndexerUrl,
+      baseEnvironment.lunarIndexerUrl!,
       testAccountAddress,
       {
         chainId: testChainId,
@@ -259,7 +418,7 @@ describe("Lunar Indexer Market Transformation Tests", () => {
   }, 30000);
 
   test("Compare indexer data with SDK getMorphoMarkets", async () => {
-    if (!baseEnvironment?.custom?.morpho?.lunarIndexerUrl) {
+    if (!baseEnvironment?.lunarIndexerUrl) {
       console.log("Skipping test: Lunar indexer URL not configured");
       return;
     }

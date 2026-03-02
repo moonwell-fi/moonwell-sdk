@@ -348,14 +348,14 @@ async function fetchMorphoGraphQL(
   }
 }
 
-async function fetchIsolatedMarketSnapshots(
+export async function fetchIsolatedMarketSnapshots(
   marketAddress: string,
   environment: Environment,
   period?: "1M" | "3M" | "1Y" | "ALL",
   customStartTime?: number,
   customEndTime?: number,
 ): Promise<MarketSnapshot[]> {
-  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+  const lunarIndexerUrl = environment.lunarIndexerUrl;
 
   if (lunarIndexerUrl) {
     try {
@@ -364,6 +364,21 @@ async function fetchIsolatedMarketSnapshots(
         customStartTime,
         customEndTime,
       );
+
+      // The USDC/ETH market (collateral = USDC, loan = WETH) needs normalization:
+      // the indexer returns totalSupplyAssets in WETH units but the chart needs
+      // USDC-equivalent units (totalSupplyAssetsUsd / collateralTokenPrice).
+      const marketConfig = Object.values(environment.config.morphoMarkets).find(
+        (m) => m.id.toLowerCase() === marketAddress.toLowerCase(),
+      );
+      const loanSymbol = marketConfig
+        ? environment.config.tokens[marketConfig.loanToken]?.symbol
+        : undefined;
+      const collateralSymbol = marketConfig
+        ? environment.config.tokens[marketConfig.collateralToken]?.symbol
+        : undefined;
+      const normalizeToCollateral =
+        loanSymbol === "ETH" && collateralSymbol === "USDC";
 
       const allSnapshots: MarketSnapshot[] = [];
       let cursor: string | undefined;
@@ -384,7 +399,11 @@ async function fetchIsolatedMarketSnapshots(
         allSnapshots.push(
           ...response.results
             .filter((s) => isStartOfDay(s.timestamp))
-            .map(transformIsolatedMarketSnapshotFromIndexer),
+            .map((s) =>
+              transformIsolatedMarketSnapshotFromIndexer(s, {
+                normalizeToCollateral,
+              }),
+            ),
         );
 
         cursor = response.nextCursor ?? undefined;

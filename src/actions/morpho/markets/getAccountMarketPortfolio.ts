@@ -51,22 +51,14 @@ export async function getAccountMarketPortfolio(
     }
   } else {
     // Default to first environment with lunar indexer
-    environment = environments.find(
-      (env) =>
-        env.custom &&
-        "morpho" in env.custom &&
-        env.custom.morpho?.lunarIndexerUrl,
-    );
+    environment = environments.find((env) => env.lunarIndexerUrl);
   }
 
   if (!environment) {
     throw new Error("Environment not found");
   }
 
-  const lunarIndexerUrl =
-    environment.custom && "morpho" in environment.custom
-      ? environment.custom.morpho?.lunarIndexerUrl
-      : undefined;
+  const lunarIndexerUrl = environment.lunarIndexerUrl;
 
   if (!lunarIndexerUrl) {
     throw new Error(
