@@ -36,12 +36,9 @@ export function calculateTimeRange(
 ): { startTime: number; endTime: number } {
   const now = dayjs.utc();
   const end = endTime ?? now.unix();
-
-  // Use custom range only when both bounds are explicitly provided
-  if (startTime !== undefined && endTime !== undefined) {
+  if (startTime !== undefined) {
     return { startTime, endTime: end };
   }
-
   let start: number;
   switch (period) {
     case "1M":
