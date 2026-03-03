@@ -6,10 +6,10 @@ import {
   getEnvironmentFromArgs,
   isStartOfDay,
 } from "../../../common/index.js";
+import { buildMarketId } from "../../../common/lunar-indexer-helpers.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { MarketSnapshot } from "../../../types/market.js";
-import { buildMarketId } from "../../../utils/lunar-indexer-helpers.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,

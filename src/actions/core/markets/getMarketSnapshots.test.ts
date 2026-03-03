@@ -66,13 +66,11 @@ const mockEnvironment = {
   },
 } as unknown as Environment;
 
-// The SDK type says `string` but the real API returns `null` when there are no
-// more pages (the code uses `?? undefined` / `!== null` to detect end-of-pages).
-// We use `null` in tests and rely on structural compatibility for the mock.
-type SnapshotResponse = {
-  results: LunarIndexerMarketSnapshot[];
-  nextCursor: null;
-};
+// The SDK type says `nextCursor: string` but the real API returns `null` when
+// there are no more pages (the code uses `?? undefined` to detect end-of-pages).
+// We cast `null as unknown as string` to satisfy TypeScript while keeping the
+// correct runtime value that terminates the pagination loop.
+const NO_MORE_PAGES = null as unknown as string;
 
 function makeStkWellSnapshot(
   timestamp: number,
@@ -235,18 +233,10 @@ describe("fetchIsolatedMarketSnapshots — stkWELL workaround (unit)", () => {
     wellSnapshots: LunarIndexerMarketSnapshot[],
   ) {
     vi.mocked(fetchMarketSnapshotsFromIndexer).mockImplementation(
-      (
-        _url: string,
-        _chainId: number,
-        marketId: string,
-      ): Promise<SnapshotResponse> => {
-        if (marketId === STKWELL_MARKET_ID) {
-          return Promise.resolve({
-            results: stkWellSnapshots,
-            nextCursor: null,
-          });
-        }
-        return Promise.resolve({ results: wellSnapshots, nextCursor: null });
+      (_url, _chainId, marketId) => {
+        const results =
+          marketId === STKWELL_MARKET_ID ? stkWellSnapshots : wellSnapshots;
+        return Promise.resolve({ results, nextCursor: NO_MORE_PAGES });
       },
     );
   }
@@ -361,15 +351,11 @@ describe("fetchIsolatedMarketSnapshots — stkWELL workaround (unit)", () => {
     });
 
     vi.mocked(fetchMarketSnapshotsFromIndexer).mockImplementation(
-      (
-        _url: string,
-        _chainId: number,
-        marketId: string,
-      ): Promise<SnapshotResponse> => {
+      (_url, _chainId, marketId) => {
         if (marketId === STKWELL_MARKET_ID) {
           return Promise.reject(clientError);
         }
-        return Promise.resolve({ results: [], nextCursor: null });
+        return Promise.resolve({ results: [], nextCursor: NO_MORE_PAGES });
       },
     );
 
