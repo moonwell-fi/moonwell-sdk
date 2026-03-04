@@ -95,14 +95,15 @@ export async function getAccountMarketPortfolio(
   );
 
   // Transform positions to include marketKey
+  const { morphoMarkets } = environment.config;
   const positions: AccountPortfolioSnapshot[] = response.positions.map(
     (position) => ({
       timestamp: position.timestamp,
       markets: position.markets.map((market) => {
         // Find the market key from environment config
-        const marketKey = Object.keys(environment.config.morphoMarkets).find(
+        const marketKey = Object.keys(morphoMarkets).find(
           (key) =>
-            environment.config.morphoMarkets[key].id.toLowerCase() ===
+            morphoMarkets[key].id.toLowerCase() ===
             market.marketId.toLowerCase(),
         );
 
