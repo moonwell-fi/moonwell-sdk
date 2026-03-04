@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.33
+
+### Patch Changes
+
+- [#218](https://github.com/moonwell-fi/moonwell-sdk/pull/218) [`779f8063ad980169436b843804132fa12c04fb5d`](https://github.com/moonwell-fi/moonwell-sdk/commit/779f8063ad980169436b843804132fa12c04fb5d) Thanks [@bprofiro](https://github.com/bprofiro)! - migrate morpho markets fetch to lunar-indexer
+
 ## 0.9.32
 
 ### Patch Changes
