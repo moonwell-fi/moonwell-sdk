@@ -8,8 +8,34 @@ import type {
 } from "../../../types/morphoMarket.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
 import { getGraphQL, getSubgraph } from "../utils/graphql.js";
+import {
+  type GetMorphoMarketsRewardsReturnType as LunarIndexerRewardsType,
+  fetchMarketsFromIndexer,
+  transformMarketsFromIndexer,
+} from "./lunarIndexerTransform.js";
 
 export async function getMorphoMarketsData(params: {
+  environments: Environment[];
+  markets?: string[] | undefined;
+  includeRewards?: boolean | undefined;
+}): Promise<MorphoMarket[]> {
+  const { environments } = params;
+
+  const hasLunarIndexer = environments.some((env) => env.lunarIndexerUrl);
+
+  // Use Lunar Indexer implementation if available (with automatic fallback to on-chain on failure)
+  if (hasLunarIndexer) {
+    return getMorphoMarketsDataFromIndexer(params);
+  }
+
+  // Fall back to on-chain contract queries (legacy implementation)
+  return getMorphoMarketsDataFromOnChain(params);
+}
+
+/**
+ * Fetch markets from on-chain contracts (original implementation)
+ */
+async function getMorphoMarketsDataFromOnChain(params: {
   environments: Environment[];
   markets?: string[] | undefined;
   includeRewards?: boolean | undefined;
@@ -21,6 +47,10 @@ export async function getMorphoMarketsData(params: {
       Object.keys(environment.config.morphoMarkets).length > 0 &&
       environment.contracts.morphoViews,
   );
+
+  if (environmentsWithMarkets.length === 0) {
+    return [];
+  }
 
   const marketInfoSettlements = await Promise.allSettled(
     environmentsWithMarkets.map((environment) => {
@@ -114,8 +144,11 @@ export async function getMorphoMarketsData(params: {
     });
   });
 
+  const rewardEnvironment =
+    params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+    params.environments[0];
   const rewardsData = await getMorphoMarketRewards(
-    params.environments[0],
+    rewardEnvironment,
     initialMarkets,
   );
   const rewardsDataByChainAndMarket = new Map<
@@ -261,11 +294,11 @@ export async function getMorphoMarketsData(params: {
         // const supplyApy = new Amount(marketInfo.supplyApy, 18).value * 100;
         const borrowApy = new Amount(marketInfo.borrowApy, 18).value * 100;
 
-        const availableLiquidity =
-          publicAllocatorSharedLiquidity?.reallocatableLiquidityAssets ||
-          new Amount(0, 18);
-        const availableLiquidityUsd =
-          availableLiquidity?.value * loanTokenPrice;
+        const availableLiquidity = new Amount(
+          marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets,
+          loanToken.decimals,
+        );
+        const availableLiquidityUsd = availableLiquidity.value * loanTokenPrice;
 
         const rewardKey = `${environment.chainId}-${marketInfo.marketId.toLowerCase()}`;
         const marketRewardData = rewardsDataByChainAndMarket.get(rewardKey);
@@ -334,7 +367,8 @@ export async function getMorphoMarketsData(params: {
       });
 
     const rewards = await getMorphoMarketRewards(
-      params.environments[0],
+      params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+        params.environments[0],
       markets,
     );
 
@@ -372,7 +406,7 @@ export async function getMorphoMarketsData(params: {
     });
   }
 
-  return environments.flatMap((environment) => {
+  return environmentsWithMarkets.flatMap((environment) => {
     return result[environment.chainId] || [];
   });
 }
@@ -878,4 +912,205 @@ async function getMorphoMarketRewards(
   } else {
     return [];
   }
+}
+
+/**
+ * Fetch markets from Lunar Indexer for environments that have the lunar indexer URL configured
+ * Falls back to on-chain if indexer fails
+ */
+async function getMorphoMarketsDataFromIndexer(params: {
+  environments: Environment[];
+  markets?: string[] | undefined;
+  includeRewards?: boolean | undefined;
+}): Promise<MorphoMarket[]> {
+  const { environments } = params;
+
+  // Filter environments that have lunar-indexer URL configured
+  const environmentsWithIndexer = environments.filter(
+    (environment) =>
+      environment.lunarIndexerUrl &&
+      Object.keys(environment.config.morphoMarkets).length > 0,
+  );
+
+  if (environmentsWithIndexer.length === 0) {
+    return [];
+  }
+
+  // Fetch markets from lunar-indexer for each environment
+  const marketsSettlements = await Promise.allSettled(
+    environmentsWithIndexer.map(async (environment) => {
+      const lunarIndexerUrl = environment.lunarIndexerUrl!;
+
+      try {
+        const response = await fetchMarketsFromIndexer(
+          lunarIndexerUrl,
+          environment.chainId,
+          params.includeRewards ? { includeRewards: true } : undefined,
+        );
+
+        // Filter markets if specific ones were requested
+        let markets = response.results;
+        if (params.markets) {
+          const requestedMarkets = params.markets.map((id) => id.toLowerCase());
+          markets = markets.filter((market) =>
+            requestedMarkets.includes(market.marketId.toLowerCase()),
+          );
+        }
+
+        return { environment, markets };
+      } catch (error) {
+        console.warn(
+          `Failed to fetch markets from Lunar Indexer for chain ${environment.chainId}, falling back to on-chain:`,
+          error,
+        );
+        // Return rejection so we can fall back to on-chain for this environment
+        return Promise.reject({ environment, error });
+      }
+    }),
+  );
+
+  const fulfilledMarkets = marketsSettlements.flatMap((s) =>
+    s.status === "fulfilled" ? [s.value] : [],
+  );
+
+  // Collect environments that failed to fetch from indexer for fallback
+  const failedEnvironments = marketsSettlements
+    .filter((s) => s.status === "rejected")
+    .map((s: any) => s.reason?.environment)
+    .filter((env) => env !== undefined);
+
+  // Fall back to on-chain for environments where indexer failed
+  let fallbackMarkets: MorphoMarket[] = [];
+  if (failedEnvironments.length > 0) {
+    console.warn(
+      `Falling back to on-chain for ${failedEnvironments.length} environment(s)`,
+    );
+    fallbackMarkets = await getMorphoMarketsDataFromOnChain({
+      environments: failedEnvironments,
+      markets: params.markets,
+      includeRewards: params.includeRewards,
+    });
+  }
+
+  // Fetch shared liquidity data from subgraph
+  const sharedLiquiditySettlements = await Promise.allSettled(
+    fulfilledMarkets.map(({ environment, markets }) => {
+      const marketIds = markets.map((m) => m.marketId as Address);
+      return getMorphoMarketPublicAllocatorSharedLiquidity(
+        environment,
+        marketIds,
+      ).then((data) => ({ environment, data }));
+    }),
+  );
+
+  const fulfilledSharedLiquidity = sharedLiquiditySettlements.flatMap((s) =>
+    s.status === "fulfilled" ? [s.value] : [],
+  );
+
+  // Create shared liquidity map by chainId and marketId
+  const sharedLiquidityMap = new Map<
+    string,
+    PublicAllocatorSharedLiquidityType[]
+  >();
+  fulfilledSharedLiquidity.forEach(({ environment, data }) => {
+    data.forEach((item) => {
+      const key = `${environment.chainId}-${item.marketId.toLowerCase()}`;
+      sharedLiquidityMap.set(key, item.publicAllocatorSharedLiquidity);
+    });
+  });
+
+  // Build rewards map from indexer market data (rewards are included in the
+  // fetchMarketsFromIndexer response when includeRewards: true was passed above).
+  const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
+  if (params.includeRewards) {
+    fulfilledMarkets.forEach(({ environment, markets }) => {
+      markets.forEach((market) => {
+        if (!market.rewards?.length) return;
+        const key = `${environment.chainId}-${market.marketId.toLowerCase()}`;
+        const rewards: Required<MorphoReward>[] = market.rewards.map((r) => ({
+          marketId: market.marketId,
+          asset: {
+            address: r.token as Address,
+            symbol: r.tokenSymbol,
+            decimals: r.tokenDecimals,
+            name: r.tokenName,
+          },
+          supplyApr: Number.parseFloat(r.supplyApr),
+          supplyAmount: 0,
+          borrowApr: Number.parseFloat(r.borrowApr),
+          borrowAmount: 0,
+        }));
+        rewardsDataMap.set(key, {
+          chainId: environment.chainId,
+          marketId: market.marketId,
+          collateralAssets: null,
+          collateralAssetsUsd: null,
+          rewardsSupplyApy: rewards.reduce((acc, r) => acc + r.supplyApr, 0),
+          rewardsBorrowApy: rewards.reduce((acc, r) => acc + r.borrowApr, 0),
+          rewards,
+        });
+      });
+    });
+  }
+
+  // Fetch collateralAssets from Morpho Blue API. The lunar-indexer does not yet
+  // expose collateralAssets (total collateral deposited by borrowers), which the
+  // frontend uses to display "Total Supplied" on isolated market pages.
+  // TODO: remove this call once the indexer adds a collateralAssets field.
+  const marketsForBlueApi = fulfilledMarkets.flatMap(
+    ({ environment, markets }) =>
+      markets.map(
+        (m) =>
+          ({
+            chainId: environment.chainId,
+            marketId: m.marketId,
+          }) as MorphoMarket,
+      ),
+  );
+
+  if (marketsForBlueApi.length > 0) {
+    const rewardEnvironment =
+      params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+      params.environments[0];
+    try {
+      const blueApiData = await getMorphoMarketRewards(
+        rewardEnvironment,
+        marketsForBlueApi,
+      );
+      blueApiData.forEach((data) => {
+        const key = `${data.chainId}-${data.marketId.toLowerCase()}`;
+        const existing = rewardsDataMap.get(key);
+        rewardsDataMap.set(key, {
+          chainId: data.chainId,
+          marketId: data.marketId,
+          // collateralAssets comes from the Blue API; rewards come from the indexer
+          collateralAssets: data.collateralAssets,
+          collateralAssetsUsd: data.collateralAssetsUsd,
+          rewardsSupplyApy: existing?.rewardsSupplyApy ?? 0,
+          rewardsBorrowApy: existing?.rewardsBorrowApy ?? 0,
+          rewards: existing?.rewards ?? [],
+        });
+      });
+    } catch (error) {
+      console.warn(
+        "[getMorphoMarketsDataFromIndexer] Failed to fetch collateral assets from Morpho Blue API:",
+        error,
+      );
+    }
+  }
+
+  // Transform markets from indexer format to SDK format
+  const transformedMarkets = fulfilledMarkets.flatMap(
+    ({ environment, markets }) => {
+      return transformMarketsFromIndexer(
+        markets,
+        environment,
+        rewardsDataMap,
+        sharedLiquidityMap,
+      );
+    },
+  );
+
+  // Combine indexer results with fallback results
+  return [...transformedMarkets, ...fallbackMarkets];
 }

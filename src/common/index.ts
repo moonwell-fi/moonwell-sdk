@@ -25,6 +25,10 @@ export function isStartOfDay(timestamp: number): boolean {
 export const calculateApy = (value: number) =>
   ((value * SECONDS_PER_DAY + 1) ** DAYS_PER_YEAR - 1) * 100;
 
+/**
+ * Calculate start and end times based on period or custom timestamps.
+ * Priority: custom timestamps (both required) > period > default (365 days)
+ */
 export function calculateTimeRange(
   period?: "1M" | "3M" | "1Y" | "ALL",
   startTime?: number,
@@ -53,6 +57,7 @@ export function calculateTimeRange(
       start = now.subtract(365, "days").unix();
       break;
   }
+
   return { startTime: start, endTime: end };
 }
 
