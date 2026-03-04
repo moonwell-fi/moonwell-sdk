@@ -8,6 +8,7 @@
  * @module morpho/markets/lunarIndexerTransform
  */
 
+import axios from "axios";
 import type { Address } from "viem";
 import { parseUnits } from "viem";
 import { Amount } from "../../../common/amount.js";
@@ -171,15 +172,8 @@ export async function fetchMarketsFromIndexer(
   }
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/isolated/markets/${chainId}${queryString ? `?${queryString}` : ""}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch markets from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.json();
+  const response = await axios.get<LunarIndexerMarketsResponse>(url);
+  return response.data;
 }
 
 /**
@@ -191,15 +185,8 @@ export async function fetchMarketFromIndexer(
   marketId: string,
 ): Promise<LunarIndexerMarket> {
   const url = `${lunarIndexerUrl}/api/v1/isolated/market/${chainId}/${marketId.toLowerCase()}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch market from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.json();
+  const response = await axios.get<LunarIndexerMarket>(url);
+  return response.data;
 }
 
 /**
@@ -240,15 +227,8 @@ export async function fetchMarketSnapshotsFromIndexer(
     queryString ? `?${queryString}` : ""
   }`;
 
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch market snapshots from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.json();
+  const response = await axios.get<LunarIndexerMarketSnapshotsResponse>(url);
+  return response.data;
 }
 
 /**
@@ -288,15 +268,8 @@ export async function fetchAccountMarketPortfolioFromIndexer(
     queryString ? `?${queryString}` : ""
   }`;
 
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch account market portfolio from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.json();
+  const response = await axios.get<LunarIndexerAccountPortfolioResponse>(url);
+  return response.data;
 }
 
 /**

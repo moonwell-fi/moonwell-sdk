@@ -343,6 +343,8 @@ describe("fetchIsolatedMarketSnapshots — stkWELL workaround (unit)", () => {
 
   test("throws non-recoverable errors instead of falling through to fallbacks", async () => {
     // 4xx (not 404) should not fall back — it signals a bad request.
+    // fetchMarketSnapshotsFromIndexer now uses axios, so it throws AxiosErrors on
+    // non-2xx responses. shouldFallback returns false for 4xx (except 404).
     // Only reject the stkWELL market call; let the WELL price call succeed so
     // its promise doesn't become an unhandled rejection.
     const clientError = Object.assign(new Error("Bad Request"), {

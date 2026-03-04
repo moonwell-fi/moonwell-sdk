@@ -388,6 +388,8 @@ async function fetchWellPricesByTimestamp(
   const wellIsCollateral = wellMarketConfig.collateralToken === "WELL";
   const priceMap = new Map<number, number>();
   let cursor: string | undefined;
+  const MAX_PAGES = 100;
+  let page = 0;
 
   do {
     const response = await fetchMarketSnapshotsFromIndexer(
@@ -414,7 +416,8 @@ async function fetchWellPricesByTimestamp(
     }
 
     cursor = response.nextCursor ?? undefined;
-  } while (cursor !== undefined);
+    page++;
+  } while (cursor !== undefined && page < MAX_PAGES);
 
   return priceMap;
 }
@@ -472,6 +475,8 @@ export async function fetchIsolatedMarketSnapshots(
 
       const allSnapshots: MarketSnapshot[] = [];
       let cursor: string | undefined;
+      const MAX_PAGES = 100;
+      let page = 0;
 
       do {
         const response = await fetchMarketSnapshotsFromIndexer(
@@ -497,7 +502,8 @@ export async function fetchIsolatedMarketSnapshots(
         );
 
         cursor = response.nextCursor ?? undefined;
-      } while (cursor !== undefined);
+        page++;
+      } while (cursor !== undefined && page < MAX_PAGES);
 
       // Sanity check for non-normalized markets: detect when totalSupplyAssets was
       // stored in collateral units instead of loan token units (an indexer bug seen on
