@@ -1,22 +1,30 @@
 import axios from "axios";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc.js";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { getEnvironmentFromArgs, isStartOfDay } from "../../../common/index.js";
+import {
+  calculateTimeRange,
+  getEnvironmentFromArgs,
+  isStartOfDay,
+} from "../../../common/index.js";
 import type {
   MorphoVaultParameterType,
   NetworkParameterType,
 } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { MorphoVaultSnapshot } from "../../../types/morphoVault.js";
-
-dayjs.extend(utc);
+import {
+  fetchVaultSnapshotsFromIndexer,
+  transformVaultSnapshotsFromIndexer,
+} from "./lunarIndexerTransform.js";
 
 export type GetMorphoVaultSnapshotsParameters<
   environments,
   network extends Chain | undefined,
 > = NetworkParameterType<environments, network> &
-  MorphoVaultParameterType<network>;
+  MorphoVaultParameterType<network> & {
+    period?: "1M" | "3M" | "1Y" | "ALL";
+    startTime?: number;
+    endTime?: number;
+  };
 
 export type GetMorphoVaultSnapshotsReturnType = Promise<MorphoVaultSnapshot[]>;
 
@@ -33,14 +41,79 @@ export async function getMorphoVaultSnapshots<
     return [];
   }
 
-  return fetchVaultSnapshots(
-    (args as GetMorphoVaultSnapshotsParameters<environments, undefined>)
-      .vaultAddress,
-    environment,
-  );
+  const {
+    vaultAddress,
+    period,
+    startTime: customStartTime,
+    endTime: customEndTime,
+  } = args as GetMorphoVaultSnapshotsParameters<environments, undefined>;
+
+  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+
+  if (lunarIndexerUrl) {
+    return fetchVaultSnapshotsFromLunarIndexer(
+      vaultAddress,
+      environment.chainId,
+      lunarIndexerUrl,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  }
+
+  return fetchVaultSnapshotsFromPonder(vaultAddress, environment);
 }
 
-async function fetchVaultSnapshots(
+async function fetchVaultSnapshotsFromLunarIndexer(
+  vaultAddress: string,
+  chainId: number,
+  lunarIndexerUrl: string,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
+): Promise<MorphoVaultSnapshot[]> {
+  const vaultId = `${chainId}-${vaultAddress.toLowerCase()}`;
+  const allSnapshots: MorphoVaultSnapshot[] = [];
+  let cursor: string | null = null;
+  const MAX_PAGES = 100;
+  let page = 0;
+
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
+
+  do {
+    const response = await fetchVaultSnapshotsFromIndexer(
+      lunarIndexerUrl,
+      vaultId,
+      {
+        limit: 1000,
+        granularity: "1d",
+        startTime,
+        ...(cursor && { cursor }),
+      },
+    );
+
+    const transformed = transformVaultSnapshotsFromIndexer(
+      response.results,
+      chainId,
+    );
+
+    const filtered = transformed.filter((snapshot) =>
+      isStartOfDay(Math.floor(snapshot.timestamp / 1000)),
+    );
+
+    allSnapshots.push(...filtered);
+    cursor = response.nextCursor;
+    page++;
+  } while (cursor !== null && page < MAX_PAGES);
+
+  return allSnapshots;
+}
+
+async function fetchVaultSnapshotsFromPonder(
   vaultAddress: string,
   environment: Environment,
 ): Promise<MorphoVaultSnapshot[]> {
@@ -72,7 +145,7 @@ async function fetchVaultSnapshots(
     }>(environment.indexerUrl, {
       query: `
           query {
-            vaultDailySnapshots (        
+            vaultDailySnapshots (
               limit: 365,
               orderBy: "timestamp"
               orderDirection: "desc"

@@ -117,6 +117,19 @@ export {
   type GetMorphoMarketsReturnType,
 } from "./morpho/markets/getMorphoMarkets.js";
 export {
+  getMarketSnapshots as getMorphoMarketSnapshots,
+  type GetMarketSnapshotsParameters as GetMorphoMarketSnapshotsParameters,
+  type GetMarketSnapshotsReturnType as GetMorphoMarketSnapshotsReturnType,
+  type MarketSnapshot,
+} from "./morpho/markets/getMarketSnapshots.js";
+export {
+  getAccountMarketPortfolio,
+  type GetAccountMarketPortfolioParameters,
+  type GetAccountMarketPortfolioReturnType,
+  type AccountMarketPosition,
+  type AccountPortfolioSnapshot,
+} from "./morpho/markets/getAccountMarketPortfolio.js";
+export {
   getMorphoMarketUserPosition,
   type GetMorphoMarketUserPositionParameters,
   type GetMorphoMarketUserPositionReturnType,

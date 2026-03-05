@@ -1,5 +1,29 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.33
+
+### Patch Changes
+
+- [#218](https://github.com/moonwell-fi/moonwell-sdk/pull/218) [`779f8063ad980169436b843804132fa12c04fb5d`](https://github.com/moonwell-fi/moonwell-sdk/commit/779f8063ad980169436b843804132fa12c04fb5d) Thanks [@bprofiro](https://github.com/bprofiro)! - migrate morpho markets fetch to lunar-indexer
+
+## 0.9.32
+
+### Patch Changes
+
+- [#230](https://github.com/moonwell-fi/moonwell-sdk/pull/230) [`95a1eeec81c32340c663485327c3f57b557bb545`](https://github.com/moonwell-fi/moonwell-sdk/commit/95a1eeec81c32340c663485327c3f57b557bb545) Thanks [@bprofiro](https://github.com/bprofiro)! - update merkl id
+
+## 0.9.31
+
+### Patch Changes
+
+- [#227](https://github.com/moonwell-fi/moonwell-sdk/pull/227) [`5c623087403b68c8d57d86ee992e73b25046a1a9`](https://github.com/moonwell-fi/moonwell-sdk/commit/5c623087403b68c8d57d86ee992e73b25046a1a9) Thanks [@bprofiro](https://github.com/bprofiro)! - replace moonriver views contract
+
+## 0.9.30
+
+### Patch Changes
+
+- [#209](https://github.com/moonwell-fi/moonwell-sdk/pull/209) [`7eb01020485f8dab2883a5f9a0f0134ab8774272`](https://github.com/moonwell-fi/moonwell-sdk/commit/7eb01020485f8dab2883a5f9a0f0134ab8774272) Thanks [@bprofiro](https://github.com/bprofiro)! - migrate vaults fetching to lunar-indexer
+
 ## 0.9.29
 
 ### Patch Changes

@@ -9,6 +9,8 @@ export { BaseError, HttpRequestError } from "./error.js";
 export type { HttpRequestErrorType } from "./error.js";
 export type { MultichainReturnType } from "./types.js";
 
+dayjs.extend(utc);
+
 export const SECONDS_PER_DAY = 86400;
 export const DAYS_PER_YEAR = 365;
 
@@ -27,18 +29,20 @@ export const calculateApy = (value: number) =>
 
 export type SnapshotPeriod = "1M" | "3M" | "1Y" | "ALL";
 
+/**
+ * Calculate start and end times based on period or custom timestamps.
+ * Priority: custom timestamps (both required) > period > default (365 days)
+ */
 export function calculateTimeRange(
-  period?: SnapshotPeriod,
+  period?: "1M" | "3M" | "1Y" | "ALL",
   startTime?: number,
   endTime?: number,
 ): { startTime: number; endTime: number } {
   const now = dayjs.utc();
   const end = endTime ?? now.unix();
-
-  if (startTime !== undefined && endTime !== undefined) {
+  if (startTime !== undefined) {
     return { startTime, endTime: end };
   }
-
   let start: number;
   switch (period) {
     case "1M":

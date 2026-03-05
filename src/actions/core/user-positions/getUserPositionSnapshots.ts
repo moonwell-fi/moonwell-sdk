@@ -1,6 +1,4 @@
 import axios from "axios";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc.js";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
@@ -18,8 +16,6 @@ import {
   shouldFallback,
 } from "../../lunar-indexer-client.js";
 import { transformPortfolioToSnapshots } from "../../lunar-indexer-transformers.js";
-
-dayjs.extend(utc);
 
 export type GetUserPositionSnapshotsParameters<
   environments,
