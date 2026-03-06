@@ -14,5 +14,9 @@ export const contracts = createContractsConfig({
     oracle: "0xED301cd3EB27217BDB05C4E9B820a8A3c8B665f9",
     governor: "0xfc4DFB17101A12C5CEc5eeDd8E92B5b16557666d",
     multichainGovernor: "0x9A8464C4C11CeA17e191653Deb7CdC1bE30F1Af4",
+    // TODO: Replace with actual TemporalGovernor on Moonbeam (non-upgradeable, deployed in MIP-X45)
+    temporalGovernor: "0x0000000000000000000000000000000000000007",
+    // TODO: Replace with actual MultichainVoteCollectionMoonbeam address (deployed in MIP-X45)
+    voteCollector: "0x0000000000000000000000000000000000000008",
   },
 });

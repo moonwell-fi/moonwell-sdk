@@ -14,4 +14,18 @@ export const tokens = createTokenConfig({
     name: "USD Coin",
     symbol: "USDC",
   },
+  // TODO: Replace with actual xWELL address on Ethereum (Step 0 complete, address TBD)
+  WELL: {
+    address: "0x0000000000000000000000000000000000000001",
+    decimals: 18,
+    name: "WELL",
+    symbol: "WELL",
+  },
+  // TODO: Replace with actual stkWELL address on Ethereum (Step 0 complete, address TBD)
+  stkWELL: {
+    address: "0x0000000000000000000000000000000000000002",
+    decimals: 18,
+    name: "Staked WELL",
+    symbol: "stkWELL",
+  },
 });
