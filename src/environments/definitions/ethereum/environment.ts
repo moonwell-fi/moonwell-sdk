@@ -4,13 +4,15 @@ import {
   type Environment,
   createEnvironmentConfig,
 } from "../../types/config.js";
+import { contracts } from "./contracts.js";
+import { custom } from "./custom.js";
 import { tokens } from "./tokens.js";
 
 const createEnvironment = (
   rpcUrls?: string[],
   indexerUrl?: string,
   governanceIndexerUrl?: string,
-): Environment<typeof tokens, {}, {}, {}, {}> =>
+): Environment<typeof tokens, typeof contracts, typeof custom, {}, {}> =>
   createEnvironmentConfig({
     key: "ethereum",
     name: "Ethereum",
@@ -31,8 +33,8 @@ const createEnvironment = (
     markets: {},
     vaults: {},
     morphoMarkets: {},
-    contracts: {},
-    custom: {},
-  }) as Environment<typeof tokens, {}, {}, {}, {}>;
+    contracts,
+    custom,
+  }) as Environment<typeof tokens, typeof contracts, typeof custom, {}, {}>;
 
 export { createEnvironment, ethereum, tokens };

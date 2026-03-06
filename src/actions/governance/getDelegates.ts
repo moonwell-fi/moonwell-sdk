@@ -1,6 +1,6 @@
 import axios from "axios";
 import { isAddress } from "viem";
-import { base, moonbeam, optimism } from "viem/chains";
+import { base, mainnet, moonbeam, optimism } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type Environment,
@@ -23,12 +23,19 @@ export async function getDelegates(
 ): GetDelegatesReturnType {
   const logId = logger.start("getDelegates", "Starting to get delegates...");
 
-  const governanceEnvironment = publicEnvironments.moonbeam;
+  // Post MIP-X45: Ethereum is the new governance home
+  const governanceEnvironment = publicEnvironments.ethereum;
 
   const apiVoters = await fetchAllVoters(governanceEnvironment);
   const forumProfiles = await getForumProfiles();
 
-  const targetChainIds = [moonbeam.id, base.id, optimism.id] as const;
+  // Include all chains where voting power can be delegated
+  const targetChainIds = [
+    mainnet.id,
+    moonbeam.id,
+    base.id,
+    optimism.id,
+  ] as const;
   const envs = Object.values(client.environments as Environment[]).filter(
     (env) =>
       env.contracts.views !== undefined &&

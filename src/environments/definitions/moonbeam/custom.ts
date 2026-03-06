@@ -1,10 +1,11 @@
-import { base, optimism } from "viem/chains";
 import { createCustomConfig } from "../../types/config.js";
 
 export const custom = createCustomConfig({
   governance: {
     token: "WELL",
-    chainIds: [base.id, optimism.id],
+    // Post MIP-X45: Moonbeam is no longer the governance home; it becomes a satellite chain.
+    // Ethereum (mainnet) takes over as governance home with chainIds: [moonbeam, base, optimism].
+    chainIds: [],
     proposalIdOffset: 79,
     snapshotEnsName: "moonwell-governance.eth",
   },

@@ -1,4 +1,4 @@
-import { moonbeam, moonriver } from "viem/chains";
+import { mainnet, moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
@@ -36,6 +36,7 @@ export async function getProposals<
 
   const governanceEnvironments = environments.filter(
     (environment) =>
+      environment.chainId === mainnet.id ||
       environment.chainId === moonbeam.id ||
       environment.chainId === moonriver.id,
   );
@@ -47,9 +48,12 @@ export async function getProposals<
 
   const allProposals = await Promise.all(
     governanceEnvironments.map(async (governanceEnvironment) => {
-      if (governanceEnvironment.chainId === moonbeam.id) {
-        // Moonbeam: Use new Governor API
-        return getMoonbeamProposals(governanceEnvironment);
+      if (
+        governanceEnvironment.chainId === mainnet.id ||
+        governanceEnvironment.chainId === moonbeam.id
+      ) {
+        // Ethereum / Moonbeam: Use Governor API
+        return getGovernorApiProposals(governanceEnvironment);
       } else {
         // Moonriver: Use old Ponder approach
         return getMoonriverProposals(governanceEnvironment);
@@ -66,9 +70,9 @@ export async function getProposals<
 }
 
 /**
- * Fetch proposals for Moonbeam using the new Governor API
+ * Fetch proposals using the Governor API (Ethereum post MIP-X45, Moonbeam legacy)
  */
-async function getMoonbeamProposals(
+async function getGovernorApiProposals(
   governanceEnvironment: Environment,
 ): Promise<Proposal[]> {
   const apiProposals = await fetchAllProposals(governanceEnvironment);

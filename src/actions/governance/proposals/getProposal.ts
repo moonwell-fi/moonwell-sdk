@@ -1,4 +1,4 @@
-import { moonbeam, moonriver } from "viem/chains";
+import { mainnet, moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
@@ -39,6 +39,7 @@ export async function getProposal<
   }
 
   if (
+    environment.chainId !== mainnet.id &&
     environment.chainId !== moonbeam.id &&
     environment.chainId !== moonriver.id
   ) {
@@ -46,9 +47,12 @@ export async function getProposal<
   }
 
   try {
-    if (environment.chainId === moonbeam.id) {
-      // Moonbeam: Use new Governor API
-      return await getMoonbeamProposal(environment, proposalId);
+    if (
+      environment.chainId === mainnet.id ||
+      environment.chainId === moonbeam.id
+    ) {
+      // Ethereum / Moonbeam: Use Governor API
+      return await getGovernorApiProposal(environment, proposalId);
     } else {
       // Moonriver: Use old Ponder approach
       return await getMoonriverProposal(environment, proposalId);
@@ -63,9 +67,9 @@ export async function getProposal<
 }
 
 /**
- * Fetch a single proposal for Moonbeam using the new Governor API
+ * Fetch a single proposal using the Governor API (Ethereum post MIP-X45, Moonbeam legacy)
  */
-async function getMoonbeamProposal(
+async function getGovernorApiProposal(
   governanceEnvironment: Environment,
   proposalId: number,
 ): Promise<Proposal | undefined> {

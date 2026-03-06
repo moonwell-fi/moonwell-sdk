@@ -28,7 +28,15 @@ type PonderExtendedProposalData = {
 
 axios.defaults.timeout = 5_000;
 
-export const WORMHOLE_CONTRACT = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+// Moonbeam Wormhole core contract (used by legacy Moonbeam proposals)
+export const WORMHOLE_CONTRACT_MOONBEAM =
+  "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+// Ethereum Wormhole core contract (used by new Ethereum proposals post MIP-X45)
+export const WORMHOLE_CONTRACT_ETHEREUM =
+  "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B";
+
+// Keep legacy export for backward compatibility
+export const WORMHOLE_CONTRACT = WORMHOLE_CONTRACT_MOONBEAM;
 
 /**
  * Extract proposal subtitle from description
@@ -88,12 +96,15 @@ export const extractProposalSubtitle = (input: string): string => {
 };
 
 /**
- * Detects if a proposal is a multichain proposal
+ * Detects if a proposal is a multichain proposal.
+ * Checks both Moonbeam Wormhole (legacy) and Ethereum Wormhole (post MIP-X45) addresses.
  */
 export const isMultichainProposal = (targets?: string[]): boolean => {
   return (
     targets?.some(
-      (target) => target.toLowerCase() === WORMHOLE_CONTRACT.toLowerCase(),
+      (target) =>
+        target.toLowerCase() === WORMHOLE_CONTRACT_MOONBEAM.toLowerCase() ||
+        target.toLowerCase() === WORMHOLE_CONTRACT_ETHEREUM.toLowerCase(),
     ) ?? false
   );
 };
@@ -196,6 +207,14 @@ export const getProposalsOnChainData = async (
           : await governanceEnvironment.contracts.governor.read.getQuorum();
     } catch (error) {
       console.warn("Failed to fetch quorum:", error);
+    }
+  } else if (governanceEnvironment.contracts.multichainGovernor) {
+    // Ethereum: MultichainGovernorV2 exposes quorum() directly
+    try {
+      quorum =
+        await governanceEnvironment.contracts.multichainGovernor.read.quorum();
+    } catch (error) {
+      console.warn("Failed to fetch quorum from multichainGovernor:", error);
     }
   }
 
