@@ -9,81 +9,8 @@ on:
     types: [submitted]
   issues:
     types: [opened, assigned]
-  pull_request:
-    types: [opened, synchronize, reopened]
 
 jobs:
-  # ── Automated PR review ────────────────────────────────────────────
-  review:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: read
-      id-token: write
-    concurrency:
-      group: claude-review-pr-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-
-      - name: Review PR
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          use_sticky_comment: true
-          claude_args: "--model claude-opus-4-6 --max-turns 20 --allowedTools 'Bash(gh pr diff),Bash(gh pr view),Bash(gh pr checks),Bash(git log),Bash(git diff),Bash(git show),Read,Glob,Grep,WebFetch'"
-          prompt: |
-            Review this pull request. EVENT_ACTION=${{ github.event.action }}
-
-            ## Behaviour
-            - If EVENT_ACTION is "opened" or "reopened": perform a full review.
-            - If EVENT_ACTION is "synchronize": this is an incremental push.
-              Read your prior sticky comment and focus only on new changes.
-              Acknowledge what was fixed and flag anything still outstanding.
-
-            ## Review checklist
-            1. Bugs, logic errors, edge cases
-            2. Security (XSS, injection, exposed secrets)
-            3. Performance regressions
-            4. Test coverage for changed code
-            5. Adherence to project conventions (see CLAUDE.md)
-
-            ## Output format
-            Use this structure:
-
-            ### Summary
-            One-paragraph description of what the PR does.
-
-            ### Issues
-            Categorise as 🔴 Critical, 🟡 Major, or 🔵 Minor.
-            Include file path and line numbers.
-
-            For each issue that has a concrete fix, include a "Suggested prompt"
-            fenced code block (```text) containing a self-contained instruction
-            the developer can copy-paste into Claude Code to apply the fix.
-            The prompt should reference exact file paths and describe the change
-            precisely — do NOT include raw code diffs, just the instruction.
-
-            Example:
-            ```text
-            In src/actions/foo.ts, the function on line 42 is missing
-            error handling. Add try/catch and surface the error correctly.
-            ```
-
-            ### Positive observations
-            Call out good patterns or improvements.
-
-            ### Suggestions
-            Optional improvements that are not blocking.
-            Include a suggested prompt (same format as above) for each suggestion.
-
-            Be constructive, specific, and concise.
-
   # ── Interactive @claude mentions ────────────────────────────────────
   interactive:
     if: |

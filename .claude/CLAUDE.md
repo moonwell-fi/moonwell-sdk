@@ -46,3 +46,42 @@ When asked to implement something, write code immediately. Do not spend time wri
 
 ### Testing
 - Type assertions (`as`) are acceptable inside test files
+
+## PR Reviews
+
+When asked to review a PR, follow this checklist:
+1. Bugs, logic errors, edge cases
+2. Security (XSS, injection, exposed secrets)
+3. Performance regressions
+4. Test coverage for changed code
+5. Adherence to project conventions (see Code Conventions above)
+
+Use this output structure:
+
+### Summary
+One-paragraph description of what the PR does.
+
+### Issues
+Categorise as 🔴 Critical, 🟡 Major, or 🔵 Minor.
+Include file path and line numbers.
+
+For each issue that has a concrete fix, include a "Suggested prompt"
+fenced code block (```text) containing a self-contained instruction
+the developer can copy-paste into Claude Code to apply the fix.
+The prompt should reference exact file paths and describe the change
+precisely — do NOT include raw code diffs, just the instruction.
+
+Example:
+```text
+In src/actions/foo.ts, the function on line 42 is missing
+error handling. Add try/catch and surface the error correctly.
+```
+
+### Positive observations
+Call out good patterns or improvements.
+
+### Suggestions
+Optional improvements that are not blocking.
+Include a suggested prompt (same format as above) for each suggestion.
+
+Be constructive, specific, and concise.
