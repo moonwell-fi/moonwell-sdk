@@ -28,41 +28,88 @@ export const calculateApy = (value: number) =>
   ((value * SECONDS_PER_DAY + 1) ** DAYS_PER_YEAR - 1) * 100;
 
 export type SnapshotPeriod = "1M" | "3M" | "1Y" | "ALL";
+export type SnapshotGranularity = "6h" | "1d" | "7d" | "14d" | "30d";
 
 /**
- * Calculate start and end times based on period or custom timestamps.
- * Priority: custom timestamps (both required) > period > default (365 days)
+ * Filter snapshots to keep every Nth data point based on granularity.
+ * "6h" and "1d" are handled natively by the API — no client-side filtering applied.
+ * Coarser granularities (5d, 20d, 30d) fetch "1d" from the API and thin here.
+ *
+ * Assumes snapshots are ordered (ascending or descending); always keeps index 0, N, 2N, …
+ */
+export function applyGranularity<T extends { timestamp: number }>(
+  snapshots: T[],
+  granularity: SnapshotGranularity,
+): T[] {
+  const step: Record<SnapshotGranularity, number> = {
+    "6h": 1,
+    "1d": 1,
+    "7d": 7,
+    "14d": 14,
+    "30d": 30,
+  };
+  const n = step[granularity];
+  if (n <= 1) return snapshots;
+  return snapshots.filter((_, i) => i % n === 0);
+}
+
+/**
+ * Map a SnapshotGranularity to the value passed to the lunar indexer API.
+ * "6h" is natively supported; coarser granularities (5d, 20d, 30d) are not,
+ * so we fetch "1d" and thin client-side via applyGranularity.
+ */
+export function toApiGranularity(
+  granularity: SnapshotGranularity,
+): "6h" | "1d" {
+  return granularity === "6h" ? "6h" : "1d";
+}
+
+/**
+ * Calculate start/end times and display granularity based on period or custom timestamps.
+ * Priority: custom timestamps > period > default (365 days)
+ *
+ * Granularity per period:
+ *   1M  → 6h  (4 data points per day, API-native)
+ *   3M  → 1d  (one data point per day)
+ *   1Y  → 7d  (one data point every 7 days, client-side filtered)
+ *   ALL → 14d (one data point every 14 days, client-side filtered)
  */
 export function calculateTimeRange(
-  period?: "1M" | "3M" | "1Y" | "ALL",
+  period?: SnapshotPeriod,
   startTime?: number,
   endTime?: number,
-): { startTime: number; endTime: number } {
+): { startTime: number; endTime: number; granularity: SnapshotGranularity } {
   const now = dayjs.utc();
   const end = endTime ?? now.unix();
   if (startTime !== undefined) {
-    return { startTime, endTime: end };
+    return { startTime, endTime: end, granularity: "1d" };
   }
   let start: number;
+  let granularity: SnapshotGranularity;
   switch (period) {
     case "1M":
       start = now.subtract(31, "days").unix();
+      granularity = "6h";
       break;
     case "3M":
       start = now.subtract(91, "days").unix();
+      granularity = "1d";
       break;
     case "1Y":
       start = now.subtract(366, "days").unix();
+      granularity = "7d";
       break;
     case "ALL":
-      start = now.subtract(10, "years").unix();
+      start = now.subtract(2, "years").unix();
+      granularity = "14d";
       break;
     default:
       start = now.subtract(366, "days").unix();
+      granularity = "1d";
       break;
   }
 
-  return { startTime: start, endTime: end };
+  return { startTime: start, endTime: end, granularity };
 }
 
 export const getEnvironmentFromArgs = (

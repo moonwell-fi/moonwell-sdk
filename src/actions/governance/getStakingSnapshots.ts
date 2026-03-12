@@ -4,8 +4,10 @@ import utc from "dayjs/plugin/utc.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type SnapshotPeriod,
+  applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
+  toApiGranularity,
 } from "../../common/index.js";
 import type { NetworkParameterType } from "../../common/types.js";
 import type { Chain } from "../../environments/index.js";
@@ -92,7 +94,7 @@ async function fetchStakingSnapshotsFromLunar(
     timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
-  const { startTime } = calculateTimeRange(
+  const { startTime, granularity } = calculateTimeRange(
     period,
     customStartTime,
     customEndTime,
@@ -104,7 +106,7 @@ async function fetchStakingSnapshotsFromLunar(
   do {
     const response = await lunarClient.getStakingSnapshots(chainId, {
       limit: 1000,
-      granularity: "1d",
+      granularity: toApiGranularity(granularity),
       startTime,
       ...(cursor && { cursor }),
     });
@@ -113,7 +115,8 @@ async function fetchStakingSnapshotsFromLunar(
     cursor = response.nextCursor;
   } while (cursor !== null);
 
-  return allSnapshots;
+  allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+  return applyGranularity(allSnapshots, granularity);
 }
 
 async function fetchStakingSnapshotsFromPonder(

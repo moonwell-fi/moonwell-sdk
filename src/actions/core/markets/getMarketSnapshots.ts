@@ -3,9 +3,11 @@ import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
   Amount,
   type SnapshotPeriod,
+  applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
   isStartOfDay,
+  toApiGranularity,
 } from "../../../common/index.js";
 import { buildMarketId } from "../../../common/lunar-indexer-helpers.js";
 import type { NetworkParameterType } from "../../../common/types.js";
@@ -188,7 +190,7 @@ async function fetchCoreMarketSnapshotsFromLunar(
   });
 
   const marketId = buildMarketId(environment.chainId, marketAddress);
-  const { startTime } = calculateTimeRange(
+  const { startTime, granularity } = calculateTimeRange(
     period,
     customStartTime,
     customEndTime,
@@ -203,7 +205,7 @@ async function fetchCoreMarketSnapshotsFromLunar(
     const response = await client.getMarketSnapshots(marketId, {
       limit: 1000,
       ...(cursor && { cursor }),
-      granularity: "1d",
+      granularity: toApiGranularity(granularity),
       startTime,
     });
 
@@ -212,17 +214,14 @@ async function fetchCoreMarketSnapshotsFromLunar(
       environment.chainId,
     );
 
-    const filteredSnapshots = transformed.filter((snapshot: MarketSnapshot) =>
-      isStartOfDay(Math.floor(snapshot.timestamp / 1000)),
-    );
-
-    allSnapshots.push(...filteredSnapshots);
+    allSnapshots.push(...transformed);
 
     cursor = response.nextCursor;
     page++;
   } while (cursor !== null && page < MAX_PAGES);
 
-  return allSnapshots.map((snapshot) => {
+  allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+  return applyGranularity(allSnapshots, granularity).map((snapshot) => {
     const supplied = snapshot.totalSupply;
     const suppliedUsd = snapshot.totalSupplyUsd;
     const price = supplied > 0 ? suppliedUsd / supplied : 0;
