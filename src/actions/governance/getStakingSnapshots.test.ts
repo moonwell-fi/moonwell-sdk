@@ -513,12 +513,13 @@ describe("Testing staking snapshots (unit / behavior)", () => {
   test("Ponder data is returned after successful fallback", async () => {
     mockGetStakingSnapshotsFn.mockRejectedValue(createAxiosError(500));
 
+    const recentTimestamp = Math.floor(Date.now() / 1000) - 86400; // yesterday
     const ponderItems = [
       {
         chainId: 8453,
         totalStaked: 5000,
         totalStakedUSD: 2500,
-        timestamp: 1700000000,
+        timestamp: recentTimestamp,
       },
     ];
     axiosPostSpy.mockResolvedValue({

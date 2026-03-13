@@ -54,7 +54,7 @@ export function applyGranularity<T extends { timestamp: number }>(
 
 /**
  * Map a SnapshotGranularity to the value passed to the lunar indexer API.
- * "6h" is natively supported; coarser granularities (5d, 20d, 30d) are not,
+ * "6h" is natively supported; coarser granularities (7d, 14d, 30d) are not,
  * so we fetch "1d" and thin client-side via applyGranularity.
  */
 export function toApiGranularity(

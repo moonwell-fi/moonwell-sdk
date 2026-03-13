@@ -75,9 +75,15 @@ export async function getStakingSnapshots<
     }
   }
 
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
   return fetchStakingSnapshotsFromPonder(
     environment.chainId,
     environment.indexerUrl,
+    startTime,
   );
 }
 
@@ -122,6 +128,7 @@ async function fetchStakingSnapshotsFromLunar(
 async function fetchStakingSnapshotsFromPonder(
   chainId: number,
   indexerUrl: string,
+  startTime?: number,
 ): Promise<StakingSnapshot[]> {
   try {
     const response = await axios.post<{
@@ -151,7 +158,10 @@ async function fetchStakingSnapshotsFromPonder(
     });
 
     if (response.status === 200 && response.data?.data?.stakingDailySnapshots) {
-      return response.data?.data?.stakingDailySnapshots.items;
+      const items = response.data.data.stakingDailySnapshots.items;
+      return startTime
+        ? items.filter((item) => item.timestamp >= startTime)
+        : items;
     } else {
       return [];
     }

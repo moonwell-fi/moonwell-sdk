@@ -55,11 +55,13 @@ export async function getMorphoVaultStakingSnapshots<
     endTime: customEndTime,
   } = args as GetMorphoVaultStakingSnapshotsParameters<environments, undefined>;
 
-  if (environment.lunarIndexerUrl) {
+  const { lunarIndexerUrl } = environment;
+  if (lunarIndexerUrl) {
     try {
       return await fetchVaultStakingSnapshotsFromLunar(
         vaultAddress,
-        environment,
+        lunarIndexerUrl,
+        environment.chainId,
         period,
         customStartTime,
         customEndTime,
@@ -75,18 +77,28 @@ export async function getMorphoVaultStakingSnapshots<
     }
   }
 
-  return fetchVaultStakingSnapshotsFromPonder(vaultAddress, environment);
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
+  return fetchVaultStakingSnapshotsFromPonder(
+    vaultAddress,
+    environment,
+    startTime,
+  );
 }
 
 async function fetchVaultStakingSnapshotsFromLunar(
   vaultAddress: string,
-  environment: Environment,
+  lunarIndexerUrl: string,
+  chainId: number,
   period?: SnapshotPeriod,
   customStartTime?: number,
   customEndTime?: number,
 ): Promise<MorphoVaultStakingSnapshot[]> {
   const lunarClient = createLunarIndexerClient({
-    baseUrl: environment.lunarIndexerUrl!,
+    baseUrl: lunarIndexerUrl,
     timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
@@ -100,17 +112,14 @@ async function fetchVaultStakingSnapshotsFromLunar(
   let cursor: string | null = null;
 
   do {
-    const response = await lunarClient.getVaultStakingSnapshots(
-      environment.chainId,
-      {
-        limit: 1000,
-        granularity: toApiGranularity(granularity),
-        startTime,
-        endTime,
-        vaultAddress: vaultAddress.toLowerCase(),
-        ...(cursor && { cursor }),
-      },
-    );
+    const response = await lunarClient.getVaultStakingSnapshots(chainId, {
+      limit: 1000,
+      granularity: toApiGranularity(granularity),
+      startTime,
+      endTime,
+      vaultAddress: vaultAddress.toLowerCase(),
+      ...(cursor && { cursor }),
+    });
 
     allSnapshots.push(...transformVaultStakingSnapshots(response.results));
     cursor = response.nextCursor;
@@ -120,19 +129,20 @@ async function fetchVaultStakingSnapshotsFromLunar(
   return applyGranularity(allSnapshots, granularity);
 }
 
+interface VaultStakingData {
+  totalStaked: number;
+  totalStakedUSD: number;
+  timestamp: number;
+}
+
 async function fetchVaultStakingSnapshotsFromPonder(
   vaultAddress: string,
   environment: Environment,
+  startTime?: number,
 ): Promise<MorphoVaultStakingSnapshot[]> {
   const dailyData: VaultStakingData[] = [];
   let hasNextPage = true;
   let endCursor: string | undefined;
-
-  interface VaultStakingData {
-    totalStaked: number;
-    totalStakedUSD: number;
-    timestamp: number;
-  }
 
   while (hasNextPage) {
     const result = await axios.post<{
@@ -172,7 +182,9 @@ async function fetchVaultStakingSnapshotsFromPonder(
     if (result.data.data.vaultStakingDailySnapshots) {
       dailyData.push(
         ...result.data.data.vaultStakingDailySnapshots.items.filter(
-          (f: { timestamp: number }) => isStartOfDay(f.timestamp),
+          (f: { timestamp: number }) =>
+            isStartOfDay(f.timestamp) &&
+            (startTime === undefined || f.timestamp >= startTime),
         ),
       );
       hasNextPage =
