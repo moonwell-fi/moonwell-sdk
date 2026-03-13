@@ -29,6 +29,43 @@ export interface LunarSnapshotOptions {
   endTime?: number;
 }
 
+export interface LunarStakingSnapshotOptions {
+  limit?: number;
+  cursor?: string;
+  granularity?: "1h" | "6h" | "1d";
+  startTime?: number;
+  endTime?: number;
+}
+
+export interface LunarVaultStakingSnapshotOptions
+  extends LunarStakingSnapshotOptions {
+  vaultAddress?: string;
+}
+
+export interface LunarStakingSnapshot {
+  id: string;
+  chainId: number;
+  stakingTokenAddress: string;
+  timestamp: number;
+  blockNumber: string;
+  totalStaked: string;
+  totalStakedUSD: string;
+  wellPrice: string;
+  timeInterval: number;
+}
+
+export interface LunarVaultStakingSnapshot {
+  id: string;
+  chainId: number;
+  vaultAddress: string;
+  timestamp: number;
+  blockNumber: string;
+  totalStaked: string;
+  totalStakedUSD: string;
+  underlyingPrice: string;
+  timeInterval: number;
+}
+
 export interface LunarPortfolioOptions {
   startTime: number;
   endTime: number;
@@ -213,10 +250,19 @@ export const DEFAULT_LUNAR_TIMEOUT_MS = 10_000;
 
 export class LunarIndexerClient {
   private client: AxiosInstance;
+  private stakingClient: AxiosInstance;
 
   constructor(config: LunarIndexerConfig) {
     this.client = axios.create({
       baseURL: `${config.baseUrl}/api/v1/core`,
+      timeout: config.timeout || DEFAULT_LUNAR_TIMEOUT_MS,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    this.stakingClient = axios.create({
+      baseURL: `${config.baseUrl}/api/v1/staking`,
       timeout: config.timeout || DEFAULT_LUNAR_TIMEOUT_MS,
       headers: {
         "Content-Type": "application/json",
@@ -389,6 +435,65 @@ export class LunarIndexerClient {
         `Failed to fetch portfolio for account ${accountAddress}`,
         axios.isAxiosError(error) ? error.response?.status : undefined,
         `/account/${accountAddress}/portfolio`,
+        error as Error,
+      );
+    }
+  }
+
+  /**
+   * Get staking snapshots for a specific chain (stkWELL staking)
+   */
+  async getStakingSnapshots(
+    chainId: number,
+    options?: LunarStakingSnapshotOptions,
+  ): Promise<LunarPaginatedResponse<LunarStakingSnapshot>> {
+    try {
+      const params: Record<string, string> = {};
+      if (options?.limit) params.limit = options.limit.toString();
+      if (options?.cursor) params.cursor = options.cursor;
+      if (options?.granularity) params.granularity = options.granularity;
+      if (options?.startTime) params.startTime = options.startTime.toString();
+      if (options?.endTime) params.endTime = options.endTime.toString();
+
+      const response = await this.stakingClient.get<
+        LunarPaginatedResponse<LunarStakingSnapshot>
+      >(`/snapshots/${chainId}`, { params });
+      return response.data;
+    } catch (error) {
+      throw new LunarIndexerError(
+        `Failed to fetch staking snapshots for chain ${chainId}`,
+        axios.isAxiosError(error) ? error.response?.status : undefined,
+        `/snapshots/${chainId}`,
+        error as Error,
+      );
+    }
+  }
+
+  /**
+   * Get vault staking snapshots for a specific chain (MetaMorpho vault staking)
+   */
+  async getVaultStakingSnapshots(
+    chainId: number,
+    options?: LunarVaultStakingSnapshotOptions,
+  ): Promise<LunarPaginatedResponse<LunarVaultStakingSnapshot>> {
+    try {
+      const params: Record<string, string> = {};
+      if (options?.limit) params.limit = options.limit.toString();
+      if (options?.cursor) params.cursor = options.cursor;
+      if (options?.granularity) params.granularity = options.granularity;
+      if (options?.startTime) params.startTime = options.startTime.toString();
+      if (options?.endTime) params.endTime = options.endTime.toString();
+      if (options?.vaultAddress) params.vaultAddress = options.vaultAddress;
+
+      const response = await this.stakingClient.get<
+        LunarPaginatedResponse<LunarVaultStakingSnapshot>
+      >(`/vault-snapshots/${chainId}`, { params });
+      return response.data;
+    } catch (error) {
+      throw new LunarIndexerError(
+        `Failed to fetch vault staking snapshots for chain ${chainId}`,
+        axios.isAxiosError(error) ? error.response?.status : undefined,
+        `/vault-snapshots/${chainId}`,
         error as Error,
       );
     }

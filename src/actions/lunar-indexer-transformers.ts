@@ -5,10 +5,14 @@
  */
 
 import type { MarketSnapshot } from "../types/market.js";
+import type { MorphoVaultStakingSnapshot } from "../types/morphoVault.js";
+import type { StakingSnapshot } from "../types/staking.js";
 import type { UserPositionSnapshot } from "../types/userPosition.js";
 import type {
   LunarMarketSnapshot,
   LunarPortfolio,
+  LunarStakingSnapshot,
+  LunarVaultStakingSnapshot,
 } from "./lunar-indexer-client.js";
 
 // ============================================================================
@@ -92,6 +96,70 @@ export function transformPortfolioToSnapshots(
       totalCollateralUsd: totalSupplyUsd, // Assuming all supplies are collateral
     };
   });
+}
+
+// ============================================================================
+// Staking Snapshot Transformation
+// ============================================================================
+
+/**
+ * Transform a Lunar staking snapshot to SDK StakingSnapshot format
+ *
+ * Key differences:
+ * - Lunar returns totalStaked/totalStakedUSD as decimal strings
+ * - Lunar timestamp is already in Unix seconds (same as SDK)
+ */
+export function transformStakingSnapshot(
+  snapshot: LunarStakingSnapshot,
+): StakingSnapshot {
+  return {
+    chainId: snapshot.chainId,
+    totalStaked: Number(snapshot.totalStaked),
+    totalStakedUSD: Number(snapshot.totalStakedUSD),
+    timestamp: snapshot.timestamp,
+  };
+}
+
+/**
+ * Transform an array of Lunar staking snapshots
+ */
+export function transformStakingSnapshots(
+  snapshots: LunarStakingSnapshot[],
+): StakingSnapshot[] {
+  return snapshots.map(transformStakingSnapshot);
+}
+
+// ============================================================================
+// Vault Staking Snapshot Transformation
+// ============================================================================
+
+/**
+ * Transform a Lunar vault staking snapshot to SDK MorphoVaultStakingSnapshot format
+ *
+ * Key differences:
+ * - Lunar returns totalStaked/totalStakedUSD as decimal strings
+ * - Lunar timestamp is in Unix seconds; SDK expects milliseconds
+ * - Lunar field is totalStakedUSD (uppercase); SDK type is totalStakedUsd (mixed case)
+ */
+export function transformVaultStakingSnapshot(
+  snapshot: LunarVaultStakingSnapshot,
+): MorphoVaultStakingSnapshot {
+  return {
+    chainId: snapshot.chainId,
+    vaultAddress: snapshot.vaultAddress,
+    totalStaked: Number(snapshot.totalStaked),
+    totalStakedUsd: Number(snapshot.totalStakedUSD),
+    timestamp: snapshot.timestamp * 1000,
+  };
+}
+
+/**
+ * Transform an array of Lunar vault staking snapshots
+ */
+export function transformVaultStakingSnapshots(
+  snapshots: LunarVaultStakingSnapshot[],
+): MorphoVaultStakingSnapshot[] {
+  return snapshots.map(transformVaultStakingSnapshot);
 }
 
 // ============================================================================
