@@ -190,7 +190,7 @@ async function fetchCoreMarketSnapshotsFromLunar(
   });
 
   const marketId = buildMarketId(environment.chainId, marketAddress);
-  const { startTime, granularity } = calculateTimeRange(
+  const { startTime, endTime, granularity } = calculateTimeRange(
     period,
     customStartTime,
     customEndTime,
@@ -207,6 +207,7 @@ async function fetchCoreMarketSnapshotsFromLunar(
       ...(cursor && { cursor }),
       granularity: toApiGranularity(granularity),
       startTime,
+      endTime,
     });
 
     const transformed = transformMarketSnapshots(

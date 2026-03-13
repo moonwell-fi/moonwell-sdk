@@ -48,7 +48,7 @@ export type GetUserPositionSnapshotsReturnType = Promise<
  * @param args.period - Predefined time period: "1M" (31 days), "3M" (91 days), "1Y" (366 days), or "ALL" (all available history)
  * @param args.startTime - Custom start time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided.
  * @param args.endTime - Custom end time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided.
- * @param args.granularity - Data granularity: "1h", "6h", or "1d" (default). Determines snapshot frequency.
+ * @param args.granularity - Data granularity: "6h" or "1d". Determines snapshot frequency.
  *
  * @returns Array of user position snapshots with USD values for supply, borrow, and collateral
  *
@@ -126,7 +126,7 @@ async function fetchUserPositionSnapshotsFromLunar(
   period?: "1M" | "3M" | "1Y" | "ALL",
   customStartTime?: number,
   customEndTime?: number,
-  granularity: "6h" | "1d" = "1d",
+  granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
     throw new Error("Lunar Indexer URL not configured");

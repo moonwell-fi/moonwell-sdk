@@ -39,7 +39,6 @@ export async function getStakingSnapshots<
   client: MoonwellClient,
   args?: GetStakingSnapshotsParameters<environments, Network>,
 ): GetStakingSnapshotsReturnType {
-  console.log("Fetching staking snapshots with args:", args);
   const environment = getEnvironmentFromArgs(client, args);
 
   if (!environment) {
@@ -94,7 +93,7 @@ async function fetchStakingSnapshotsFromLunar(
     timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
-  const { startTime, granularity } = calculateTimeRange(
+  const { startTime, endTime, granularity } = calculateTimeRange(
     period,
     customStartTime,
     customEndTime,
@@ -108,6 +107,7 @@ async function fetchStakingSnapshotsFromLunar(
       limit: 1000,
       granularity: toApiGranularity(granularity),
       startTime,
+      endTime,
       ...(cursor && { cursor }),
     });
 

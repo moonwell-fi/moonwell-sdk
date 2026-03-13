@@ -2,9 +2,11 @@ import axios from "axios";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
   type SnapshotPeriod,
+  applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
   isStartOfDay,
+  toApiGranularity,
 } from "../../../common/index.js";
 import type {
   MorphoVaultParameterType,
@@ -88,7 +90,7 @@ async function fetchVaultStakingSnapshotsFromLunar(
     timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
-  const { startTime } = calculateTimeRange(
+  const { startTime, endTime, granularity } = calculateTimeRange(
     period,
     customStartTime,
     customEndTime,
@@ -102,8 +104,9 @@ async function fetchVaultStakingSnapshotsFromLunar(
       environment.chainId,
       {
         limit: 1000,
-        granularity: "1d",
+        granularity: toApiGranularity(granularity),
         startTime,
+        endTime,
         vaultAddress: vaultAddress.toLowerCase(),
         ...(cursor && { cursor }),
       },
@@ -113,7 +116,8 @@ async function fetchVaultStakingSnapshotsFromLunar(
     cursor = response.nextCursor;
   } while (cursor !== null);
 
-  return allSnapshots;
+  allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+  return applyGranularity(allSnapshots, granularity);
 }
 
 async function fetchVaultStakingSnapshotsFromPonder(

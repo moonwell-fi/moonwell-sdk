@@ -9,8 +9,6 @@ export { BaseError, HttpRequestError } from "./error.js";
 export type { HttpRequestErrorType } from "./error.js";
 export type { MultichainReturnType } from "./types.js";
 
-dayjs.extend(utc);
-
 export const SECONDS_PER_DAY = 86400;
 export const DAYS_PER_YEAR = 365;
 
@@ -33,9 +31,10 @@ export type SnapshotGranularity = "6h" | "1d" | "7d" | "14d" | "30d";
 /**
  * Filter snapshots to keep every Nth data point based on granularity.
  * "6h" and "1d" are handled natively by the API — no client-side filtering applied.
- * Coarser granularities (5d, 20d, 30d) fetch "1d" from the API and thin here.
+ * Coarser granularities (7d, 14d, 30d) fetch "1d" from the API and thin here.
  *
- * Assumes snapshots are ordered (ascending or descending); always keeps index 0, N, 2N, …
+ * Callers must sort snapshots ascending by timestamp before calling this function.
+ * Always keeps index 0, N, 2N, … so the oldest data point is always retained.
  */
 export function applyGranularity<T extends { timestamp: number }>(
   snapshots: T[],

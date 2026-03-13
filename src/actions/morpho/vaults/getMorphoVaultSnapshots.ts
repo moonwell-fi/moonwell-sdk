@@ -80,7 +80,7 @@ async function fetchVaultSnapshotsFromLunarIndexer(
   const MAX_PAGES = 100;
   let page = 0;
 
-  const { startTime, granularity } = calculateTimeRange(
+  const { startTime, endTime, granularity } = calculateTimeRange(
     period,
     customStartTime,
     customEndTime,
@@ -94,6 +94,7 @@ async function fetchVaultSnapshotsFromLunarIndexer(
         limit: 1000,
         granularity: toApiGranularity(granularity),
         startTime,
+        endTime,
         ...(cursor && { cursor }),
       },
     );
