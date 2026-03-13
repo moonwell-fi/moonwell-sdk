@@ -11,12 +11,49 @@ on:
     types: [opened, assigned]
 
 jobs:
-  # ── Interactive @claude mentions ────────────────────────────────────
+  # ── @claude review → Opus for deep code reviews ─────────────────────
+  review:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude review')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude review')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude review'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Review PR with Opus
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_sticky_comment: false
+          track_progress: true
+          claude_args: '--model claude-opus-4-6 --max-turns 20'
+          prompt: |
+            Review this pull request thoroughly.
+
+            IMPORTANT — Incremental reviews:
+            Before writing your review, check the PR comments for any previous review comments you left.
+            If prior reviews exist, read them carefully and:
+            1. Note which issues from previous reviews have been fixed — acknowledge these
+            2. Note which issues remain unresolved — flag them again with a reference to the earlier review
+            3. Focus the bulk of your review on new changes since the last review
+            This gives the developer a clear picture of progress across review rounds.
+
+  # ── @claude (general) → Sonnet for quick tasks ──────────────────────
   interactive:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && !contains(github.event.comment.body, '@claude review')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && !contains(github.event.comment.body, '@claude review')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && !contains(github.event.review.body, '@claude review')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
@@ -31,7 +68,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Respond to @claude
+      - name: Respond to @claude with Sonnet
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
