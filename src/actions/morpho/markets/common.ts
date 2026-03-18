@@ -280,11 +280,6 @@ async function getMorphoMarketsDataFromOnChain(params: {
       : [],
   );
 
-  const sharedLiquidityByChain = new Map<
-    number,
-    GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[]
-  >();
-
   const initialMarkets: MorphoMarket[] = [];
   fulfilledMarketsInfo.forEach(({ environment, marketsInfo }) => {
     marketsInfo.forEach((marketInfo) => {
@@ -427,13 +422,6 @@ async function getMorphoMarketsDataFromOnChain(params: {
           }
         }
 
-        const envSharedLiquidity = sharedLiquidityByChain.get(
-          environment.chainId,
-        );
-        const publicAllocatorSharedLiquidity = envSharedLiquidity?.find(
-          (item) => item.marketId === marketInfo.marketId,
-        );
-
         const performanceFee = new Amount(marketInfo.fee, 18).value;
         const loanToValue = new Amount(marketInfo.lltv, 18).value;
 
@@ -503,8 +491,7 @@ async function getMorphoMarketsDataFromOnChain(params: {
           },
           rewards: [],
           publicAllocatorSharedLiquidity:
-            publicAllocatorSharedLiquidity?.publicAllocatorSharedLiquidity ||
-            [],
+            marketRewardData?.publicAllocatorSharedLiquidity ?? [],
         };
 
         return [mapping];
