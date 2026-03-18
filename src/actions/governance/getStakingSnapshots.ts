@@ -1,6 +1,4 @@
 import axios from "axios";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type SnapshotPeriod,
@@ -18,8 +16,6 @@ import {
   shouldFallback,
 } from "../lunar-indexer-client.js";
 import { transformStakingSnapshots } from "../lunar-indexer-transformers.js";
-
-dayjs.extend(utc);
 
 export type GetStakingSnapshotsParameters<
   environments,
@@ -45,15 +41,11 @@ export async function getStakingSnapshots<
     return [];
   }
 
-  const period = (
-    args as GetStakingSnapshotsParameters<environments, undefined>
-  )?.period;
-  const customStartTime = (
-    args as GetStakingSnapshotsParameters<environments, undefined>
-  )?.startTime;
-  const customEndTime = (
-    args as GetStakingSnapshotsParameters<environments, undefined>
-  )?.endTime;
+  const {
+    period,
+    startTime: customStartTime,
+    endTime: customEndTime,
+  } = (args ?? {}) as GetStakingSnapshotsParameters<environments, undefined>;
 
   if (environment.lunarIndexerUrl) {
     try {
@@ -107,6 +99,8 @@ async function fetchStakingSnapshotsFromLunar(
 
   const allSnapshots: StakingSnapshot[] = [];
   let cursor: string | null = null;
+  const MAX_PAGES = 100;
+  let page = 0;
 
   do {
     const response = await lunarClient.getStakingSnapshots(chainId, {
@@ -119,7 +113,8 @@ async function fetchStakingSnapshotsFromLunar(
 
     allSnapshots.push(...transformStakingSnapshots(response.results));
     cursor = response.nextCursor;
-  } while (cursor !== null);
+    page++;
+  } while (cursor !== null && page < MAX_PAGES);
 
   allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
   return applyGranularity(allSnapshots, granularity);

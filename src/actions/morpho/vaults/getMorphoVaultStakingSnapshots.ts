@@ -110,6 +110,8 @@ async function fetchVaultStakingSnapshotsFromLunar(
 
   const allSnapshots: MorphoVaultStakingSnapshot[] = [];
   let cursor: string | null = null;
+  const MAX_PAGES = 100;
+  let page = 0;
 
   do {
     const response = await lunarClient.getVaultStakingSnapshots(chainId, {
@@ -123,7 +125,8 @@ async function fetchVaultStakingSnapshotsFromLunar(
 
     allSnapshots.push(...transformVaultStakingSnapshots(response.results));
     cursor = response.nextCursor;
-  } while (cursor !== null);
+    page++;
+  } while (cursor !== null && page < MAX_PAGES);
 
   allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
   return applyGranularity(allSnapshots, granularity);

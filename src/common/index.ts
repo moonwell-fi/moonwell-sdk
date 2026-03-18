@@ -99,10 +99,10 @@ export function calculateTimeRange(
       granularity = "7d";
       break;
     case "ALL":
-      start = now.subtract(2, "years").unix();
+      start = now.subtract(3, "years").unix();
       granularity = "14d";
       break;
-    default:
+    case undefined:
       start = now.subtract(366, "days").unix();
       granularity = "1d";
       break;
