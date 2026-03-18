@@ -20,7 +20,6 @@ import {
   fetchMarketSnapshotsFromIndexer,
   transformIsolatedMarketSnapshotFromIndexer,
 } from "../../morpho/markets/lunarIndexerTransform.js";
-import { getSubgraph } from "../../morpho/utils/graphql.js";
 
 export type GetMarketSnapshotsParameters<
   environments,
@@ -347,8 +346,7 @@ async function fetchMorphoGraphQL(
 ) {
   try {
     const url =
-      environment.custom.morpho?.blueApiUrl ||
-      "https://blue-api.morpho.org/graphql";
+      environment.custom.morpho?.apiUrl || "https://api.morpho.org/graphql";
     const response = await axios.post(
       url,
       { query: query, operationName, variables },
@@ -575,17 +573,7 @@ export async function fetchIsolatedMarketSnapshots(
     }
   }
 
-  if (environment.custom.morpho?.minimalDeployment === false) {
-    return fetchIsolatedMarketSnapshotsFromBlueApi(
-      marketAddress,
-      environment,
-      period,
-      customStartTime,
-      customEndTime,
-    );
-  }
-
-  return fetchIsolatedMarketSnapshotsSubgraph(
+  return fetchIsolatedMarketSnapshotsFromBlueApi(
     marketAddress,
     environment,
     period,
@@ -808,169 +796,6 @@ async function fetchIsolatedMarketSnapshotsFromBlueApi(
             };
           },
         );
-
-      return markets;
-    } catch (ex) {
-      return [];
-    }
-  } else {
-    return [];
-  }
-}
-
-async function fetchIsolatedMarketSnapshotsSubgraph(
-  marketAddress: string,
-  environment: Environment,
-  period?: "1M" | "3M" | "1Y" | "ALL",
-  customStartTime?: number,
-  customEndTime?: number,
-): Promise<MarketSnapshot[]> {
-  const marketConfig = Object.values(environment.config.morphoMarkets).find(
-    (market) => market.id.toLowerCase() === marketAddress.toLowerCase(),
-  );
-
-  const isStkWellMarket =
-    marketConfig &&
-    environment.config.tokens[marketConfig.collateralToken]?.symbol ===
-      "stkWELL";
-
-  // If stkWELL market, fetch WELL price from subgraph. stkWELL and WELL have the same price
-  let wellPrice: number | null = null;
-  if (isStkWellMarket) {
-    const wellMarketConfig = Object.values(
-      environment.config.morphoMarkets,
-    ).find(
-      (market) =>
-        market.collateralToken === "WELL" || market.loanToken === "WELL",
-    );
-
-    if (wellMarketConfig) {
-      const wellQuery = `    
-        {
-          marketDailySnapshots (where:{market:"${wellMarketConfig.id.toLowerCase()}"}, orderBy:timestamp, orderDirection:desc, first: 1) {
-            inputTokenPriceUSD
-            outputTokenPriceUSD
-          }
-        }
-      `;
-
-      const wellResult = await getSubgraph<{
-        marketDailySnapshots: Array<{
-          inputTokenPriceUSD: string;
-          outputTokenPriceUSD: string;
-        }>;
-      }>(environment, wellQuery);
-
-      if (wellResult?.marketDailySnapshots?.[0]) {
-        wellPrice =
-          wellMarketConfig.collateralToken === "WELL"
-            ? Number(wellResult.marketDailySnapshots[0].inputTokenPriceUSD)
-            : Number(wellResult.marketDailySnapshots[0].outputTokenPriceUSD);
-      }
-    }
-  }
-
-  const { startTime: subgraphStartTime } = calculateTimeRange(
-    period,
-    customStartTime,
-    customEndTime,
-  );
-  const query = `
-    {
-      marketDailySnapshots (where:{market:"${marketAddress.toLowerCase()}", timestamp_gte:${subgraphStartTime}}, orderBy:timestamp, orderDirection:desc, first: 1000) {
-        market {
-          maximumLTV
-          inputToken {
-            decimals
-          }
-          borrowedToken {
-            decimals
-          }
-        }
-        variableBorrowedTokenBalance
-        outputTokenPriceUSD
-        inputTokenPriceUSD
-        inputTokenBalance
-        timestamp      
-      }
-    }
-`;
-
-  const result = await getSubgraph<{
-    marketDailySnapshots: Array<{
-      market: {
-        maximumLTV: string;
-        inputToken: {
-          symbol: string;
-          decimals: number;
-        };
-        borrowedToken: {
-          symbol: string;
-          decimals: number;
-        };
-      };
-      variableBorrowedTokenBalance: string;
-      outputTokenPriceUSD: string;
-      inputTokenPriceUSD: string;
-      inputTokenBalance: string;
-      timestamp: number;
-    }>;
-  }>(environment, query);
-
-  if (result) {
-    try {
-      const markets: MarketSnapshot[] = result.marketDailySnapshots.map(
-        (item) => {
-          const supplyDecimals = item.market.borrowedToken.decimals;
-
-          const supplyAssets = item.inputTokenBalance;
-
-          const totalSupplyInLoanToken = new Amount(
-            BigInt(supplyAssets),
-            Number(supplyDecimals),
-          ).value;
-
-          let collateralTokenPrice = Number(item.inputTokenPriceUSD);
-
-          if (isStkWellMarket && wellPrice !== null) {
-            collateralTokenPrice = wellPrice;
-          }
-
-          const totalSupply = totalSupplyInLoanToken / collateralTokenPrice;
-
-          const borrowAssets = item.variableBorrowedTokenBalance;
-
-          const totalBorrows = new Amount(
-            BigInt(borrowAssets),
-            Number(supplyDecimals),
-          ).value;
-
-          const totalLiquidityInLoanToken = Math.max(
-            totalSupplyInLoanToken - totalBorrows,
-            0,
-          );
-
-          const totalLiquidity =
-            totalLiquidityInLoanToken / collateralTokenPrice;
-
-          return {
-            chainId: environment.chainId,
-            timestamp: item.timestamp * 1000,
-            marketId: marketAddress.toLowerCase(),
-            totalBorrows,
-            totalBorrowsUsd: Number(item.outputTokenPriceUSD) * totalBorrows,
-            totalSupply,
-            totalSupplyUsd: collateralTokenPrice * totalSupply,
-            totalLiquidity,
-            totalLiquidityUsd:
-              Number(item.outputTokenPriceUSD) * totalLiquidityInLoanToken,
-            baseSupplyApy: 0,
-            baseBorrowApy: 0,
-            loanTokenPrice: Number(item.outputTokenPriceUSD),
-            collateralTokenPrice,
-          };
-        },
-      );
 
       return markets;
     } catch (ex) {
