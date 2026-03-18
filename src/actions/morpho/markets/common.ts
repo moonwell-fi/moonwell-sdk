@@ -15,7 +15,7 @@ import {
   transformMarketsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
-interface LunarVaultMarket {
+export interface LunarVaultMarket {
   marketId: string;
   flowCapIn: string;
   flowCapOut: string;
@@ -25,14 +25,14 @@ interface LunarVaultMarket {
   vaultSupplyAssets: string;
 }
 
-interface LunarVault {
+export interface LunarVault {
   address: string;
   name: string;
   fee: string;
   markets: LunarVaultMarket[];
 }
 
-interface LunarMarketLiveData {
+export interface LunarMarketLiveData {
   totalSupplyAssets?: string;
   totalBorrowAssets?: string;
   totalLiquidity?: string;
@@ -40,7 +40,7 @@ interface LunarMarketLiveData {
   collateralToken?: { address: string; decimals: number };
 }
 
-interface LunarSharedLiquidityResponse {
+export interface LunarSharedLiquidityResponse {
   vaults: LunarVault[];
   markets: Record<string, LunarMarketLiveData>;
 }
@@ -55,7 +55,7 @@ async function fetchSharedLiquidityFromLunar(
   return response.data;
 }
 
-function computeSharedLiquidityFromLunar(
+export function computeSharedLiquidityFromLunar(
   data: LunarSharedLiquidityResponse,
   targetMarkets: string[],
   marketParamsMap: Map<
