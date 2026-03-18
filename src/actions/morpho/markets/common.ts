@@ -86,10 +86,6 @@ function computeSharedLiquidityFromLunar(
       targetLiveData?.loanToken?.decimals ??
       targetParams?.loanToken.decimals ??
       18;
-    const targetCollateralDecimals =
-      targetLiveData?.collateralToken?.decimals ??
-      targetParams?.collateralToken.decimals ??
-      18;
     const targetScale = 10 ** targetLoanDecimals;
 
     for (const vault of data.vaults) {
@@ -209,7 +205,6 @@ function computeSharedLiquidityFromLunar(
     return {
       chainId: 0,
       marketId: targetId,
-      collateralAssets: new Amount(0n, targetCollateralDecimals),
       reallocatableLiquidityAssets: new Amount(
         BigInt(Math.round(reallocatableLiquidityAssets * targetScale)),
         targetLoanDecimals,
@@ -576,7 +571,6 @@ async function getMorphoMarketsDataFromOnChain(params: {
 type GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType = {
   chainId: number;
   marketId: string;
-  collateralAssets: Amount;
   reallocatableLiquidityAssets: Amount;
   publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
 };
@@ -593,7 +587,7 @@ type GetMorphoMarketsRewardsReturnType = {
 
 async function getMorphoMarketRewards(
   environment: Environment,
-  markets: MorphoMarket[],
+  markets: { marketId: string; chainId: number }[],
 ): Promise<GetMorphoMarketsRewardsReturnType[]> {
   if (markets.length === 0) {
     return [];
@@ -926,19 +920,48 @@ async function getMorphoMarketsDataFromIndexer(params: {
     string,
     PublicAllocatorSharedLiquidityType[]
   >();
-  const collateralAssetsFromLunarMap = new Map<string, Amount>();
 
   fulfilledSharedLiquidity.forEach(({ environment, data }) => {
     data.forEach((item) => {
       const key = `${environment.chainId}-${item.marketId.toLowerCase()}`;
       sharedLiquidityMap.set(key, item.publicAllocatorSharedLiquidity);
-      collateralAssetsFromLunarMap.set(key, item.collateralAssets);
     });
   });
 
-  // Build rewards map from indexer market data (rewards are included in the
-  // fetchMarketsFromIndexer response when includeRewards: true was passed above).
+  // Always fetch collateralAssets from api.morpho.org regardless of includeRewards,
+  // since the lunar-indexer does not expose this field.
+  const allIndexerMarkets = fulfilledMarkets.flatMap(
+    ({ environment, markets }) =>
+      markets.map((m) => ({
+        marketId: m.marketId,
+        chainId: environment.chainId,
+      })),
+  );
+  const rewardEnvironment =
+    params.environments.find((env) => env.custom?.morpho?.apiUrl) ??
+    params.environments[0];
+  const morphoApiData = await getMorphoMarketRewards(
+    rewardEnvironment,
+    allIndexerMarkets,
+  );
+
   const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
+
+  // Seed map with collateralAssets from the Morpho API
+  morphoApiData.forEach((item) => {
+    const key = `${item.chainId}-${item.marketId.toLowerCase()}`;
+    rewardsDataMap.set(key, {
+      chainId: item.chainId,
+      marketId: item.marketId,
+      collateralAssets: item.collateralAssets,
+      collateralAssetsUsd: item.collateralAssetsUsd,
+      rewardsSupplyApy: 0,
+      rewardsBorrowApy: 0,
+      rewards: [],
+    });
+  });
+
+  // Overlay rewards from the indexer when requested
   if (params.includeRewards) {
     fulfilledMarkets.forEach(({ environment, markets }) => {
       markets.forEach((market) => {
@@ -957,11 +980,12 @@ async function getMorphoMarketsDataFromIndexer(params: {
           borrowApr: Number.parseFloat(r.borrowApr),
           borrowAmount: 0,
         }));
+        const existing = rewardsDataMap.get(key);
         rewardsDataMap.set(key, {
           chainId: environment.chainId,
           marketId: market.marketId,
-          collateralAssets: null,
-          collateralAssetsUsd: null,
+          collateralAssets: existing?.collateralAssets ?? null,
+          collateralAssetsUsd: existing?.collateralAssetsUsd ?? null,
           rewardsSupplyApy: rewards.reduce((acc, r) => acc + r.supplyApr, 0),
           rewardsBorrowApy: rewards.reduce((acc, r) => acc + r.borrowApr, 0),
           rewards,
@@ -969,25 +993,6 @@ async function getMorphoMarketsDataFromIndexer(params: {
       });
     });
   }
-
-  // Populate collateralAssets from the lunar-indexer shared liquidity data
-  collateralAssetsFromLunarMap.forEach((collateralAssets, key) => {
-    const existing = rewardsDataMap.get(key);
-    if (existing) {
-      rewardsDataMap.set(key, { ...existing, collateralAssets });
-    } else {
-      const [chainIdStr, ...rest] = key.split("-");
-      rewardsDataMap.set(key, {
-        chainId: Number(chainIdStr),
-        marketId: rest.join("-"),
-        collateralAssets,
-        collateralAssetsUsd: null,
-        rewardsSupplyApy: 0,
-        rewardsBorrowApy: 0,
-        rewards: [],
-      });
-    }
-  });
 
   // Transform markets from indexer format to SDK format
   const transformedMarkets = fulfilledMarkets.flatMap(
