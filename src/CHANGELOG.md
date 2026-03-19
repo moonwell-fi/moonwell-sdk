@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.9.34
+
+### Patch Changes
+
+- [#238](https://github.com/moonwell-fi/moonwell-sdk/pull/238) [`95ec27a3200f362f9b70d393815cd4248387235d`](https://github.com/moonwell-fi/moonwell-sdk/commit/95ec27a3200f362f9b70d393815cd4248387235d) Thanks [@bprofiro](https://github.com/bprofiro)! - include timestamp in proposal state changes
+
 ## 0.9.33
 
 ### Patch Changes
