@@ -35,6 +35,7 @@ export type Proposal = {
     transactionHash: string;
     state: string;
     chainId: number;
+    timestamp?: number;
   }[];
   environment?: Environment;
 };
@@ -86,5 +87,6 @@ export type ExtendedProposalData = {
     transactionHash: string;
     state: string;
     chainId: number;
+    timestamp?: number;
   }[];
 };

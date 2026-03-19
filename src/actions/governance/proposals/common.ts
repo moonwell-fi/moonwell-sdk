@@ -153,6 +153,7 @@ export const formatApiProposalData = (
       transactionHash: sc.transactionHash,
       state: sc.state,
       chainId: sc.chainId, // Uses the chainId from the state change itself
+      timestamp: sc.timestamp !== undefined ? Number(sc.timestamp) : undefined,
     })) || [];
 
   const subtitle = extractProposalSubtitle(apiProposal.description);
