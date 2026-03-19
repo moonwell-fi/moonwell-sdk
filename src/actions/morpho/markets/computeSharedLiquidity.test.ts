@@ -111,6 +111,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     // amount = min(liquidity=800, vaultSupply=1000, flowCapOut=500) = 500
@@ -139,6 +140,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     // maxIn = 100, even though source could provide 500
@@ -185,6 +187,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     // maxIn = min(flowCapIn=5000, remainingCap=100) = 100
@@ -212,6 +215,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     // Vault A: amount = min(600, 1000, 500) = 500 → remaining = 100
@@ -252,6 +256,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     expect(result?.reallocatableLiquidityAssets.value).toBe(0);
@@ -275,6 +280,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     expect(result?.reallocatableLiquidityAssets.value).toBe(0);
@@ -297,6 +303,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     expect(result?.reallocatableLiquidityAssets.value).toBe(0);
@@ -319,6 +326,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     expect(result?.reallocatableLiquidityAssets.value).toBe(0);
@@ -341,6 +349,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     expect(result?.reallocatableLiquidityAssets.value).toBe(0);
@@ -367,6 +376,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     expect(result?.reallocatableLiquidityAssets.value).toBeCloseTo(600, 4);
@@ -411,6 +421,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     // liquidity = 900 - 200 = 700; amount = min(700, 1000, 500) = 500
@@ -457,6 +468,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       paramsMap,
+      8453,
     );
 
     expect(result?.reallocatableLiquidityAssets.value).toBeCloseTo(500, 4);
@@ -483,6 +495,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID, TARGET_ID_B],
       emptyParamsMap,
+      8453,
     );
 
     expect(results).toHaveLength(2);
@@ -529,6 +542,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       paramsMap,
+      8453,
     );
 
     const [entry] = result?.publicAllocatorSharedLiquidity ?? [];
@@ -554,6 +568,7 @@ describe("computeSharedLiquidityFromLunar", () => {
       data,
       [TARGET_ID],
       emptyParamsMap,
+      8453,
     );
 
     const [entry] = result?.publicAllocatorSharedLiquidity ?? [];

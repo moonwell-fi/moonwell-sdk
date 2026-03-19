@@ -8,6 +8,7 @@ import type {
   PublicAllocatorSharedLiquidityType,
 } from "../../../types/morphoMarket.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
+import { shouldFallback } from "../../lunar-indexer-client.js";
 import { getGraphQL } from "../utils/graphql.js";
 import {
   type GetMorphoMarketsRewardsReturnType as LunarIndexerRewardsType,
@@ -68,6 +69,7 @@ export function computeSharedLiquidityFromLunar(
       collateralToken: { address: string; decimals: number };
     }
   >,
+  chainId: number,
 ): GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[] {
   return targetMarkets.map((targetMarket) => {
     const targetId = targetMarket.toLowerCase();
@@ -203,7 +205,7 @@ export function computeSharedLiquidityFromLunar(
 
     // reallocatableLiquidityAssets is in token units; Amount expects raw units
     return {
-      chainId: 0,
+      chainId,
       marketId: targetId,
       reallocatableLiquidityAssets: new Amount(
         BigInt(Math.round(reallocatableLiquidityAssets * targetScale)),
@@ -855,7 +857,9 @@ async function getMorphoMarketsDataFromIndexer(params: {
     });
   }
 
-  // Fetch shared liquidity from lunar-indexer
+  // Fetch shared liquidity from lunar-indexer, tracking which environments
+  // fell back so we can fill them from api.morpho.org after.
+  const fallbackChainIds = new Set<number>();
   const sharedLiquiditySettlements = await Promise.allSettled(
     fulfilledMarkets.map(async ({ environment, markets }) => {
       const lunarIndexerUrl = environment.lunarIndexerUrl;
@@ -884,17 +888,31 @@ async function getMorphoMarketsDataFromIndexer(params: {
         ]),
       );
 
-      const rawData = await fetchSharedLiquidityFromLunar(
-        lunarIndexerUrl,
-        environment.chainId,
-      );
-      const marketIds = markets.map((m) => m.marketId);
-      const data = computeSharedLiquidityFromLunar(
-        rawData,
-        marketIds,
-        marketParamsMap,
-      ).map((item) => ({ ...item, chainId: environment.chainId }));
-      return { environment, data };
+      try {
+        const rawData = await fetchSharedLiquidityFromLunar(
+          lunarIndexerUrl,
+          environment.chainId,
+        );
+        const marketIds = markets.map((m) => m.marketId);
+        const data = computeSharedLiquidityFromLunar(
+          rawData,
+          marketIds,
+          marketParamsMap,
+          environment.chainId,
+        );
+        return { environment, data };
+      } catch (error) {
+        if (!shouldFallback(error)) throw error;
+        console.debug(
+          "[Lunar fallback] Falling back to Morpho API for shared liquidity:",
+          error,
+        );
+        fallbackChainIds.add(environment.chainId);
+        return {
+          environment,
+          data: [] as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
+        };
+      }
     }),
   );
 
@@ -934,7 +952,8 @@ async function getMorphoMarketsDataFromIndexer(params: {
 
   const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
 
-  // Seed map with collateralAssets from the Morpho API
+  // Seed map with collateralAssets from the Morpho API. Also fill
+  // sharedLiquidityMap for environments that fell back from the lunar-indexer.
   morphoApiData.forEach((item) => {
     const key = `${item.chainId}-${item.marketId.toLowerCase()}`;
     rewardsDataMap.set(key, {
@@ -946,6 +965,9 @@ async function getMorphoMarketsDataFromIndexer(params: {
       rewardsBorrowApy: 0,
       rewards: [],
     });
+    if (fallbackChainIds.has(item.chainId) && !sharedLiquidityMap.has(key)) {
+      sharedLiquidityMap.set(key, item.publicAllocatorSharedLiquidity);
+    }
   });
 
   // Overlay rewards from the indexer when requested
