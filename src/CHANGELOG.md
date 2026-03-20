@@ -1,5 +1,15 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.10.0
+
+### Minor Changes
+
+- [#235](https://github.com/moonwell-fi/moonwell-sdk/pull/235) [`9080be22b6c27c8482544870068303abc3d072b6`](https://github.com/moonwell-fi/moonwell-sdk/commit/9080be22b6c27c8482544870068303abc3d072b6) Thanks [@bprofiro](https://github.com/bprofiro)! - migrate stake fetchings to lunar indexer and add granularity per period engine
+
+### Patch Changes
+
+- [#237](https://github.com/moonwell-fi/moonwell-sdk/pull/237) [`0e3b653eb05671fa52b65de9e22b29d7b050c71e`](https://github.com/moonwell-fi/moonwell-sdk/commit/0e3b653eb05671fa52b65de9e22b29d7b050c71e) Thanks [@bprofiro](https://github.com/bprofiro)! - add circulating supply and remove subgraph dependencies
+
 ## 0.9.34
 
 ### Patch Changes
