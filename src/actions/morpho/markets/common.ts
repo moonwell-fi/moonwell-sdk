@@ -933,42 +933,60 @@ async function getMorphoMarketsDataFromIndexer(params: {
     });
   });
 
-  // Always fetch collateralAssets from api.morpho.org regardless of includeRewards,
-  // since the lunar-indexer does not expose this field.
-  const allIndexerMarkets = fulfilledMarkets.flatMap(
-    ({ environment, markets }) =>
-      markets.map((m) => ({
-        marketId: m.marketId,
-        chainId: environment.chainId,
-      })),
-  );
-  const rewardEnvironment =
-    params.environments.find((env) => env.custom?.morpho?.apiUrl) ??
-    params.environments[0];
-  const morphoApiData = await getMorphoMarketRewards(
-    rewardEnvironment,
-    allIndexerMarkets,
-  );
-
+  // Seed rewardsDataMap with collateralAssets directly from the lunar-indexer
+  // market data — no Morpho API call on the happy path.
   const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
 
-  // Seed map with collateralAssets from the Morpho API. Also fill
-  // sharedLiquidityMap for environments that fell back from the lunar-indexer.
-  morphoApiData.forEach((item) => {
-    const key = `${item.chainId}-${item.marketId.toLowerCase()}`;
-    rewardsDataMap.set(key, {
-      chainId: item.chainId,
-      marketId: item.marketId,
-      collateralAssets: item.collateralAssets,
-      collateralAssetsUsd: item.collateralAssetsUsd,
-      rewardsSupplyApy: 0,
-      rewardsBorrowApy: 0,
-      rewards: [],
+  fulfilledMarkets.forEach(({ environment, markets }) => {
+    markets.forEach((market) => {
+      const key = `${environment.chainId}-${market.marketId.toLowerCase()}`;
+      const collateralDecimals = market.collateralToken.decimals;
+      const collateralAssets = market.totalCollateralAssets
+        ? new Amount(
+            Number.parseFloat(market.totalCollateralAssets),
+            collateralDecimals,
+          )
+        : null;
+      const collateralAssetsUsd = market.totalCollateralAssetsUsd
+        ? Number.parseFloat(market.totalCollateralAssetsUsd)
+        : null;
+      rewardsDataMap.set(key, {
+        chainId: environment.chainId,
+        marketId: market.marketId,
+        collateralAssets,
+        collateralAssetsUsd,
+        rewardsSupplyApy: 0,
+        rewardsBorrowApy: 0,
+        rewards: [],
+      });
     });
-    if (fallbackChainIds.has(item.chainId) && !sharedLiquidityMap.has(key)) {
-      sharedLiquidityMap.set(key, item.publicAllocatorSharedLiquidity);
-    }
   });
+
+  // Fallback: if the lunar shared-liquidity endpoint failed for some environments,
+  // fetch publicAllocatorSharedLiquidity from the Morpho API for those environments only.
+  if (fallbackChainIds.size > 0) {
+    const fallbackMarketIds = fulfilledMarkets
+      .filter(({ environment }) => fallbackChainIds.has(environment.chainId))
+      .flatMap(({ environment, markets }) =>
+        markets.map((m) => ({
+          marketId: m.marketId,
+          chainId: environment.chainId,
+        })),
+      );
+    const rewardEnvironment =
+      params.environments.find((env) => env.custom?.morpho?.apiUrl) ??
+      params.environments[0];
+    const morphoApiData = await getMorphoMarketRewards(
+      rewardEnvironment,
+      fallbackMarketIds,
+    );
+    morphoApiData.forEach((item) => {
+      const key = `${item.chainId}-${item.marketId.toLowerCase()}`;
+      if (!sharedLiquidityMap.has(key)) {
+        sharedLiquidityMap.set(key, item.publicAllocatorSharedLiquidity);
+      }
+    });
+  }
 
   // Overlay rewards from the indexer when requested
   if (params.includeRewards) {
