@@ -10,8 +10,7 @@ export async function getGraphQL<T>(
 ) {
   try {
     const url =
-      environment.custom.morpho?.blueApiUrl ||
-      "https://blue-api.morpho.org/graphql";
+      environment.custom.morpho?.apiUrl || "https://api.morpho.org/graphql";
     const response = await fetch(url, {
       method: "POST",
       headers: MOONWELL_FETCH_JSON_HEADERS,
@@ -34,50 +33,6 @@ export async function getGraphQL<T>(
   } catch (error) {
     if (typeof window !== "undefined") {
       console.debug("[Morpho GraphQL] Error fetching data:", error);
-    }
-    return undefined;
-  }
-}
-
-export async function getSubgraph<T>(
-  environment: Environment,
-  query: string,
-  operationName?: string,
-  variables?: any,
-) {
-  const url = environment.custom.morpho?.subgraphUrl!;
-
-  const body: any = { query };
-  if (operationName) {
-    body.operationName = operationName;
-  }
-  if (variables) {
-    body.variables = variables;
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: MOONWELL_FETCH_JSON_HEADERS,
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10000),
-    });
-
-    const json = await response.json();
-    if (response.status !== 200 || json.errors) {
-      if (typeof window !== "undefined") {
-        console.debug(
-          `[Morpho Subgraph] Non-200 (${response.statusText}) or errors:`,
-          json.errors,
-        );
-      }
-      return undefined;
-    }
-
-    return json.data as T;
-  } catch (error) {
-    if (typeof window !== "undefined") {
-      console.debug("[Morpho Subgraph] Error fetching data:", error);
     }
     return undefined;
   }

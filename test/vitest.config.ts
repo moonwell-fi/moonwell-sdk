@@ -35,6 +35,7 @@ export default defineConfig({
       "src/actions/morpho/**/*.test.ts",
       "src/actions/lunar-indexer-client.test.ts",
       "src/actions/governance/getMerklRewardsData.test.ts",
+      "src/actions/governance/getCirculatingSupplySnapshots.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,

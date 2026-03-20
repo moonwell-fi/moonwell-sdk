@@ -59,6 +59,8 @@ export type LunarIndexerMarket = {
   fee: string;
   oracle: string;
   irm: string;
+  totalCollateralAssets?: string;
+  totalCollateralAssetsUsd?: string;
   loanToken: LunarIndexerToken;
   collateralToken: LunarIndexerToken;
   rewards?: LunarIndexerMarketReward[];

@@ -1,3 +1,4 @@
+import axios from "axios";
 import type { Address } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
@@ -7,12 +8,213 @@ import type {
   PublicAllocatorSharedLiquidityType,
 } from "../../../types/morphoMarket.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
-import { getGraphQL, getSubgraph } from "../utils/graphql.js";
+import { shouldFallback } from "../../lunar-indexer-client.js";
+import { getGraphQL } from "../utils/graphql.js";
 import {
   type GetMorphoMarketsRewardsReturnType as LunarIndexerRewardsType,
   fetchMarketsFromIndexer,
   transformMarketsFromIndexer,
 } from "./lunarIndexerTransform.js";
+
+export interface LunarVaultMarket {
+  marketId: string;
+  flowCapIn: string;
+  flowCapOut: string;
+  supplyCap: string;
+  supplyCapEnabled: boolean;
+  vaultSupplyShares: string;
+  vaultSupplyAssets: string;
+}
+
+export interface LunarVault {
+  address: string;
+  name: string;
+  fee: string;
+  markets: LunarVaultMarket[];
+}
+
+export interface LunarMarketLiveData {
+  totalSupplyAssets?: string;
+  totalBorrowAssets?: string;
+  totalLiquidity?: string;
+  loanToken?: { address: string; decimals: number };
+  collateralToken?: { address: string; decimals: number };
+}
+
+export interface LunarSharedLiquidityResponse {
+  vaults: LunarVault[];
+  markets: Record<string, LunarMarketLiveData>;
+}
+
+async function fetchSharedLiquidityFromLunar(
+  lunarIndexerUrl: string,
+  chainId: number,
+): Promise<LunarSharedLiquidityResponse> {
+  const response = await axios.get<LunarSharedLiquidityResponse>(
+    `${lunarIndexerUrl}/api/v1/isolated/shared-liquidity/${chainId}`,
+  );
+  return response.data;
+}
+
+export function computeSharedLiquidityFromLunar(
+  data: LunarSharedLiquidityResponse,
+  targetMarkets: string[],
+  marketParamsMap: Map<
+    string,
+    {
+      oracle: string;
+      irm: string;
+      lltv: string;
+      loanToken: { address: string; decimals: number };
+      collateralToken: { address: string; decimals: number };
+    }
+  >,
+  chainId: number,
+): GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[] {
+  return targetMarkets.map((targetMarket) => {
+    const targetId = targetMarket.toLowerCase();
+    const r: PublicAllocatorSharedLiquidityType[] = [];
+    let reallocatableLiquidityAssets = 0;
+    const marketRemainingLiquidity: Record<string, number> = {};
+
+    const targetLiveData = data.markets[targetId];
+    const targetParams = marketParamsMap.get(targetId);
+
+    // Vault values (flowCapIn, flowCapOut, vaultSupplyAssets, supplyCap) are raw
+    // (wei-like). Markets data (totalSupplyAssets, totalBorrowAssets, totalLiquidity)
+    // is already in token units (divided by decimals). We convert vault raw values
+    // to token units using the loan token decimals before comparing.
+    const targetLoanDecimals =
+      targetLiveData?.loanToken?.decimals ??
+      targetParams?.loanToken.decimals ??
+      18;
+    const targetScale = 10 ** targetLoanDecimals;
+
+    for (const vault of data.vaults) {
+      const thisMarketInVault = vault.markets.find(
+        (m) => m.marketId.toLowerCase() === targetId,
+      );
+      if (!thisMarketInVault) continue;
+
+      const vaultSupplyInTarget =
+        Number(thisMarketInVault.vaultSupplyAssets) / targetScale;
+      if (vaultSupplyInTarget <= 0) continue;
+
+      let maxIn = Number(thisMarketInVault.flowCapIn) / targetScale;
+      if (thisMarketInVault.supplyCapEnabled) {
+        const remainingCap =
+          Number(thisMarketInVault.supplyCap) / targetScale -
+          vaultSupplyInTarget;
+        maxIn = Math.min(maxIn, remainingCap);
+      }
+      if (maxIn <= 0) continue;
+
+      const flowCaps = vault.markets.map((m) => ({
+        maxIn: Number(m.flowCapIn),
+        maxOut: Number(m.flowCapOut),
+        market: { uniqueKey: m.marketId },
+      }));
+
+      const vaultConfig = {
+        address: vault.address,
+        name: vault.name,
+        publicAllocatorConfig: {
+          fee: Number(vault.fee),
+          flowCaps,
+        },
+      };
+
+      const otherMarketsLiquidity: {
+        marketId: string;
+        amount: number;
+        liquidity: number;
+        allocationMarket: PublicAllocatorSharedLiquidityType["allocationMarket"];
+      }[] = [];
+
+      for (const sourceMarket of vault.markets) {
+        if (sourceMarket.marketId.toLowerCase() === targetId) continue;
+
+        const sourceLiveData =
+          data.markets[sourceMarket.marketId.toLowerCase()];
+        if (!sourceLiveData) continue;
+
+        const sourceLoanDecimals =
+          sourceLiveData.loanToken?.decimals ??
+          marketParamsMap.get(sourceMarket.marketId.toLowerCase())?.loanToken
+            .decimals ??
+          18;
+        const sourceScale = 10 ** sourceLoanDecimals;
+
+        const vaultSupplyInSource =
+          Number(sourceMarket.vaultSupplyAssets) / sourceScale;
+        const maxOut = Number(sourceMarket.flowCapOut) / sourceScale;
+
+        // Use pre-computed totalLiquidity if available, else derive from supply/borrow
+        const liquidity = sourceLiveData.totalLiquidity
+          ? Number(sourceLiveData.totalLiquidity)
+          : Number(sourceLiveData.totalSupplyAssets ?? 0) -
+            Number(sourceLiveData.totalBorrowAssets ?? 0);
+
+        if (vaultSupplyInSource > 0 && maxOut > 0 && liquidity > 0) {
+          const sourceParams = marketParamsMap.get(
+            sourceMarket.marketId.toLowerCase(),
+          );
+          const allocationMarket: PublicAllocatorSharedLiquidityType["allocationMarket"] =
+            sourceParams
+              ? {
+                  uniqueKey: sourceMarket.marketId,
+                  loanAsset: { address: sourceParams.loanToken.address },
+                  collateralAsset: {
+                    address: sourceParams.collateralToken.address,
+                  },
+                  oracleAddress: sourceParams.oracle,
+                  irmAddress: sourceParams.irm,
+                  lltv: sourceParams.lltv,
+                }
+              : undefined;
+
+          otherMarketsLiquidity.push({
+            marketId: sourceMarket.marketId.toLowerCase(),
+            amount: Math.min(liquidity, vaultSupplyInSource, maxOut),
+            liquidity,
+            allocationMarket,
+          });
+        }
+      }
+
+      for (const source of otherMarketsLiquidity
+        .filter((s) => s.amount > 0)
+        .sort((a, b) => b.amount - a.amount)) {
+        const marketLiquidity =
+          marketRemainingLiquidity[source.marketId] ?? source.liquidity;
+        if (maxIn > 0 && marketLiquidity > 0) {
+          const assets = Math.min(marketLiquidity, source.amount, maxIn);
+          maxIn -= assets;
+          marketRemainingLiquidity[source.marketId] = marketLiquidity - assets;
+          reallocatableLiquidityAssets += assets;
+          r.push({
+            assets,
+            vault: vaultConfig,
+            ...(source.allocationMarket
+              ? { allocationMarket: source.allocationMarket }
+              : {}),
+          });
+        }
+      }
+    }
+
+    // reallocatableLiquidityAssets is in token units; Amount expects raw units
+    return {
+      chainId,
+      marketId: targetId,
+      reallocatableLiquidityAssets: new Amount(
+        BigInt(Math.round(reallocatableLiquidityAssets * targetScale)),
+        targetLoanDecimals,
+      ),
+      publicAllocatorSharedLiquidity: r,
+    };
+  });
+}
 
 export async function getMorphoMarketsData(params: {
   environments: Environment[];
@@ -80,49 +282,6 @@ async function getMorphoMarketsDataFromOnChain(params: {
       : [],
   );
 
-  const environmentPublicAllocatorSharedLiquiditySettlements =
-    await Promise.allSettled(
-      environmentsWithMarkets.map((environment) => {
-        const marketsIds = Object.values(environment.config.morphoMarkets)
-          .map((item) => item.id as Address)
-          .filter((id) =>
-            params.markets
-              ? params.markets
-                  .map((id) => id.toLowerCase())
-                  .includes(id.toLowerCase())
-              : true,
-          );
-
-        return getMorphoMarketPublicAllocatorSharedLiquidity(
-          environment,
-          marketsIds,
-        );
-      }),
-    );
-
-  const fulfilledPublicAllocatorSharedLiquidity =
-    environmentPublicAllocatorSharedLiquiditySettlements.flatMap((s, i) =>
-      s.status === "fulfilled"
-        ? [
-            {
-              environment: environmentsWithMarkets[i]!,
-              sharedLiquidity:
-                s.value as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
-            },
-          ]
-        : [],
-    );
-
-  const sharedLiquidityByChain = new Map<
-    number,
-    GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[]
-  >(
-    fulfilledPublicAllocatorSharedLiquidity.map((x) => [
-      x.environment.chainId,
-      x.sharedLiquidity,
-    ]),
-  );
-
   const initialMarkets: MorphoMarket[] = [];
   fulfilledMarketsInfo.forEach(({ environment, marketsInfo }) => {
     marketsInfo.forEach((marketInfo) => {
@@ -145,7 +304,7 @@ async function getMorphoMarketsDataFromOnChain(params: {
   });
 
   const rewardEnvironment =
-    params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+    params.environments.find((env) => env.custom?.morpho?.apiUrl) ??
     params.environments[0];
   const rewardsData = await getMorphoMarketRewards(
     rewardEnvironment,
@@ -265,13 +424,6 @@ async function getMorphoMarketsDataFromOnChain(params: {
           }
         }
 
-        const envSharedLiquidity = sharedLiquidityByChain.get(
-          environment.chainId,
-        );
-        const publicAllocatorSharedLiquidity = envSharedLiquidity?.find(
-          (item) => item.marketId === marketInfo.marketId,
-        );
-
         const performanceFee = new Amount(marketInfo.fee, 18).value;
         const loanToValue = new Amount(marketInfo.lltv, 18).value;
 
@@ -341,8 +493,7 @@ async function getMorphoMarketsDataFromOnChain(params: {
           },
           rewards: [],
           publicAllocatorSharedLiquidity:
-            publicAllocatorSharedLiquidity?.publicAllocatorSharedLiquidity ||
-            [],
+            marketRewardData?.publicAllocatorSharedLiquidity ?? [],
         };
 
         return [mapping];
@@ -367,7 +518,7 @@ async function getMorphoMarketsDataFromOnChain(params: {
       });
 
     const rewards = await getMorphoMarketRewards(
-      params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
+      params.environments.find((env) => env.custom?.morpho?.apiUrl) ??
         params.environments[0],
       markets,
     );
@@ -380,14 +531,9 @@ async function getMorphoMarketsDataFromOnChain(params: {
       );
       if (marketReward) {
         market.rewards = marketReward.rewards;
-
         market.collateralAssets = marketReward.collateralAssets;
-        // market.publicAllocatorSharedLiquidity =
-        //   marketReward.publicAllocatorSharedLiquidity;
-        // market.availableLiquidity = marketReward.reallocatableLiquidityAssets;
-        // market.availableLiquidityUsd =
-        //   marketReward.reallocatableLiquidityAssets.value *
-        //   market.loanTokenPrice;
+        market.publicAllocatorSharedLiquidity =
+          marketReward.publicAllocatorSharedLiquidity;
       }
 
       market.rewardsSupplyApy = market.rewards.reduce<number>(
@@ -414,290 +560,9 @@ async function getMorphoMarketsDataFromOnChain(params: {
 type GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType = {
   chainId: number;
   marketId: string;
-  collateralAssets: Amount;
   reallocatableLiquidityAssets: Amount;
   publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
 };
-
-async function getMorphoMarketPublicAllocatorSharedLiquidity(
-  environment: Environment,
-  markets: string[],
-): Promise<GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[]> {
-  if (markets.length === 0) {
-    return [];
-  }
-  const query = `
-  {
-    metaMorphos(
-      where: {hasPublicAllocator: true, markets_: {market_in: [${markets.map((market) => `"${market.toLowerCase()}"`).join(",")}]}}
-    ) {
-      id
-      name
-      lastTotalAssets
-      markets {
-        market {
-          id
-        }
-        enabled
-        cap
-      }
-      publicAllocator {
-        id
-        fee
-        markets {
-          id
-          flowCapIn
-          flowCapOut
-          market {
-            market {
-              id
-              oracle {
-                oracleAddress
-              }
-              irm
-              lltv
-              totalBorrow
-              totalSupply
-              totalCollateral
-              inputToken {
-                symbol
-                decimals
-                id
-              }
-              borrowedToken {
-                symbol
-                decimals
-                id
-              }
-            }
-          }
-        }
-      }    
-      account {
-        positions(where:{side:SUPPLIER}) {
-          market {
-            id
-          }
-          balance
-        }
-      }
-    }
-  }
-  `;
-
-  const result = await getSubgraph<{
-    metaMorphos: Array<{
-      id: string;
-      name: string;
-      lastTotalAssets: string;
-      markets: Array<{
-        market: {
-          id: string;
-        };
-        enabled: boolean;
-        cap: string;
-      }>;
-      publicAllocator: {
-        id: string;
-        fee: string;
-        markets: Array<{
-          id: string;
-          flowCapIn: string;
-          flowCapOut: string;
-          market: {
-            market: {
-              id: string;
-              oracle: {
-                oracleAddress: string;
-              };
-              irm: string;
-              lltv: string;
-              totalBorrow: string;
-              totalSupply: string;
-              totalCollateral: string;
-              inputToken: {
-                symbol: string;
-                decimals: number;
-                id: string;
-              };
-              borrowedToken: {
-                symbol: string;
-                decimals: number;
-                id: string;
-              };
-            };
-          };
-        }>;
-      };
-      account: {
-        positions: Array<{
-          market: {
-            id: string;
-          };
-          balance: string;
-        }>;
-      };
-    }>;
-  }>(environment, query);
-
-  if (result) {
-    const returnValue: GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[] =
-      [];
-
-    for (const market of markets) {
-      let inputTokenDecimals = 0;
-      let outputTokenDecimals = 0;
-
-      let collateralAssets = 0;
-      let reallocatableLiquidityAssets = 0;
-      const r: PublicAllocatorSharedLiquidityType[] = [];
-      const marketRemainingLiquidity: Record<string, number> = {};
-
-      const vaults = result.metaMorphos.filter(
-        (item) =>
-          item.publicAllocator.markets.some(
-            (vaultMarket) =>
-              vaultMarket.market.market.id.toLowerCase() ===
-              market.toLowerCase(),
-          ) &&
-          item.account.positions.some(
-            (position) =>
-              position.market.id.toLowerCase() === market.toLowerCase() &&
-              Number(position.balance) > 0,
-          ),
-      );
-
-      for (const vault of vaults) {
-        const otherMarkets = vault.publicAllocator.markets.filter(
-          (publicAllocatorMarket) =>
-            publicAllocatorMarket.market.market.id.toLowerCase() !==
-            market.toLowerCase(),
-        );
-        const thisMarket = vault.publicAllocator.markets.find(
-          (publicAllocatorMarket) =>
-            publicAllocatorMarket.market.market.id.toLowerCase() ===
-            market.toLowerCase(),
-        );
-        const thisMarketCaps = vault.markets.find(
-          (marketCaps) =>
-            marketCaps.market.id.toLowerCase() === market.toLowerCase(),
-        );
-        const thisMarketCap = Number(thisMarketCaps?.cap || 0); //Should I check if the cap is enabled?
-        const suppliedToMarket = vault.account.positions.find(
-          (position) =>
-            position.market.id.toLowerCase() === market.toLowerCase(),
-        );
-        const suppliedToMarketAmount = Number(suppliedToMarket?.balance || 0);
-        const thisMarketCapRemaining = thisMarketCap - suppliedToMarketAmount;
-        let maxIn = Math.min(
-          Number(thisMarket?.flowCapIn),
-          thisMarketCapRemaining,
-        );
-        collateralAssets = Number(
-          thisMarket?.market.market.totalCollateral || 0,
-        );
-        inputTokenDecimals = thisMarket?.market.market.inputToken.decimals || 0;
-        outputTokenDecimals =
-          thisMarket?.market.market.borrowedToken.decimals || 0;
-
-        const otherMarketsLiquidity: {
-          marketId: string;
-          amount: number;
-          liquidity: number;
-          vault: any;
-          allocationMarket: any;
-        }[] = [];
-        for (const otherMarket of otherMarkets) {
-          const vaultSuppliedToMarket = vault.account.positions.find(
-            (position) =>
-              position.market.id.toLowerCase() ===
-              otherMarket.market.market.id.toLowerCase(),
-          );
-          if (vaultSuppliedToMarket) {
-            const vaultSuppliedAmount = Number(vaultSuppliedToMarket.balance);
-            const maxOut = Number(otherMarket.flowCapOut);
-            const liquidity =
-              Number(otherMarket.market.market.totalSupply) -
-              Number(otherMarket.market.market.totalBorrow);
-            if (vaultSuppliedAmount > 0 && maxOut > 0 && liquidity > 0) {
-              otherMarketsLiquidity.push({
-                marketId: otherMarket.market.market.id,
-                amount: Math.min(liquidity, vaultSuppliedAmount, maxOut),
-                liquidity,
-                vault: {
-                  address: vault.id,
-                  name: vault.name,
-                  publicAllocatorConfig: {
-                    fee: Number(vault.publicAllocator.fee),
-                    flowCaps: vault.publicAllocator.markets.map(
-                      (publicAllocatorMarket) => ({
-                        maxIn: Number(publicAllocatorMarket.flowCapIn),
-                        maxOut: Number(publicAllocatorMarket.flowCapOut),
-                        market: {
-                          uniqueKey: publicAllocatorMarket.market.market.id,
-                        },
-                      }),
-                    ),
-                  },
-                },
-                allocationMarket: {
-                  uniqueKey: otherMarket.market.market.id,
-                  loanAsset: {
-                    address: otherMarket.market.market.borrowedToken.id,
-                  },
-                  collateralAsset: {
-                    address: otherMarket.market.market.inputToken.id,
-                  },
-                  oracleAddress: otherMarket.market.market.oracle.oracleAddress,
-                  irmAddress: otherMarket.market.market.irm,
-                  lltv: otherMarket.market.market.lltv,
-                },
-              });
-            }
-          }
-        }
-
-        for (const otherMarket of otherMarketsLiquidity
-          .filter((item) => item.amount > 0)
-          .sort((a, b) => b.amount - a.amount)) {
-          const marketLiquidity =
-            marketRemainingLiquidity[otherMarket.marketId] ||
-            otherMarket.liquidity;
-          if (maxIn > 0 && marketLiquidity > 0) {
-            const assets = Math.min(marketLiquidity, otherMarket.amount, maxIn);
-            maxIn = maxIn - assets;
-            marketRemainingLiquidity[otherMarket.marketId] =
-              marketLiquidity - assets;
-            reallocatableLiquidityAssets += assets;
-            r.push({
-              assets,
-              vault: otherMarket.vault,
-              allocationMarket: otherMarket.allocationMarket,
-            });
-          }
-        }
-      }
-
-      returnValue.push({
-        chainId: environment.chainId,
-        marketId: market.toLowerCase(),
-        collateralAssets: new Amount(
-          BigInt(collateralAssets),
-          inputTokenDecimals,
-        ),
-        reallocatableLiquidityAssets: new Amount(
-          BigInt(reallocatableLiquidityAssets),
-          outputTokenDecimals,
-        ),
-        publicAllocatorSharedLiquidity: r,
-      });
-    }
-
-    return returnValue;
-  } else {
-    return [];
-  }
-}
 
 type GetMorphoMarketsRewardsReturnType = {
   chainId: number;
@@ -711,7 +576,7 @@ type GetMorphoMarketsRewardsReturnType = {
 
 async function getMorphoMarketRewards(
   environment: Environment,
-  markets: MorphoMarket[],
+  markets: { marketId: string; chainId: number }[],
 ): Promise<GetMorphoMarketsRewardsReturnType[]> {
   if (markets.length === 0) {
     return [];
@@ -992,14 +857,62 @@ async function getMorphoMarketsDataFromIndexer(params: {
     });
   }
 
-  // Fetch shared liquidity data from subgraph
+  // Fetch shared liquidity from lunar-indexer, tracking which environments
+  // fell back so we can fill them from api.morpho.org after.
+  const fallbackChainIds = new Set<number>();
   const sharedLiquiditySettlements = await Promise.allSettled(
-    fulfilledMarkets.map(({ environment, markets }) => {
-      const marketIds = markets.map((m) => m.marketId as Address);
-      return getMorphoMarketPublicAllocatorSharedLiquidity(
-        environment,
-        marketIds,
-      ).then((data) => ({ environment, data }));
+    fulfilledMarkets.map(async ({ environment, markets }) => {
+      const lunarIndexerUrl = environment.lunarIndexerUrl;
+      if (!lunarIndexerUrl)
+        return {
+          environment,
+          data: [] as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
+        };
+
+      const marketParamsMap = new Map(
+        markets.map((m) => [
+          m.marketId.toLowerCase(),
+          {
+            oracle: m.oracle,
+            irm: m.irm,
+            lltv: m.lltv,
+            loanToken: {
+              address: m.loanToken.address,
+              decimals: m.loanToken.decimals,
+            },
+            collateralToken: {
+              address: m.collateralToken.address,
+              decimals: m.collateralToken.decimals,
+            },
+          },
+        ]),
+      );
+
+      try {
+        const rawData = await fetchSharedLiquidityFromLunar(
+          lunarIndexerUrl,
+          environment.chainId,
+        );
+        const marketIds = markets.map((m) => m.marketId);
+        const data = computeSharedLiquidityFromLunar(
+          rawData,
+          marketIds,
+          marketParamsMap,
+          environment.chainId,
+        );
+        return { environment, data };
+      } catch (error) {
+        if (!shouldFallback(error)) throw error;
+        console.debug(
+          "[Lunar fallback] Falling back to Morpho API for shared liquidity:",
+          error,
+        );
+        fallbackChainIds.add(environment.chainId);
+        return {
+          environment,
+          data: [] as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
+        };
+      }
     }),
   );
 
@@ -1012,6 +925,7 @@ async function getMorphoMarketsDataFromIndexer(params: {
     string,
     PublicAllocatorSharedLiquidityType[]
   >();
+
   fulfilledSharedLiquidity.forEach(({ environment, data }) => {
     data.forEach((item) => {
       const key = `${environment.chainId}-${item.marketId.toLowerCase()}`;
@@ -1019,9 +933,62 @@ async function getMorphoMarketsDataFromIndexer(params: {
     });
   });
 
-  // Build rewards map from indexer market data (rewards are included in the
-  // fetchMarketsFromIndexer response when includeRewards: true was passed above).
+  // Seed rewardsDataMap with collateralAssets directly from the lunar-indexer
+  // market data — no Morpho API call on the happy path.
   const rewardsDataMap = new Map<string, LunarIndexerRewardsType>();
+
+  fulfilledMarkets.forEach(({ environment, markets }) => {
+    markets.forEach((market) => {
+      const key = `${environment.chainId}-${market.marketId.toLowerCase()}`;
+      const collateralDecimals = market.collateralToken.decimals;
+      const collateralAssets = market.totalCollateralAssets
+        ? new Amount(
+            Number.parseFloat(market.totalCollateralAssets),
+            collateralDecimals,
+          )
+        : null;
+      const collateralAssetsUsd = market.totalCollateralAssetsUsd
+        ? Number.parseFloat(market.totalCollateralAssetsUsd)
+        : null;
+      rewardsDataMap.set(key, {
+        chainId: environment.chainId,
+        marketId: market.marketId,
+        collateralAssets,
+        collateralAssetsUsd,
+        rewardsSupplyApy: 0,
+        rewardsBorrowApy: 0,
+        rewards: [],
+      });
+    });
+  });
+
+  // Fallback: if the lunar shared-liquidity endpoint failed for some environments,
+  // fetch publicAllocatorSharedLiquidity from the Morpho API for those environments only.
+  if (fallbackChainIds.size > 0) {
+    const fallbackMarketIds = fulfilledMarkets
+      .filter(({ environment }) => fallbackChainIds.has(environment.chainId))
+      .flatMap(({ environment, markets }) =>
+        markets.map((m) => ({
+          marketId: m.marketId,
+          chainId: environment.chainId,
+        })),
+      );
+    const rewardEnvironment =
+      params.environments.find((env) => env.custom?.morpho?.apiUrl) ??
+      params.environments[0];
+    const morphoApiData = await getMorphoMarketRewards(
+      rewardEnvironment,
+      fallbackMarketIds,
+    );
+    morphoApiData.forEach((item) => {
+      const key = `${item.chainId}-${item.marketId.toLowerCase()}`;
+      if (!sharedLiquidityMap.has(key)) {
+        sharedLiquidityMap.set(key, item.publicAllocatorSharedLiquidity);
+      }
+    });
+  }
+
+  // Overlay rewards from the indexer when requested
   if (params.includeRewards) {
     fulfilledMarkets.forEach(({ environment, markets }) => {
       markets.forEach((market) => {
@@ -1040,63 +1007,18 @@ async function getMorphoMarketsDataFromIndexer(params: {
           borrowApr: Number.parseFloat(r.borrowApr),
           borrowAmount: 0,
         }));
+        const existing = rewardsDataMap.get(key);
         rewardsDataMap.set(key, {
           chainId: environment.chainId,
           marketId: market.marketId,
-          collateralAssets: null,
-          collateralAssetsUsd: null,
+          collateralAssets: existing?.collateralAssets ?? null,
+          collateralAssetsUsd: existing?.collateralAssetsUsd ?? null,
           rewardsSupplyApy: rewards.reduce((acc, r) => acc + r.supplyApr, 0),
           rewardsBorrowApy: rewards.reduce((acc, r) => acc + r.borrowApr, 0),
           rewards,
         });
       });
     });
-  }
-
-  // Fetch collateralAssets from Morpho Blue API. The lunar-indexer does not yet
-  // expose collateralAssets (total collateral deposited by borrowers), which the
-  // frontend uses to display "Total Supplied" on isolated market pages.
-  // TODO: remove this call once the indexer adds a collateralAssets field.
-  const marketsForBlueApi = fulfilledMarkets.flatMap(
-    ({ environment, markets }) =>
-      markets.map(
-        (m) =>
-          ({
-            chainId: environment.chainId,
-            marketId: m.marketId,
-          }) as MorphoMarket,
-      ),
-  );
-
-  if (marketsForBlueApi.length > 0) {
-    const rewardEnvironment =
-      params.environments.find((env) => env.custom?.morpho?.blueApiUrl) ??
-      params.environments[0];
-    try {
-      const blueApiData = await getMorphoMarketRewards(
-        rewardEnvironment,
-        marketsForBlueApi,
-      );
-      blueApiData.forEach((data) => {
-        const key = `${data.chainId}-${data.marketId.toLowerCase()}`;
-        const existing = rewardsDataMap.get(key);
-        rewardsDataMap.set(key, {
-          chainId: data.chainId,
-          marketId: data.marketId,
-          // collateralAssets comes from the Blue API; rewards come from the indexer
-          collateralAssets: data.collateralAssets,
-          collateralAssetsUsd: data.collateralAssetsUsd,
-          rewardsSupplyApy: existing?.rewardsSupplyApy ?? 0,
-          rewardsBorrowApy: existing?.rewardsBorrowApy ?? 0,
-          rewards: existing?.rewards ?? [],
-        });
-      });
-    } catch (error) {
-      console.warn(
-        "[getMorphoMarketsDataFromIndexer] Failed to fetch collateral assets from Morpho Blue API:",
-        error,
-      );
-    }
   }
 
   // Transform markets from indexer format to SDK format
