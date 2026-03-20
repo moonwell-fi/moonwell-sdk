@@ -1,14 +1,30 @@
 import axios from "axios";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
-import { getEnvironmentFromArgs } from "../../common/index.js";
+import {
+  type SnapshotPeriod,
+  applyGranularity,
+  calculateTimeRange,
+  getEnvironmentFromArgs,
+  toApiGranularity,
+} from "../../common/index.js";
 import type { NetworkParameterType } from "../../common/types.js";
 import type { Chain } from "../../environments/index.js";
 import type { StakingSnapshot } from "../../types/staking.js";
+import {
+  DEFAULT_LUNAR_TIMEOUT_MS,
+  createLunarIndexerClient,
+  shouldFallback,
+} from "../lunar-indexer-client.js";
+import { transformStakingSnapshots } from "../lunar-indexer-transformers.js";
 
 export type GetStakingSnapshotsParameters<
   environments,
   network extends Chain | undefined,
-> = NetworkParameterType<environments, network>;
+> = NetworkParameterType<environments, network> & {
+  period?: SnapshotPeriod;
+  startTime?: number;
+  endTime?: number;
+};
 
 export type GetStakingSnapshotsReturnType = Promise<StakingSnapshot[]>;
 
@@ -25,6 +41,90 @@ export async function getStakingSnapshots<
     return [];
   }
 
+  const {
+    period,
+    startTime: customStartTime,
+    endTime: customEndTime,
+  } = (args ?? {}) as GetStakingSnapshotsParameters<environments, undefined>;
+
+  if (environment.lunarIndexerUrl) {
+    try {
+      return await fetchStakingSnapshotsFromLunar(
+        environment.chainId,
+        environment.lunarIndexerUrl,
+        period,
+        customStartTime,
+        customEndTime,
+      );
+    } catch (error) {
+      if (!shouldFallback(error)) {
+        throw error;
+      }
+      console.debug(
+        "[Lunar fallback] Falling back to Ponder for staking snapshots:",
+        error,
+      );
+    }
+  }
+
+  const { startTime } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
+  return fetchStakingSnapshotsFromPonder(
+    environment.chainId,
+    environment.indexerUrl,
+    startTime,
+  );
+}
+
+async function fetchStakingSnapshotsFromLunar(
+  chainId: number,
+  lunarIndexerUrl: string,
+  period?: SnapshotPeriod,
+  customStartTime?: number,
+  customEndTime?: number,
+): Promise<StakingSnapshot[]> {
+  const lunarClient = createLunarIndexerClient({
+    baseUrl: lunarIndexerUrl,
+    timeout: DEFAULT_LUNAR_TIMEOUT_MS,
+  });
+
+  const { startTime, endTime, granularity } = calculateTimeRange(
+    period,
+    customStartTime,
+    customEndTime,
+  );
+
+  const allSnapshots: StakingSnapshot[] = [];
+  let cursor: string | null = null;
+  const MAX_PAGES = 100;
+  let page = 0;
+
+  do {
+    const response = await lunarClient.getStakingSnapshots(chainId, {
+      limit: 1000,
+      granularity: toApiGranularity(granularity),
+      startTime,
+      endTime,
+      ...(cursor && { cursor }),
+    });
+
+    allSnapshots.push(...transformStakingSnapshots(response.results));
+    cursor = response.nextCursor;
+    page++;
+  } while (cursor !== null && page < MAX_PAGES);
+
+  allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+  return applyGranularity(allSnapshots, granularity);
+}
+
+async function fetchStakingSnapshotsFromPonder(
+  chainId: number,
+  indexerUrl: string,
+  startTime?: number,
+): Promise<StakingSnapshot[]> {
   try {
     const response = await axios.post<{
       data: {
@@ -32,14 +132,14 @@ export async function getStakingSnapshots<
           items: StakingSnapshot[];
         };
       };
-    }>(environment.indexerUrl, {
+    }>(indexerUrl, {
       query: `
           query {
             stakingDailySnapshots(
               limit: 365,
               orderBy: "timestamp"
               orderDirection: "desc"
-              where: {chainId: ${environment.chainId}}
+              where: {chainId: ${chainId}}
             ) {
               items {
                 chainId
@@ -53,7 +153,10 @@ export async function getStakingSnapshots<
     });
 
     if (response.status === 200 && response.data?.data?.stakingDailySnapshots) {
-      return response.data?.data?.stakingDailySnapshots.items;
+      const items = response.data.data.stakingDailySnapshots.items;
+      return startTime
+        ? items.filter((item) => item.timestamp >= startTime)
+        : items;
     } else {
       return [];
     }
