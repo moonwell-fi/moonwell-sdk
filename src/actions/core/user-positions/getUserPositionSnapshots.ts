@@ -2,9 +2,12 @@ import axios from "axios";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
+  type SnapshotPeriod,
+  applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
   isStartOfDay,
+  toApiGranularity,
 } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
@@ -23,13 +26,13 @@ export type GetUserPositionSnapshotsParameters<
   /** User address*/
   userAddress: Address;
   /** Predefined time period for snapshots */
-  period?: "1M" | "3M" | "1Y" | "ALL";
+  period?: SnapshotPeriod;
   /** Custom start time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided. */
   startTime?: number;
   /** Custom end time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided. */
   endTime?: number;
   /** Data granularity. Defaults to "1d" */
-  granularity?: "1h" | "6h" | "1d";
+  granularity?: "6h" | "1d";
 };
 
 export type GetUserPositionSnapshotsReturnType = Promise<
@@ -45,7 +48,7 @@ export type GetUserPositionSnapshotsReturnType = Promise<
  * @param args.period - Predefined time period: "1M" (31 days), "3M" (91 days), "1Y" (366 days), or "ALL" (all available history)
  * @param args.startTime - Custom start time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided.
  * @param args.endTime - Custom end time (unix timestamp in seconds). Overrides period if both startTime and endTime are provided.
- * @param args.granularity - Data granularity: "1h", "6h", or "1d" (default). Determines snapshot frequency.
+ * @param args.granularity - Data granularity: "6h" or "1d". Determines snapshot frequency.
  *
  * @returns Array of user position snapshots with USD values for supply, borrow, and collateral
  *
@@ -85,7 +88,7 @@ async function fetchUserPositionSnapshots(
   period?: "1M" | "3M" | "1Y" | "ALL",
   startTime?: number,
   endTime?: number,
-  granularity?: "1h" | "6h" | "1d",
+  granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (environment.lunarIndexerUrl) {
     try {
@@ -123,7 +126,7 @@ async function fetchUserPositionSnapshotsFromLunar(
   period?: "1M" | "3M" | "1Y" | "ALL",
   customStartTime?: number,
   customEndTime?: number,
-  granularity: "1h" | "6h" | "1d" = "1d",
+  granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
     throw new Error("Lunar Indexer URL not configured");
@@ -134,18 +137,20 @@ async function fetchUserPositionSnapshotsFromLunar(
     timeout: DEFAULT_LUNAR_TIMEOUT_MS,
   });
 
-  const { startTime, endTime } = calculateTimeRange(
-    period,
-    customStartTime,
-    customEndTime,
-  );
+  const {
+    startTime,
+    endTime,
+    granularity: derivedGranularity,
+  } = calculateTimeRange(period, customStartTime, customEndTime);
+
+  const resolvedGranularity = granularity ?? derivedGranularity;
 
   const portfolio = await client.getAccountPortfolio(
     userAddress.toLowerCase(),
     {
       startTime,
       endTime,
-      granularity,
+      granularity: toApiGranularity(resolvedGranularity),
       chainId: environment.chainId,
     },
   );
@@ -153,7 +158,7 @@ async function fetchUserPositionSnapshotsFromLunar(
   const snapshots = transformPortfolioToSnapshots(
     portfolio,
     environment.chainId,
-  );
+  ).sort((a, b) => a.timestamp - b.timestamp);
 
   // Find the first snapshot where user has any position
   const firstNonZeroIndex = snapshots.findIndex(
@@ -167,7 +172,10 @@ async function fetchUserPositionSnapshotsFromLunar(
     return [];
   }
 
-  return snapshots.slice(firstNonZeroIndex);
+  return applyGranularity(
+    snapshots.slice(firstNonZeroIndex),
+    resolvedGranularity,
+  );
 }
 
 async function fetchUserPositionSnapshotsFromPonder(
