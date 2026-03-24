@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.10.1
+
+### Patch Changes
+
+- [#241](https://github.com/moonwell-fi/moonwell-sdk/pull/241) [`e6bfb70e4ac6637be25d1924ee1319588efb9455`](https://github.com/moonwell-fi/moonwell-sdk/commit/e6bfb70e4ac6637be25d1924ee1319588efb9455) Thanks [@bprofiro](https://github.com/bprofiro)! - add VVV core market
+
 ## 0.10.0
 
 ### Minor Changes
