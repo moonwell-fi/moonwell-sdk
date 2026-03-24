@@ -302,4 +302,16 @@ export const tokens = createTokenConfig({
     name: "Moonwell MAMO",
     symbol: "mMAMO",
   },
+  VVV: {
+    address: "0xacfE6019Ed1A7Dc6f7B508C02d1b04ec88cC21bf",
+    decimals: 18,
+    name: "Venice Token",
+    symbol: "VVV",
+  },
+  MOONWELL_VVV: {
+    address: "0xd64bcb70c613a6d1f4d7d57ba64bb4a0767a9682",
+    decimals: 8,
+    name: "Moonwell VVV",
+    symbol: "mVVV",
+  },
 });

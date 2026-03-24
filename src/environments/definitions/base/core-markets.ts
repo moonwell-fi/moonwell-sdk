@@ -85,5 +85,9 @@ export const markets = createMarketConfig({
       marketToken: "MOONWELL_MAMO",
       underlyingToken: "MAMO",
     },
+    MOONWELL_VVV: {
+      marketToken: "MOONWELL_VVV",
+      underlyingToken: "VVV",
+    },
   },
 });
