@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.10.2
+
+### Patch Changes
+
+- [#243](https://github.com/moonwell-fi/moonwell-sdk/pull/243) [`6fabf9ea3cdc05ed1cb5dfdba1f1348d9348889e`](https://github.com/moonwell-fi/moonwell-sdk/commit/6fabf9ea3cdc05ed1cb5dfdba1f1348d9348889e) Thanks [@bprofiro](https://github.com/bprofiro)! - reduce external HTTP calls in getMorphoUserRewards
+
 ## 0.10.1
 
 ### Patch Changes
