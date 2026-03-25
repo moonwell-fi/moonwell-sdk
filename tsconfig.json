@@ -9,12 +9,5 @@
       "path": "./scripts/tsconfig.json"
     }
   ],
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      // "@moonwell-sdk/*": [
-      //   "./src/*"
-      // ]
-    }
-  }
+  "compilerOptions": {}
 }
