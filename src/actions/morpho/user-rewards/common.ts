@@ -20,17 +20,19 @@ export async function getUserMorphoRewardsData(params: {
   environment: Environment;
   account: `0x${string}`;
 }): Promise<MorphoUserReward[]> {
-  const merklRewards = await getMerklRewardsData(
-    params.environment,
-    params.account,
-  );
+  const isFullDeployment =
+    params.environment.custom.morpho?.minimalDeployment === false;
 
-  if (params.environment.custom.morpho?.minimalDeployment === false) {
-    const morphoRewards = await getMorphoRewardsData(
-      params.environment,
-      params.account,
-    );
-    // Process Morpho rewards
+  const emptyMorphoRewards: MorphoRewardsResponse[] = [];
+  const [merklRewards, morphoRewards] = await Promise.all([
+    getMerklRewardsData(params.environment, params.account),
+    isFullDeployment
+      ? getMorphoRewardsData(params.environment, params.account)
+      : Promise.resolve(emptyMorphoRewards),
+  ]);
+
+  if (isFullDeployment) {
+    // Process Morpho rewards (GraphQL query depends on morphoRewards result)
     const morphoAssets = await getMorphoAssetsData(
       params.environment,
       morphoRewards.map((r) => r.asset.address),
@@ -189,6 +191,28 @@ export async function getUserMorphoRewardsData(params: {
     );
 
     // Process Merkl rewards
+    const vaultCampaignIds = new Set<string>(
+      (Object.values(publicEnvironments) as Environment[]).flatMap(
+        (environment) =>
+          Object.values(environment.config.vaults ?? {})
+            .map((vault) => vault.campaignId)
+            .filter((id): id is string => id !== undefined),
+      ),
+    );
+
+    const getVaultRewardAmount = (
+      breakdowns: any[],
+      field: "amount" | "claimed" | "pending",
+    ) => {
+      return breakdowns.reduce(
+        (acc, curr) =>
+          vaultCampaignIds.has(curr.campaignId)
+            ? acc + BigInt(curr[field])
+            : acc,
+        0n,
+      );
+    };
+
     const merklResult: MorphoUserReward[] = [];
 
     for (const chainData of merklRewards) {
@@ -203,30 +227,6 @@ export async function getUserMorphoRewardsData(params: {
           decimals: morphoAsset?.decimals ?? reward.token.decimals,
           symbol: morphoAsset?.symbol ?? reward.token.symbol,
           name: morphoAsset?.name ?? reward.token.symbol,
-        };
-
-        const getVaultRewardAmount = (
-          breakdowns: any[],
-          field: "amount" | "claimed" | "pending",
-        ) => {
-          return breakdowns.reduce((acc, curr) => {
-            // Check if campaign exists in vaults across all chains
-            const isVaultCampaign = Object.values(publicEnvironments).some(
-              (environment) => {
-                // Check if environment has vaults
-                if (
-                  environment.config.vaults &&
-                  Object.keys(environment.config.vaults).length > 0
-                ) {
-                  return Object.values(environment.config.vaults).some(
-                    (vault) => vault.campaignId === curr.campaignId,
-                  );
-                }
-                return false;
-              },
-            );
-            return isVaultCampaign ? acc + BigInt(curr[field]) : acc;
-          }, 0n);
         };
 
         const amount = getVaultRewardAmount(reward.breakdowns, "amount");
@@ -319,6 +319,69 @@ export async function getUserMorphoStakingRewardsData(params: {
     return [];
   }
 
+  // Hoist shared contract reads outside the per-vault loop
+  const homeEnvironment =
+    (Object.values(publicEnvironments) as Environment[]).find((e) =>
+      e.custom?.governance?.chainIds?.includes(params.environment.chainId),
+    ) || params.environment;
+
+  const viewsContract = params.environment.contracts.views;
+  const homeViewsContract = homeEnvironment.contracts.views;
+
+  const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] =
+    await Promise.all([
+      viewsContract?.read.getAllMarketsInfo(),
+      homeViewsContract?.read.getNativeTokenPrice(),
+      homeViewsContract?.read.getGovernanceTokenPrice(),
+    ]);
+
+  const governanceTokenPrice = new Amount(governanceTokenPriceRaw || 0n, 18);
+  const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+
+  let tokenPrices =
+    allMarkets
+      ?.map((marketInfo) => {
+        const marketFound = findMarketByAddress(
+          params.environment,
+          marketInfo.market,
+        );
+        if (marketFound) {
+          return {
+            token: marketFound.underlyingToken,
+            tokenPrice: new Amount(
+              marketInfo.underlyingPrice,
+              36 - marketFound.underlyingToken.decimals,
+            ),
+          };
+        } else {
+          return;
+        }
+      })
+      .filter((token) => !!token) || [];
+
+  // Add governance token to token prices
+  if (params.environment.custom?.governance?.token) {
+    tokenPrices = [
+      ...tokenPrices,
+      {
+        token:
+          params.environment.config.tokens[
+            params.environment.custom.governance.token
+          ]!,
+        tokenPrice: governanceTokenPrice,
+      },
+    ];
+  }
+
+  // Add native token to token prices
+  tokenPrices = [
+    ...tokenPrices,
+    {
+      token: findTokenByAddress(params.environment, zeroAddress)!,
+      tokenPrice: nativeTokenPrice,
+    },
+  ];
+
   const rewards = await Promise.all(
     vaultsWithStaking.map(async (vault) => {
       if (!vault.multiReward) return [];
@@ -328,73 +391,6 @@ export async function getUserMorphoStakingRewardsData(params: {
         params.account,
         vault.multiReward,
       );
-
-      const homeEnvironment =
-        (Object.values(publicEnvironments) as Environment[]).find((e) =>
-          e.custom?.governance?.chainIds?.includes(params.environment.chainId),
-        ) || params.environment;
-
-      const viewsContract = params.environment.contracts.views;
-      const homeViewsContract = homeEnvironment.contracts.views;
-
-      const userData = await Promise.all([
-        viewsContract?.read.getAllMarketsInfo(),
-        homeViewsContract?.read.getNativeTokenPrice(),
-        homeViewsContract?.read.getGovernanceTokenPrice(),
-      ]);
-
-      const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] =
-        userData;
-
-      const governanceTokenPrice = new Amount(
-        governanceTokenPriceRaw || 0n,
-        18,
-      );
-      const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
-
-      let tokenPrices =
-        allMarkets
-          ?.map((marketInfo) => {
-            const marketFound = findMarketByAddress(
-              params.environment,
-              marketInfo.market,
-            );
-            if (marketFound) {
-              return {
-                token: marketFound.underlyingToken,
-                tokenPrice: new Amount(
-                  marketInfo.underlyingPrice,
-                  36 - marketFound.underlyingToken.decimals,
-                ),
-              };
-            } else {
-              return;
-            }
-          })
-          .filter((token) => !!token) || [];
-
-      // Add governance token to token prices
-      if (params.environment.custom?.governance?.token) {
-        tokenPrices = [
-          ...tokenPrices,
-          {
-            token:
-              params.environment.config.tokens[
-                params.environment.custom.governance.token
-              ]!,
-            tokenPrice: governanceTokenPrice,
-          },
-        ];
-      }
-
-      // Add native token to token prices
-      tokenPrices = [
-        ...tokenPrices,
-        {
-          token: findTokenByAddress(params.environment, zeroAddress)!,
-          tokenPrice: nativeTokenPrice,
-        },
-      ];
 
       return vaultRewards
         .filter((reward): reward is { amount: Amount; token: TokenConfig } => {
@@ -587,140 +583,31 @@ type MerklRewardsResponse = {
   }>;
 };
 
-// Types for Merkl Opportunities API
-type MerklToken = {
-  id: string;
-  name: string;
-  chainId: number;
-  address: string;
-  decimals: number;
-  symbol: string;
-  displaySymbol: string;
-  icon: string;
-  verified: boolean;
-  isTest: boolean;
-  type: string;
-  isNative: boolean;
-  price: number;
-};
-
-type MerklRewardBreakdown = {
-  token: MerklToken;
-  amount: string;
-  value: number;
-  distributionType: string;
-  id: string;
-  timestamp: string;
-  campaignId: string;
-  dailyRewardsRecordId: string;
-};
-
-type MerklOpportunity = {
-  chainId: number;
-  type: string;
-  identifier: string;
-  name: string;
-  description: string;
-  howToSteps: string[];
-  status: string;
-  action: string;
-  tvl: number;
-  apr: number;
-  dailyRewards: number;
-  tags: any[];
-  id: string;
-  depositUrl: string;
-  explorerAddress: string;
-  lastCampaignCreatedAt: number;
-  aprRecord: {
-    cumulated: number;
-    timestamp: string;
-    breakdowns: {
-      distributionType: string;
-      identifier: string;
-      type: string;
-      value: number;
-      timestamp: string;
-    }[];
-  };
-  rewardsRecord: {
-    id: string;
-    total: number;
-    timestamp: string;
-    breakdowns: MerklRewardBreakdown[];
-  };
-};
-
 async function getMerklRewardsData(
   environment: Environment,
   account: Address,
 ): Promise<MerklRewardsResponse[]> {
   try {
-    // Get unique chain IDs from vault opportunities
-    const chainIdsPromises = Object.values(environment.config.vaults).map(
-      async (vault) => {
-        try {
-          const response = await fetch(
-            `https://api.merkl.xyz/v4/opportunities?identifier=${environment.config.tokens[vault.vaultToken]?.address}&chainId=${environment.chainId}&status=LIVE`,
-            {
-              headers: MOONWELL_FETCH_JSON_HEADERS,
-            },
-          );
-
-          if (!response.ok) {
-            console.warn(
-              `Failed to fetch opportunities: ${response.status} ${response.statusText}`,
-            );
-            return [];
-          }
-
-          const data: MerklOpportunity[] = await response.json();
-          return data.flatMap((opportunity) =>
-            opportunity.rewardsRecord.breakdowns.map(
-              (breakdown) => breakdown.token.chainId,
-            ),
-          );
-        } catch (error) {
-          console.warn(
-            `Error fetching opportunities for vault ${vault.vaultToken}:`,
-            error,
-          );
-          return [];
-        }
+    // Merkl campaigns always distribute rewards on the same chain as the
+    // opportunity, so environment.chainId is the only chain we need to query.
+    // The previous two-phase approach (fetch opportunities per vault → extract
+    // chain IDs → fetch rewards per chain) made N+1 HTTP calls to discover
+    // a chain ID we already know.
+    const response = await fetch(
+      `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`,
+      {
+        headers: MOONWELL_FETCH_JSON_HEADERS,
       },
     );
 
-    const chainIds = [...new Set((await Promise.all(chainIdsPromises)).flat())];
+    if (!response.ok) {
+      console.warn(
+        `Merkl API request failed: ${response.status} ${response.statusText}`,
+      );
+      return [];
+    }
 
-    // Fetch rewards for each unique chain ID
-    const rewardsPromises = chainIds.map(async (chainId) => {
-      try {
-        const response = await fetch(
-          `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=0&reloadChainId=${chainId}`,
-          {
-            headers: MOONWELL_FETCH_JSON_HEADERS,
-          },
-        );
-
-        if (!response.ok) {
-          console.warn(
-            `Merkl API request failed: ${response.status} ${response.statusText}`,
-          );
-          return [];
-        }
-
-        return (await response.json()) as MerklRewardsResponse[];
-      } catch (error) {
-        console.warn(
-          `Error fetching Merkl rewards for chain ${chainId}:`,
-          error,
-        );
-        return [];
-      }
-    });
-
-    const allRewards = await Promise.all(rewardsPromises);
-    return allRewards.flat();
+    return (await response.json()) as MerklRewardsResponse[];
   } catch (error) {
     console.error("Error in getMerklRewardsData:", error);
     return [];
