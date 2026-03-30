@@ -56,7 +56,11 @@ export async function getUserStakingInfo<
   );
 
   const campaignIds = await getMerklCampaignIds();
-  const merklRewards = await getMerklRewardsData(campaignIds, base.id, userAddress);
+  const merklRewards = await getMerklRewardsData(
+    campaignIds,
+    base.id,
+    userAddress,
+  );
 
   const result = envsWithStaking.flatMap((curr, index) => {
     const token =
