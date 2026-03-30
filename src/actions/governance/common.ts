@@ -54,7 +54,64 @@ type MerklReward = {
   pending: string;
 };
 
+type MerklCampaign = {
+  campaignId: string;
+  apr: number;
+  startTimestamp: number;
+  endTimestamp: number;
+  params: {
+    targetToken: string;
+  };
+};
+
+type CampaignIdsCache = {
+  ids: string[];
+  fetchedAt: number;
+};
+
+const MOONWELL_MERKL_CREATOR = "0x8b621804a7637b781e2BbD58e256a591F2dF7d51";
+const CAMPAIGN_IDS_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const MAX_BREAKDOWN_PAGES = 10;
+
+let campaignIdsCache: CampaignIdsCache | null = null;
+
+/** Resets the in-memory campaign IDs cache. Intended for use in tests only. */
+export function resetMerklCampaignIdsCache(): void {
+  campaignIdsCache = null;
+}
+
+/**
+ * Fetches all Moonwell Merkl campaign IDs from the API.
+ * Results are cached in memory for 4 hours since campaigns only change monthly.
+ */
+export async function getMerklCampaignIds(): Promise<string[]> {
+  const now = Date.now();
+  if (campaignIdsCache !== null && now - campaignIdsCache.fetchedAt < CAMPAIGN_IDS_CACHE_TTL_MS) {
+    return campaignIdsCache.ids;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.merkl.xyz/v4/campaigns?creatorAddress=${MOONWELL_MERKL_CREATOR}&excludeSubCampaigns=true&items=100`,
+      { headers: MOONWELL_FETCH_JSON_HEADERS },
+    );
+
+    if (!response.ok) {
+      console.warn(
+        `Merkl API request failed: ${response.status} ${response.statusText}`,
+      );
+      return campaignIdsCache?.ids ?? [];
+    }
+
+    const data = (await response.json()) as MerklCampaign[];
+    const ids = data.map((c) => c.campaignId);
+    campaignIdsCache = { ids, fetchedAt: now };
+    return ids;
+  } catch (error) {
+    console.error("Error in getMerklCampaignIds:", error);
+    return campaignIdsCache?.ids ?? [];
+  }
+}
 
 export async function getMerklRewardsData(
   campaignId: string[],
@@ -152,13 +209,15 @@ export async function getMerklRewardsData(
   }
 }
 
-export async function getMerklStakingApr(campaignId: string): Promise<number> {
+export async function getMerklStakingApr(
+  contractAddress: string,
+): Promise<number> {
+  const now = Math.floor(Date.now() / 1000);
+
   try {
     const response = await fetch(
-      `https://api.merkl.xyz/v4/campaigns?campaignId=${campaignId}`,
-      {
-        headers: MOONWELL_FETCH_JSON_HEADERS,
-      },
+      `https://api.merkl.xyz/v4/campaigns?creatorAddress=${MOONWELL_MERKL_CREATOR}&excludeSubCampaigns=true&items=100`,
+      { headers: MOONWELL_FETCH_JSON_HEADERS },
     );
 
     if (!response.ok) {
@@ -168,9 +227,15 @@ export async function getMerklStakingApr(campaignId: string): Promise<number> {
       return 0;
     }
 
-    const data = (await response.json()) as { apr: number }[];
+    const data = (await response.json()) as MerklCampaign[];
 
-    return data.reduce((acc, curr) => acc + Number(curr.apr), 0);
+    return data
+      .filter((c) => c.startTimestamp <= now && c.endTimestamp >= now)
+      .filter(
+        (c) =>
+          c.params.targetToken.toLowerCase() === contractAddress.toLowerCase(),
+      )
+      .reduce((acc, c) => acc + Number(c.apr), 0);
   } catch (error) {
     console.error("Error in getMerklStakingApr:", error);
     return 0;
