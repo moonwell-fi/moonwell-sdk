@@ -1,5 +1,10 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
-import { getMerklRewardsData } from "./common.js";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  getMerklCampaignIds,
+  getMerklRewardsData,
+  getMerklStakingApr,
+  resetMerklCampaignIdsCache,
+} from "./common.js";
 
 const CAMPAIGN_A =
   "0x0c3ec6a807049edd368e2493b6ab1f71557384c248013f5eee9cb375eead5faa";
@@ -7,6 +12,8 @@ const CAMPAIGN_B =
   "0xcd60ff26dc0b43f14c995c494bc5650087eaae68b279bdbe85e0e8eaa11fd513";
 const CAMPAIGN_OTHER =
   "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const STKWELL_ADDRESS = "0xe66E3A37C3274Ac24FE8590f7D84A2427194DC17";
+const OTHER_TOKEN_ADDRESS = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 const WELL_TOKEN = {
   address: "0xA88594D404727625A9437C3f886C7643872296AE",
@@ -121,6 +128,10 @@ function mockFetchResponses(
 }
 
 describe("getMerklRewardsData", () => {
+  beforeEach(() => {
+    resetMerklCampaignIdsCache();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -501,5 +512,284 @@ describe("getMerklRewardsData", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.amount).toBe("500");
+  });
+});
+
+function makeCampaignsResponse(
+  campaigns: Array<{
+    campaignId: string;
+    apr?: number;
+    startTimestamp?: number;
+    endTimestamp?: number;
+  }>,
+) {
+  const now = Math.floor(Date.now() / 1000);
+  return campaigns.map((c) => ({
+    campaignId: c.campaignId,
+    apr: c.apr ?? 0,
+    startTimestamp: c.startTimestamp ?? now - 3600,
+    endTimestamp: c.endTimestamp ?? now + 3600,
+  }));
+}
+
+describe("getMerklCampaignIds", () => {
+  beforeEach(() => {
+    resetMerklCampaignIdsCache();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("returns campaign IDs from API", async () => {
+    mockFetchResponses([
+      {
+        ok: true,
+        data: makeCampaignsResponse([
+          { campaignId: CAMPAIGN_A },
+          { campaignId: CAMPAIGN_B },
+        ]),
+      },
+    ]);
+
+    const result = await getMerklCampaignIds();
+
+    expect(result).toEqual([CAMPAIGN_A, CAMPAIGN_B]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns cached result on second call", async () => {
+    mockFetchResponses([
+      {
+        ok: true,
+        data: makeCampaignsResponse([{ campaignId: CAMPAIGN_A }]),
+      },
+    ]);
+
+    await getMerklCampaignIds();
+    const result = await getMerklCampaignIds();
+
+    expect(result).toEqual([CAMPAIGN_A]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns empty array on API error with no prior cache", async () => {
+    mockFetchResponses([
+      { ok: false, status: 500, statusText: "Internal Server Error" },
+    ]);
+
+    const result = await getMerklCampaignIds();
+
+    expect(result).toEqual([]);
+  });
+
+  test("returns stale cache on API error when cache exists", async () => {
+    mockFetchResponses([
+      {
+        ok: true,
+        data: makeCampaignsResponse([{ campaignId: CAMPAIGN_A }]),
+      },
+      { ok: false, status: 503, statusText: "Service Unavailable" },
+    ]);
+
+    // Populate cache
+    await getMerklCampaignIds();
+    resetMerklCampaignIdsCache();
+
+    // Re-populate so we have a cache entry, then simulate expiry via second call failing
+    mockFetchResponses([
+      {
+        ok: true,
+        data: makeCampaignsResponse([{ campaignId: CAMPAIGN_A }]),
+      },
+      { ok: false, status: 503, statusText: "Service Unavailable" },
+    ]);
+    await getMerklCampaignIds();
+
+    // Force cache to appear expired by overriding fetch to fail
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 503,
+          statusText: "Service Unavailable",
+        }),
+      ),
+    );
+
+    const result = await getMerklCampaignIds();
+    expect(result).toEqual([CAMPAIGN_A]);
+  });
+
+  test("returns empty array when fetch throws", async () => {
+    mockFetchResponses([{ throws: new Error("Network error") }]);
+
+    const result = await getMerklCampaignIds();
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe("getMerklStakingApr", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("returns APR of the currently live campaign", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockFetchResponses([
+      {
+        ok: true,
+        data: [
+          {
+            campaignId: CAMPAIGN_A,
+            apr: 12.5,
+            startTimestamp: now - 3600,
+            endTimestamp: now + 3600,
+            params: { targetToken: STKWELL_ADDRESS },
+          },
+        ],
+      },
+    ]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBe(12.5);
+  });
+
+  test("sums APRs when multiple campaigns for the same token are live", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockFetchResponses([
+      {
+        ok: true,
+        data: [
+          {
+            campaignId: CAMPAIGN_A,
+            apr: 10,
+            startTimestamp: now - 3600,
+            endTimestamp: now + 3600,
+            params: { targetToken: STKWELL_ADDRESS },
+          },
+          {
+            campaignId: CAMPAIGN_B,
+            apr: 5,
+            startTimestamp: now - 3600,
+            endTimestamp: now + 3600,
+            params: { targetToken: STKWELL_ADDRESS },
+          },
+        ],
+      },
+    ]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBe(15);
+  });
+
+  test("ignores campaigns for other tokens", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockFetchResponses([
+      {
+        ok: true,
+        data: [
+          {
+            campaignId: CAMPAIGN_A,
+            apr: 9.87,
+            startTimestamp: now - 3600,
+            endTimestamp: now + 3600,
+            params: { targetToken: STKWELL_ADDRESS },
+          },
+          {
+            campaignId: CAMPAIGN_B,
+            apr: 2.28,
+            startTimestamp: now - 3600,
+            endTimestamp: now + 3600,
+            params: { targetToken: OTHER_TOKEN_ADDRESS },
+          },
+        ],
+      },
+    ]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBeCloseTo(9.87);
+  });
+
+  test("ignores expired campaigns", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockFetchResponses([
+      {
+        ok: true,
+        data: [
+          {
+            campaignId: CAMPAIGN_A,
+            apr: 8,
+            startTimestamp: now - 7200,
+            endTimestamp: now - 3600,
+            params: { targetToken: STKWELL_ADDRESS },
+          },
+          {
+            campaignId: CAMPAIGN_B,
+            apr: 12,
+            startTimestamp: now - 3600,
+            endTimestamp: now + 3600,
+            params: { targetToken: STKWELL_ADDRESS },
+          },
+        ],
+      },
+    ]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBe(12);
+  });
+
+  test("ignores campaigns that have not started yet", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockFetchResponses([
+      {
+        ok: true,
+        data: [
+          {
+            campaignId: CAMPAIGN_A,
+            apr: 10,
+            startTimestamp: now + 3600,
+            endTimestamp: now + 7200,
+            params: { targetToken: STKWELL_ADDRESS },
+          },
+        ],
+      },
+    ]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBe(0);
+  });
+
+  test("returns 0 on API error", async () => {
+    mockFetchResponses([
+      { ok: false, status: 500, statusText: "Internal Server Error" },
+    ]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBe(0);
+  });
+
+  test("returns 0 when fetch throws", async () => {
+    mockFetchResponses([{ throws: new Error("Network error") }]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBe(0);
+  });
+
+  test("returns 0 when no campaigns are returned", async () => {
+    mockFetchResponses([{ ok: true, data: [] }]);
+
+    const result = await getMerklStakingApr(STKWELL_ADDRESS);
+
+    expect(result).toBe(0);
   });
 });
