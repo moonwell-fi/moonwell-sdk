@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.10.3
+
+### Patch Changes
+
+- [#246](https://github.com/moonwell-fi/moonwell-sdk/pull/246) [`c02a4c69b6f4abf782a071642bd40cc2cd2d5624`](https://github.com/moonwell-fi/moonwell-sdk/commit/c02a4c69b6f4abf782a071642bd40cc2cd2d5624) Thanks [@bprofiro](https://github.com/bprofiro)! - auto-discover merkl campaign
+
+- [#210](https://github.com/moonwell-fi/moonwell-sdk/pull/210) [`49727ea0c6f93cac6688ff0eb4050dcb9fffb596`](https://github.com/moonwell-fi/moonwell-sdk/commit/49727ea0c6f93cac6688ff0eb4050dcb9fffb596) Thanks [@bprofiro](https://github.com/bprofiro)! - add remaining morpho v2 vaults
+
 ## 0.10.2
 
 ### Patch Changes
