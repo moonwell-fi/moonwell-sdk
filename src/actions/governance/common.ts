@@ -86,7 +86,10 @@ export function resetMerklCampaignIdsCache(): void {
  */
 export async function getMerklCampaignIds(): Promise<string[]> {
   const now = Date.now();
-  if (campaignIdsCache !== null && now - campaignIdsCache.fetchedAt < CAMPAIGN_IDS_CACHE_TTL_MS) {
+  if (
+    campaignIdsCache !== null &&
+    now - campaignIdsCache.fetchedAt < CAMPAIGN_IDS_CACHE_TTL_MS
+  ) {
     return campaignIdsCache.ids;
   }
 
