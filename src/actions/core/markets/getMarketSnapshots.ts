@@ -554,12 +554,17 @@ export async function fetchIsolatedMarketSnapshots(
             collateralTokenPrice > 0
               ? snapshot.totalLiquidityUsd / collateralTokenPrice
               : snapshot.totalLiquidity;
+          const totalReallocatableLiquidity =
+            collateralTokenPrice > 0
+              ? snapshot.totalReallocatableLiquidityUsd / collateralTokenPrice
+              : snapshot.totalReallocatableLiquidity;
 
           return {
             ...snapshot,
             collateralTokenPrice,
             totalSupply,
             totalLiquidity,
+            totalReallocatableLiquidity,
           };
         });
       }
