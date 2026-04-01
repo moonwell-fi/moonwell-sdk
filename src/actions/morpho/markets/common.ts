@@ -739,8 +739,7 @@ async function getMorphoMarketRewards(
         collateralAssetsUsd: item.state.collateralAssetsUsd ?? null,
         publicAllocatorSharedLiquidity: item.publicAllocatorSharedLiquidity.map(
           (item) => ({
-            assets:
-              Number(item.assets) / 10 ** loanAssetDecimals,
+            assets: Number(item.assets) / 10 ** loanAssetDecimals,
             vault: {
               address: item.vault.address,
               name: item.vault.name,
