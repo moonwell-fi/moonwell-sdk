@@ -55,7 +55,7 @@ const CBBTC_UNDERLYING_TOKEN = MOCK_TOKENS[0];
 const USDC_UNDERLYING_TOKEN = MOCK_TOKENS[1];
 const WETH_UNDERLYING_TOKEN = MOCK_TOKENS[2];
 
-// mwcbBTCv1 — V1 Frontier vault (no version field in config → defaults to 1)
+// mwcbBTC — V1 Frontier vault (no version field in config → defaults to 1)
 const MOCK_CBBTC_VAULT = {
   id: "8453-0x543257ef2161176d7c8cd90ba65c2d4caef5a796",
   chainId: BASE_CHAIN_ID,
@@ -117,7 +117,7 @@ const MOCK_CBBTC_VAULT = {
   underlyingToken: CBBTC_UNDERLYING_TOKEN,
 };
 
-// mwETHv1 — no version field in config → defaults to 1
+// mwETH — no version field in config → defaults to 1
 const MOCK_MWETH_VAULT = {
   id: "8453-0xa0e430870c4604ccfc7b38ca7845b1ff653d0ff1",
   chainId: BASE_CHAIN_ID,
@@ -146,7 +146,7 @@ const MOCK_MWETH_VAULT = {
   underlyingToken: WETH_UNDERLYING_TOKEN,
 };
 
-// mwUSDCv1 — no version field in config → defaults to 1
+// mwUSDC — no version field in config → defaults to 1
 const MOCK_MWUSDC_VAULT = {
   id: "8453-0xc1256ae5ff1cf2719d4937adb3bbccab2e00a2ca",
   chainId: BASE_CHAIN_ID,
@@ -175,7 +175,7 @@ const MOCK_MWUSDC_VAULT = {
   underlyingToken: USDC_UNDERLYING_TOKEN,
 };
 
-// mwEURCv1 — no version field in config → defaults to 1
+// mwEURC — no version field in config → defaults to 1
 const MOCK_MWEURC_VAULT = {
   id: "8453-0xf24608e0ccb972b0b0f4a6446a0bbf58c701a026",
   chainId: BASE_CHAIN_ID,
@@ -513,14 +513,14 @@ describe("Lunar Indexer Transformation Tests", () => {
     );
 
     expect(vault.chainId).toBe(BASE_CHAIN_ID);
-    expect(vault.vaultKey).toBe("mwcbBTCv1");
+    expect(vault.vaultKey).toBe("mwcbBTC");
     expect(vault.version).toBe(1);
     expect(typeof vault.deprecated).toBe("boolean");
 
     expect(vault.vaultToken.address.toLowerCase()).toBe(
       MOCK_CBBTC_VAULT.address.toLowerCase(),
     );
-    expect(vault.vaultToken.symbol).toBe("mwcbBTCv1");
+    expect(vault.vaultToken.symbol).toBe("mwcbBTC");
     expect(vault.vaultToken.decimals).toBe(18);
 
     // SDK config overrides: mwcbBTC underlyingToken is "cbBTC" from config
@@ -725,7 +725,7 @@ describe("Lunar Indexer Transformation Tests", () => {
     }
   });
 
-  test("V2 vault detected from config version field (meUSDC and mwXxx are V2, v1 variants default to 1)", () => {
+  test("V2 vault detected from config version field (only meUSDC is V2)", () => {
     const tokenMap = new Map(
       MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
     );
@@ -736,12 +736,11 @@ describe("Lunar Indexer Transformation Tests", () => {
       tokenMap,
     );
 
-    // meUSDC has version:2 in config
+    // Only meUSDC has version:2 in config; everything else defaults to 1
     const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
     expect(meUSDC?.version).toBe(2);
 
-    // v1 variants have no version field in config → default to 1
-    const v1Keys = ["mwETHv1", "mwUSDCv1", "mwEURCv1", "mwcbBTCv1", "meUSDCv1"];
+    const v1Keys = ["mwETH", "mwUSDC", "mwEURC", "mwcbBTC", "meUSDCv1"];
     for (const key of v1Keys) {
       const vault = vaults.find((v) => v.vaultKey === key);
       expect(vault?.version, `${key} should be V1`).toBe(1);
@@ -759,10 +758,10 @@ describe("Lunar Indexer Transformation Tests", () => {
       tokenMap,
     );
 
-    // SDK config maps mwETHv1 → underlyingToken: "ETH"
+    // SDK config maps mwETH → underlyingToken: "ETH"
     expect(vault.underlyingToken.symbol).toBe("ETH");
     expect(vault.underlyingToken.name).toBe("Ethereum");
-    expect(vault.vaultKey).toBe("mwETHv1");
+    expect(vault.vaultKey).toBe("mwETH");
   });
 
   test("meUSDCv1 vault name comes from SDK config, not indexer", () => {
@@ -782,7 +781,7 @@ describe("Lunar Indexer Transformation Tests", () => {
     expect(vault.vaultKey).toBe("meUSDCv1");
   });
 
-  test("Vaults sorted by config key order: mwETHv1, mwUSDCv1, mwEURCv1, mwcbBTCv1, meUSDC, meUSDCv1", () => {
+  test("Vaults sorted by config key order: mwETH, mwUSDC, mwEURC, mwcbBTC, meUSDC, meUSDCv1", () => {
     const tokenMap = new Map(
       MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
     );
@@ -806,10 +805,10 @@ describe("Lunar Indexer Transformation Tests", () => {
     });
 
     const expectedOrder = [
-      "mwETHv1",
-      "mwUSDCv1",
-      "mwEURCv1",
-      "mwcbBTCv1",
+      "mwETH",
+      "mwUSDC",
+      "mwEURC",
+      "mwcbBTC",
       "meUSDC",
       "meUSDCv1",
     ];
