@@ -82,6 +82,8 @@ export type LunarIndexerMarketSnapshot = {
   totalSupplyAssetsUsd: string;
   totalBorrowAssetsUsd: string;
   totalLiquidityUsd: string;
+  totalReallocatableLiquidity?: string;
+  totalReallocatableLiquidityUsd?: string;
   loanTokenPrice: string;
   collateralTokenPrice: string;
   supplyApy: string;
@@ -125,6 +127,13 @@ export function transformIsolatedMarketSnapshotFromIndexer(
       ? totalLiquidityUsd / collateralTokenPrice
       : Number.parseFloat(snapshot.totalLiquidity);
 
+  const totalReallocatableLiquidity = Number.parseFloat(
+    snapshot.totalReallocatableLiquidity ?? "0",
+  );
+  const totalReallocatableLiquidityUsd = Number.parseFloat(
+    snapshot.totalReallocatableLiquidityUsd ?? "0",
+  );
+
   return {
     chainId: snapshot.chainId,
     marketId: snapshot.marketId.toLowerCase(),
@@ -135,6 +144,8 @@ export function transformIsolatedMarketSnapshotFromIndexer(
     totalBorrowsUsd: Number.parseFloat(snapshot.totalBorrowAssetsUsd),
     totalLiquidity,
     totalLiquidityUsd,
+    totalReallocatableLiquidity,
+    totalReallocatableLiquidityUsd,
     baseSupplyApy: Number.parseFloat(snapshot.supplyApy),
     baseBorrowApy: Number.parseFloat(snapshot.borrowApy),
     loanTokenPrice,

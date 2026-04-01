@@ -718,12 +718,13 @@ async function getMorphoMarketRewards(
 
   if (result) {
     const markets = result.markets.items.map((item) => {
+      const loanAssetDecimals = item.loanAsset.decimals;
       const mapping: GetMorphoMarketsRewardsReturnType = {
         chainId: item.morphoBlue.chain.id,
         marketId: item.uniqueKey,
         reallocatableLiquidityAssets: new Amount(
           BigInt(item.reallocatableLiquidityAssets),
-          item.loanAsset.decimals,
+          loanAssetDecimals,
         ),
         // Note: The Morpho GraphQL API may return null for collateralAssets and
         // collateralAssetsUsd for markets with no collateral deposited or during data sync.
@@ -738,7 +739,8 @@ async function getMorphoMarketRewards(
         collateralAssetsUsd: item.state.collateralAssetsUsd ?? null,
         publicAllocatorSharedLiquidity: item.publicAllocatorSharedLiquidity.map(
           (item) => ({
-            assets: Number(item.assets),
+            assets:
+              Number(item.assets) / 10 ** loanAssetDecimals,
             vault: {
               address: item.vault.address,
               name: item.vault.name,

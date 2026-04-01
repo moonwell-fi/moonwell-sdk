@@ -40,6 +40,8 @@ export function transformMarketSnapshot(
     totalBorrowsUsd: Number(lunar.totalBorrowsUSD),
     totalLiquidity: Number(lunar.totalLiquidity),
     totalLiquidityUsd: Number(lunar.totalLiquidityUSD),
+    totalReallocatableLiquidity: 0,
+    totalReallocatableLiquidityUsd: 0,
     baseSupplyApy: Number(lunar.baseSupplyApy),
     baseBorrowApy: Number(lunar.baseBorrowApy),
     timestamp: Number(lunar.timestamp) * 1000, // Convert unix timestamp to milliseconds
