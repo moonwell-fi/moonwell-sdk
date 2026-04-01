@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.10.4
+
+### Patch Changes
+
+- [#251](https://github.com/moonwell-fi/moonwell-sdk/pull/251) [`91f5063d00e225ecccc3b34b42ede0dcbe1c7003`](https://github.com/moonwell-fi/moonwell-sdk/commit/91f5063d00e225ecccc3b34b42ede0dcbe1c7003) Thanks [@bprofiro](https://github.com/bprofiro)! - Add reallocatable liquidity to morpho markets snapshots
+
 ## 0.10.3
 
 ### Patch Changes
