@@ -142,6 +142,8 @@ function makeMarketSnapshot(
     totalBorrowsUsd: totalBorrows,
     totalLiquidity: Math.max(totalSupply - totalBorrows, 0),
     totalLiquidityUsd: Math.max(totalSupply - totalBorrows, 0),
+    totalReallocatableLiquidity: 0,
+    totalReallocatableLiquidityUsd: 0,
     baseSupplyApy: 0.05,
     baseBorrowApy: 0.08,
     collateralTokenPrice: 1,

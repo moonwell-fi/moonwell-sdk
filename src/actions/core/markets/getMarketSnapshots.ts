@@ -326,6 +326,8 @@ async function fetchCoreMarketSnapshotsFromPonder(
         totalBorrowsUsd: borrowUsd,
         totalLiquidity: liquidity,
         totalLiquidityUsd: liquidityUsd,
+        totalReallocatableLiquidity: 0,
+        totalReallocatableLiquidityUsd: 0,
         baseSupplyApy: point.baseSupplyApy,
         baseBorrowApy: point.baseBorrowApy,
         collateralTokenPrice: price,
@@ -552,12 +554,17 @@ export async function fetchIsolatedMarketSnapshots(
             collateralTokenPrice > 0
               ? snapshot.totalLiquidityUsd / collateralTokenPrice
               : snapshot.totalLiquidity;
+          const totalReallocatableLiquidity =
+            collateralTokenPrice > 0
+              ? snapshot.totalReallocatableLiquidityUsd / collateralTokenPrice
+              : snapshot.totalReallocatableLiquidity;
 
           return {
             ...snapshot,
             collateralTokenPrice,
             totalSupply,
             totalLiquidity,
+            totalReallocatableLiquidity,
           };
         });
       }
@@ -790,6 +797,8 @@ async function fetchIsolatedMarketSnapshotsFromBlueApi(
               totalSupplyUsd: Number(supplyAssetsUsd.y),
               totalLiquidity,
               totalLiquidityUsd: Number(liquidityAssetsUsd.y),
+              totalReallocatableLiquidity: 0,
+              totalReallocatableLiquidityUsd: 0,
               baseSupplyApy: supplyApy.y,
               baseBorrowApy: borrowApy.y,
               loanTokenPrice,

@@ -16,9 +16,11 @@ export type MarketSnapshot = {
   totalSupplyAssets: Amount;
   totalBorrowAssets: Amount;
   totalLiquidity: Amount;
+  totalReallocatableLiquidity: Amount;
   totalSupplyAssetsUsd: number;
   totalBorrowAssetsUsd: number;
   totalLiquidityUsd: number;
+  totalReallocatableLiquidityUsd: number;
   loanTokenPrice: number;
   collateralTokenPrice: number;
   supplyApy: number;
@@ -105,9 +107,16 @@ export async function getMarketSnapshots<
         BigInt(Math.round(s.totalLiquidity * 10 ** loanToken.decimals)),
         loanToken.decimals,
       ),
+      totalReallocatableLiquidity: new Amount(
+        BigInt(
+          Math.round(s.totalReallocatableLiquidity * 10 ** loanToken.decimals),
+        ),
+        loanToken.decimals,
+      ),
       totalSupplyAssetsUsd: s.totalSupplyUsd,
       totalBorrowAssetsUsd: s.totalBorrowsUsd,
       totalLiquidityUsd: s.totalLiquidityUsd,
+      totalReallocatableLiquidityUsd: s.totalReallocatableLiquidityUsd,
       loanTokenPrice: s.loanTokenPrice,
       collateralTokenPrice: s.collateralTokenPrice,
       supplyApy: s.baseSupplyApy,
@@ -181,15 +190,29 @@ export async function getMarketSnapshots<
       loanToken.decimals,
     );
 
+    const totalReallocatableLiquidity = new Amount(
+      BigInt(
+        Math.floor(
+          Number.parseFloat(snapshot.totalReallocatableLiquidity ?? "0") *
+            10 ** loanToken.decimals,
+        ),
+      ),
+      loanToken.decimals,
+    );
+
     return {
       timestamp: snapshot.timestamp,
       blockNumber: BigInt(snapshot.blockNumber),
       totalSupplyAssets,
       totalBorrowAssets,
       totalLiquidity,
+      totalReallocatableLiquidity,
       totalSupplyAssetsUsd: Number.parseFloat(snapshot.totalSupplyAssetsUsd),
       totalBorrowAssetsUsd: Number.parseFloat(snapshot.totalBorrowAssetsUsd),
       totalLiquidityUsd: Number.parseFloat(snapshot.totalLiquidityUsd),
+      totalReallocatableLiquidityUsd: Number.parseFloat(
+        snapshot.totalReallocatableLiquidityUsd ?? "0",
+      ),
       loanTokenPrice: Number.parseFloat(snapshot.loanTokenPrice),
       collateralTokenPrice: Number.parseFloat(snapshot.collateralTokenPrice),
       supplyApy: Number.parseFloat(snapshot.supplyApy),
