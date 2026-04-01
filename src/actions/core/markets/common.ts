@@ -37,6 +37,22 @@ export const getMarketsData = async (environment: Environment) => {
     }
   }
 
+  // Moonriver's on-chain oracle returns stale prices even though getAllMarketsInfo
+  // succeeds. Skip the Views contract entirely and use per-mToken RPC calls with
+  // prices fetched from DefiLlama (same source DefiLlama uses for their TVL).
+  if (isMoonriver) {
+    const tokenPrices = await fetchDefiLlamaPrices(
+      environment.key,
+      environment,
+    );
+    return await getMarketsFromMTokenFallback(
+      environment,
+      false,
+      false,
+      tokenPrices,
+    );
+  }
+
   const homeEnvironment =
     (Object.values(publicEnvironments) as Environment[]).find((e) =>
       e.custom?.governance?.chainIds?.includes(environment.chainId),
@@ -58,7 +74,7 @@ export const getMarketsData = async (environment: Environment) => {
   ]);
 
   // If getAllMarketsInfo failed (e.g. broken on-chain oracle), fall back to
-  // per-mToken RPC calls. This handles deprecated chains like Moonriver where
+  // per-mToken RPC calls. This handles deprecated chains where
   // the price oracle is non-functional but individual mToken data is readable.
   if (allMarketsInfoResult.status === "rejected") {
     console.debug(
@@ -253,16 +269,16 @@ export const getMarketsData = async (environment: Environment) => {
               totalSupplyUsd === 0
                 ? 0
                 : (supplyRewardsPerDayUsd / totalSupplyUsd) *
-                  DAYS_PER_YEAR *
-                  100;
+                DAYS_PER_YEAR *
+                100;
             // Negative: borrow reward APR reduces the effective borrowing cost
             const borrowApr =
               totalBorrowsUsd === 0
                 ? 0
                 : (borrowRewardsPerDayUsd / totalBorrowsUsd) *
-                  DAYS_PER_YEAR *
-                  100 *
-                  -1;
+                DAYS_PER_YEAR *
+                100 *
+                -1;
 
             market.rewards.push({
               liquidStakingApr: 0,
@@ -291,15 +307,53 @@ export const getMarketsData = async (environment: Environment) => {
 };
 
 /**
+ * Fetch current token prices from the DefiLlama Coins API.
+ * Returns a map of lowercase token address → USD price.
+ * Falls back to an empty map on any error so callers can degrade gracefully.
+ */
+async function fetchDefiLlamaPrices(
+  chainName: string,
+  environment: Environment,
+): Promise<Record<string, number>> {
+  try {
+    const tokenAddresses = Object.values(environment.config.tokens).map(
+      (token) => token.address,
+    );
+
+    const coins = tokenAddresses
+      .map((addr) => `${chainName}:${addr.toLowerCase()}`)
+      .join(",");
+
+    const url = `https://coins.llama.fi/prices/current/${coins}`;
+    const response = await fetch(url, { headers: MOONWELL_FETCH_JSON_HEADERS });
+    const data = (await response.json()) as {
+      coins: Record<string, { price: number }>;
+    };
+
+    const prices: Record<string, number> = {};
+    for (const [key, value] of Object.entries(data.coins ?? {})) {
+      const address = key.split(":")[1];
+      if (address) prices[address] = value.price;
+    }
+    return prices;
+  } catch (error) {
+    console.debug("[DefiLlama prices] Failed to fetch prices:", error);
+    return {};
+  }
+}
+
+/**
  * Fallback for chains whose on-chain price oracle is non-functional (e.g.
  * deprecated Moonriver). Reads raw mToken contract data individually via
  * Promise.allSettled so a single failed call does not abort the entire chain.
- * All USD/price values are set to 0 since oracle prices are unavailable.
+ * Token USD values are computed using prices from the tokenPrices map when
+ * available, and default to 0 otherwise.
  */
 async function getMarketsFromMTokenFallback(
   environment: Environment,
   seizePaused: boolean,
   transferPaused: boolean,
+  tokenPrices: Record<string, number> = {},
 ): Promise<Market[]> {
   const markets: Market[] = [];
 
@@ -315,19 +369,19 @@ async function getMarketsFromMTokenFallback(
       marketConfig.underlyingToken
     ] as
       | {
-          address: `0x${string}`;
-          decimals: number;
-          symbol: string;
-          name: string;
-        }
+        address: `0x${string}`;
+        decimals: number;
+        symbol: string;
+        name: string;
+      }
       | undefined;
     const marketToken = envAny.config.tokens[marketConfig.marketToken] as
       | {
-          address: `0x${string}`;
-          decimals: number;
-          symbol: string;
-          name: string;
-        }
+        address: `0x${string}`;
+        decimals: number;
+        symbol: string;
+        name: string;
+      }
       | undefined;
     if (!underlyingToken || !marketToken) continue;
 
@@ -401,6 +455,12 @@ async function getMarketsFromMTokenFallback(
     const baseSupplyApy = calculateApy(supplyRate.value);
     const baseBorrowApy = calculateApy(borrowRate.value);
 
+    const underlyingPrice =
+      tokenPrices[underlyingToken.address.toLowerCase()] ?? 0;
+    const totalSupplyUsd = totalSupply.value * underlyingPrice;
+    const totalBorrowsUsd = totalBorrows.value * underlyingPrice;
+    const totalReservesUsd = totalReserves.value * underlyingPrice;
+
     const market: Market = {
       marketKey,
       chainId: environment.chainId,
@@ -422,12 +482,12 @@ async function getMarketsFromMTokenFallback(
       badDebt: new Amount(0n, underlyingToken.decimals),
       badDebtUsd: 0,
       totalBorrows,
-      totalBorrowsUsd: 0,
+      totalBorrowsUsd,
       totalReserves,
-      totalReservesUsd: 0,
+      totalReservesUsd,
       totalSupply,
-      totalSupplyUsd: 0,
-      underlyingPrice: 0,
+      totalSupplyUsd,
+      underlyingPrice,
       underlyingToken,
       baseBorrowApy,
       baseSupplyApy,
@@ -676,16 +736,16 @@ async function fetchMarketsFromLunar(
           Number(lunarMarket.totalSupplyUsd) === 0
             ? 0
             : (supplyRewardsPerDayUsd / Number(lunarMarket.totalSupplyUsd)) *
-              DAYS_PER_YEAR *
-              100;
+            DAYS_PER_YEAR *
+            100;
         // Negative: borrow reward APR reduces the effective borrowing cost
         borrowApr =
           Number(lunarMarket.totalBorrowsUsd) === 0
             ? 0
             : (borrowRewardsPerDayUsd / Number(lunarMarket.totalBorrowsUsd)) *
-              DAYS_PER_YEAR *
-              100 *
-              -1;
+            DAYS_PER_YEAR *
+            100 *
+            -1;
       }
 
       market.rewards.push({
