@@ -236,9 +236,10 @@ export const getMarketsData = async (environment: Environment) => {
               : tokenPrice;
 
           if (price) {
-            // USDC on-chain returns borrowIncentivesPerSec=1 (1 wei) as a
-            // placeholder when there are no active borrow incentives. Treat as zero.
-            if (token.symbol === "USDC" && borrowIncentivesPerSec === 1n) {
+            // On-chain contracts use borrowIncentivesPerSec=1 (1 wei) as a
+            // placeholder when there are no active borrow incentives, because
+            // setting it to 0 triggers a known smart contract bug. Treat as zero.
+            if (borrowIncentivesPerSec === 1n) {
               borrowIncentivesPerSec = 0n;
             }
 
@@ -634,13 +635,19 @@ async function fetchMarketsFromLunar(
       let supplyApr: number;
       let borrowApr: number;
 
+      // On-chain contracts use borrowIncentivesPerSec=1 (1 wei) as a
+      // placeholder when there are no active borrow incentives, because
+      // setting it to 0 triggers a known smart contract bug. Treat as zero.
+      const isBorrowPlaceholder =
+        BigInt(incentive.borrowIncentivesPerSec) === 1n;
+
       if (
         incentive.priceUsd !== null &&
         incentive.supplyApr !== null &&
         incentive.borrowApr !== null
       ) {
         supplyApr = Number(incentive.supplyApr);
-        borrowApr = -Number(incentive.borrowApr);
+        borrowApr = isBorrowPlaceholder ? 0 : -Number(incentive.borrowApr);
       } else {
         const isGovernanceToken =
           token.symbol === environment.custom?.governance?.token;
@@ -656,14 +663,10 @@ async function fetchMarketsFromLunar(
           continue;
         }
 
-        let borrowIncentivesPerSec = BigInt(incentive.borrowIncentivesPerSec);
+        const borrowIncentivesPerSec = isBorrowPlaceholder
+          ? 0n
+          : BigInt(incentive.borrowIncentivesPerSec);
         const supplyIncentivesPerSec = BigInt(incentive.supplyIncentivesPerSec);
-
-        // USDC on-chain returns borrowIncentivesPerSec=1 (1 wei) as a
-        // placeholder when there are no active borrow incentives. Treat as zero.
-        if (token.symbol === "USDC" && borrowIncentivesPerSec === 1n) {
-          borrowIncentivesPerSec = 0n;
-        }
 
         const supplyRewardsPerDayUsd =
           perDay(new Amount(supplyIncentivesPerSec, token.decimals).value) *
