@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.10.6
+
+### Patch Changes
+
+- [#254](https://github.com/moonwell-fi/moonwell-sdk/pull/254) [`e33f6e7a4197aafce0a2433d8c8a1c4c86993e8d`](https://github.com/moonwell-fi/moonwell-sdk/commit/e33f6e7a4197aafce0a2433d8c8a1c4c86993e8d) Thanks [@bprofiro](https://github.com/bprofiro)! - For V2 vaults, substitute TVL from the paired V1 vault and use V1 snapshots
+
 ## 0.10.4
 
 ### Patch Changes
