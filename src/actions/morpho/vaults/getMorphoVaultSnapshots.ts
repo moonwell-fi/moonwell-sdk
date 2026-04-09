@@ -52,14 +52,17 @@ export async function getMorphoVaultSnapshots<
 
   // For V2 vaults, fetch snapshots using the paired V1 address.
   // Historical snapshots are indexed against V1 since that is where assets are held.
-  const vaultConfigKey = Object.keys(environment.config.vaults).find(
-    (key) =>
-      environment.config.tokens[key]?.address?.toLowerCase() ===
-      vaultAddress.toLowerCase(),
-  );
-  const v1VaultKey = vaultConfigKey
-    ? (environment.config.vaults[vaultConfigKey]?.v1VaultKey as string | undefined)
-    : undefined;
+  let v1VaultKey: string | undefined;
+
+  for (const [vaultKey, vaultConfig] of Object.entries(environment.config.vaults)) {
+    const tokenAddress = environment.config.tokens[vaultKey]?.address;
+
+    if (tokenAddress?.toLowerCase() === vaultAddress.toLowerCase()) {
+      const rawKey = vaultConfig.v1VaultKey;
+      v1VaultKey = typeof rawKey === "string" ? rawKey : undefined;
+      break;
+    }
+  }
   if (v1VaultKey) {
     const v1Token = environment.config.tokens[v1VaultKey];
     if (v1Token?.address) {

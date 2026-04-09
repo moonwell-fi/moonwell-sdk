@@ -184,19 +184,28 @@ async function getMorphoVaultsDataFromIndexer(params: {
         // the actual assets — the Morpho API returns only V2's idle assets (~$13).
         // APY and rewards are kept from V2's own indexer data.
         const vaultByKey = new Map(vaults.map((v) => [v.vaultKey, v]));
-        for (const vault of vaults) {
-          const v1VaultKey = environment.config.vaults[vault.vaultKey]
-            ?.v1VaultKey as string | undefined;
-          if (!v1VaultKey) continue;
+        vaults = vaults.map((vault) => {
+          const rawKey = environment.config.vaults[vault.vaultKey]?.v1VaultKey;
+          const v1VaultKey = typeof rawKey === "string" ? rawKey : undefined;
+
+          if (!v1VaultKey) return vault;
+
           const v1Vault = vaultByKey.get(v1VaultKey);
-          if (!v1Vault) continue;
-          vault.totalSupply = v1Vault.totalSupply;
-          vault.totalSupplyUsd = v1Vault.totalSupplyUsd;
-          vault.vaultSupply = v1Vault.vaultSupply;
-          vault.totalLiquidity = v1Vault.totalLiquidity;
-          vault.totalLiquidityUsd = v1Vault.totalLiquidityUsd;
-          vault.underlyingPrice = v1Vault.underlyingPrice;
-        }
+
+          if (!v1Vault) {
+            return vault;
+          }
+
+          return {
+            ...vault,
+            totalSupply: v1Vault.totalSupply,
+            totalSupplyUsd: v1Vault.totalSupplyUsd,
+            vaultSupply: v1Vault.vaultSupply,
+            totalLiquidity: v1Vault.totalLiquidity,
+            totalLiquidityUsd: v1Vault.totalLiquidityUsd,
+            underlyingPrice: v1Vault.underlyingPrice,
+          };
+        });
 
         // Filter by specific vault addresses if requested
         if (params.vaults) {
@@ -474,8 +483,8 @@ async function getMorphoVaultsDataFromOnChain(params: {
         .filter((address) =>
           params.vaults
             ? params.vaults
-                .map((id) => id.toLowerCase())
-                .includes(address.toLowerCase())
+              .map((id) => id.toLowerCase())
+              .includes(address.toLowerCase())
             : true,
         );
 
@@ -486,31 +495,31 @@ async function getMorphoVaultsDataFromOnChain(params: {
         .filter((address) =>
           params.vaults
             ? params.vaults
-                .map((id) => id.toLowerCase())
-                .includes(address.toLowerCase())
+              .map((id) => id.toLowerCase())
+              .includes(address.toLowerCase())
             : true,
         );
 
       // Run v1 and v2 queries in parallel within this environment
       const queryPromises: Promise<
         | readonly {
-            vault: `0x${string}`;
-            totalSupply: bigint;
-            totalAssets: bigint;
-            underlyingPrice: bigint;
-            fee: bigint;
-            timelock: bigint;
-            markets: readonly {
-              marketId: `0x${string}`;
-              marketCollateral: `0x${string}`;
-              marketCollateralName: string;
-              marketCollateralSymbol: string;
-              marketLltv: bigint;
-              marketApy: bigint;
-              marketLiquidity: bigint;
-              vaultSupplied: bigint;
-            }[];
-          }[]
+          vault: `0x${string}`;
+          totalSupply: bigint;
+          totalAssets: bigint;
+          underlyingPrice: bigint;
+          fee: bigint;
+          timelock: bigint;
+          markets: readonly {
+            marketId: `0x${string}`;
+            marketCollateral: `0x${string}`;
+            marketCollateralName: string;
+            marketCollateralSymbol: string;
+            marketLltv: bigint;
+            marketApy: bigint;
+            marketLiquidity: bigint;
+            vaultSupplied: bigint;
+          }[];
+        }[]
         | undefined
       >[] = [];
 
@@ -1510,7 +1519,7 @@ export async function getMorphoVaultsRewards(
             .filter(
               (reward) =>
                 reward.vaultId.toLowerCase() ===
-                  vault.vaultToken.address.toLowerCase() &&
+                vault.vaultToken.address.toLowerCase() &&
                 (reward.chainId === vault.chainId || !currentChainRewardsOnly),
             )
             .map((reward) => {
