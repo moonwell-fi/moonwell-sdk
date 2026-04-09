@@ -1,0 +1,52 @@
+name: PR Checks
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 5
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: Lint repo
+        run: pnpm lint:repo
+
+      - name: Lint code
+        run: pnpm exec biome ci .
+
+      - name: Check types
+        run: pnpm typecheck
+
+  test:
+    name: Test
+    needs: lint
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 15
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: Run tests
+        run: pnpm test --run
+        env:
+          CI: true
