@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { Amount } from "../../../common/amount.js";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { Amount } from "../../../common/amount.js";
 import { createEnvironment as createBaseEnvironment } from "../../../environments/definitions/base/environment.js";
+import { getMorphoVaultsData } from "./common.js";
+import { getMorphoVaultSnapshots } from "./getMorphoVaultSnapshots.js";
 import {
   fetchTokenMap,
   fetchVaultFromIndexer,
@@ -12,8 +14,6 @@ import {
   transformVaultSnapshotsFromIndexer,
   transformVaultsFromIndexer,
 } from "./lunarIndexerTransform.js";
-import { getMorphoVaultsData } from "./common.js";
-import { getMorphoVaultSnapshots } from "./getMorphoVaultSnapshots.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
