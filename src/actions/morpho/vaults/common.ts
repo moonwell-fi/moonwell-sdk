@@ -479,8 +479,8 @@ async function getMorphoVaultsDataFromOnChain(params: {
         .filter((address) =>
           params.vaults
             ? params.vaults
-              .map((id) => id.toLowerCase())
-              .includes(address.toLowerCase())
+                .map((id) => id.toLowerCase())
+                .includes(address.toLowerCase())
             : true,
         );
 
@@ -491,31 +491,31 @@ async function getMorphoVaultsDataFromOnChain(params: {
         .filter((address) =>
           params.vaults
             ? params.vaults
-              .map((id) => id.toLowerCase())
-              .includes(address.toLowerCase())
+                .map((id) => id.toLowerCase())
+                .includes(address.toLowerCase())
             : true,
         );
 
       // Run v1 and v2 queries in parallel within this environment
       const queryPromises: Promise<
         | readonly {
-          vault: `0x${string}`;
-          totalSupply: bigint;
-          totalAssets: bigint;
-          underlyingPrice: bigint;
-          fee: bigint;
-          timelock: bigint;
-          markets: readonly {
-            marketId: `0x${string}`;
-            marketCollateral: `0x${string}`;
-            marketCollateralName: string;
-            marketCollateralSymbol: string;
-            marketLltv: bigint;
-            marketApy: bigint;
-            marketLiquidity: bigint;
-            vaultSupplied: bigint;
-          }[];
-        }[]
+            vault: `0x${string}`;
+            totalSupply: bigint;
+            totalAssets: bigint;
+            underlyingPrice: bigint;
+            fee: bigint;
+            timelock: bigint;
+            markets: readonly {
+              marketId: `0x${string}`;
+              marketCollateral: `0x${string}`;
+              marketCollateralName: string;
+              marketCollateralSymbol: string;
+              marketLltv: bigint;
+              marketApy: bigint;
+              marketLiquidity: bigint;
+              vaultSupplied: bigint;
+            }[];
+          }[]
         | undefined
       >[] = [];
 
@@ -1541,7 +1541,7 @@ export async function getMorphoVaultsRewards(
             .filter(
               (reward) =>
                 reward.vaultId.toLowerCase() ===
-                vault.vaultToken.address.toLowerCase() &&
+                  vault.vaultToken.address.toLowerCase() &&
                 (reward.chainId === vault.chainId || !currentChainRewardsOnly),
             )
             .map((reward) => {

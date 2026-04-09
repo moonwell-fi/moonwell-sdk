@@ -49,18 +49,10 @@
   },
   "typesVersions": {
     "*": {
-      "actions": [
-        "./_types/actions/index.d.ts"
-      ],
-      "client": [
-        "./_types/client/index.d.ts"
-      ],
-      "common": [
-        "./_types/common/index.d.ts"
-      ],
-      "environments": [
-        "./_types/environments/index.d.ts"
-      ]
+      "actions": ["./_types/actions/index.d.ts"],
+      "client": ["./_types/client/index.d.ts"],
+      "common": ["./_types/common/index.d.ts"],
+      "environments": ["./_types/environments/index.d.ts"]
     }
   },
   "peerDependencies": {
@@ -85,9 +77,7 @@
   "license": "MIT",
   "homepage": "https://moonwell.fi",
   "repository": "moonwell-fi/moonwell-sdk",
-  "authors": [
-    "x0s0l.eth"
-  ],
+  "authors": ["x0s0l.eth"],
   "keywords": [
     "eth",
     "ethereum",
