@@ -43,12 +43,29 @@ export async function getMorphoVaultSnapshots<
     return [];
   }
 
-  const {
+  let {
     vaultAddress,
     period,
     startTime: customStartTime,
     endTime: customEndTime,
   } = args as GetMorphoVaultSnapshotsParameters<environments, undefined>;
+
+  // For V2 vaults, fetch snapshots using the paired V1 address.
+  // Historical snapshots are indexed against V1 since that is where assets are held.
+  const vaultConfigKey = Object.keys(environment.config.vaults).find(
+    (key) =>
+      environment.config.tokens[key]?.address?.toLowerCase() ===
+      vaultAddress.toLowerCase(),
+  );
+  const v1VaultKey = vaultConfigKey
+    ? (environment.config.vaults[vaultConfigKey]?.v1VaultKey as string | undefined)
+    : undefined;
+  if (v1VaultKey) {
+    const v1Token = environment.config.tokens[v1VaultKey];
+    if (v1Token?.address) {
+      vaultAddress = v1Token.address;
+    }
+  }
 
   const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
 

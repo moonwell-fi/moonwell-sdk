@@ -179,6 +179,25 @@ async function getMorphoVaultsDataFromIndexer(params: {
           tokenMap,
         );
 
+        // For V2 vaults, substitute TVL from the paired V1 vault.
+        // V2 routes deposits through V1 via a liquidity adapter, so V1 holds
+        // the actual assets — the Morpho API returns only V2's idle assets (~$13).
+        // APY and rewards are kept from V2's own indexer data.
+        const vaultByKey = new Map(vaults.map((v) => [v.vaultKey, v]));
+        for (const vault of vaults) {
+          const v1VaultKey = environment.config.vaults[vault.vaultKey]
+            ?.v1VaultKey as string | undefined;
+          if (!v1VaultKey) continue;
+          const v1Vault = vaultByKey.get(v1VaultKey);
+          if (!v1Vault) continue;
+          vault.totalSupply = v1Vault.totalSupply;
+          vault.totalSupplyUsd = v1Vault.totalSupplyUsd;
+          vault.vaultSupply = v1Vault.vaultSupply;
+          vault.totalLiquidity = v1Vault.totalLiquidity;
+          vault.totalLiquidityUsd = v1Vault.totalLiquidityUsd;
+          vault.underlyingPrice = v1Vault.underlyingPrice;
+        }
+
         // Filter by specific vault addresses if requested
         if (params.vaults) {
           const requestedVaults = params.vaults.map((id) => id.toLowerCase());
