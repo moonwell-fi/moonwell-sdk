@@ -47,6 +47,6 @@ jobs:
         uses: ./.github/actions/install-dependencies
 
       - name: Run tests
-        run: pnpm test --run
+        run: pnpm test -- --run
         env:
           CI: true
