@@ -1033,7 +1033,12 @@ describe("V2 vault TVL substitution (indexer path)", () => {
   });
 
   test("V2 vault TVL fields are substituted from paired V1 vault", async () => {
-    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const environment = createBaseEnvironment(
+      undefined,
+      undefined,
+      undefined,
+      LUNAR_INDEXER_URL,
+    );
     const vaults = await getMorphoVaultsData({ environments: [environment] });
 
     const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
@@ -1044,26 +1049,54 @@ describe("V2 vault TVL substitution (indexer path)", () => {
 
     // TVL should be taken from V1
     expect(meUSDC!.totalSupplyUsd).toBeCloseTo(meUSDCv1!.totalSupplyUsd, 0);
-    expect(meUSDC!.totalLiquidityUsd).toBeCloseTo(meUSDCv1!.totalLiquidityUsd, 0);
-    expect(meUSDC!.totalSupply.value).toBeCloseTo(meUSDCv1!.totalSupply.value, 4);
-    expect(meUSDC!.totalLiquidity.value).toBeCloseTo(meUSDCv1!.totalLiquidity.value, 4);
+    expect(meUSDC!.totalLiquidityUsd).toBeCloseTo(
+      meUSDCv1!.totalLiquidityUsd,
+      0,
+    );
+    expect(meUSDC!.totalSupply.value).toBeCloseTo(
+      meUSDCv1!.totalSupply.value,
+      4,
+    );
+    expect(meUSDC!.totalLiquidity.value).toBeCloseTo(
+      meUSDCv1!.totalLiquidity.value,
+      4,
+    );
     expect(meUSDC!.underlyingPrice).toBeCloseTo(meUSDCv1!.underlyingPrice, 4);
   });
 
   test("V2 vault APY and rewards are NOT substituted from V1", async () => {
-    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const environment = createBaseEnvironment(
+      undefined,
+      undefined,
+      undefined,
+      LUNAR_INDEXER_URL,
+    );
     const vaults = await getMorphoVaultsData({ environments: [environment] });
 
     const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
 
     // APY/rewards come from V2's own indexer data (MOCK_MEUSDC_VAULT values)
-    expect(meUSDC!.baseApy).toBeCloseTo(Number.parseFloat(MOCK_MEUSDC_VAULT.baseApy), 6);
-    expect(meUSDC!.rewardsApy).toBeCloseTo(Number.parseFloat(MOCK_MEUSDC_VAULT.rewardsApy), 6);
-    expect(meUSDC!.totalApy).toBeCloseTo(Number.parseFloat(MOCK_MEUSDC_VAULT.totalApy), 6);
+    expect(meUSDC!.baseApy).toBeCloseTo(
+      Number.parseFloat(MOCK_MEUSDC_VAULT.baseApy),
+      6,
+    );
+    expect(meUSDC!.rewardsApy).toBeCloseTo(
+      Number.parseFloat(MOCK_MEUSDC_VAULT.rewardsApy),
+      6,
+    );
+    expect(meUSDC!.totalApy).toBeCloseTo(
+      Number.parseFloat(MOCK_MEUSDC_VAULT.totalApy),
+      6,
+    );
   });
 
   test("V1 vaults are not affected by the substitution", async () => {
-    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const environment = createBaseEnvironment(
+      undefined,
+      undefined,
+      undefined,
+      LUNAR_INDEXER_URL,
+    );
     const vaults = await getMorphoVaultsData({ environments: [environment] });
 
     const meUSDCv1 = vaults.find((v) => v.vaultKey === "meUSDCv1");
@@ -1097,7 +1130,12 @@ describe("V2 vault TVL substitution (indexer path)", () => {
       }),
     );
 
-    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const environment = createBaseEnvironment(
+      undefined,
+      undefined,
+      undefined,
+      LUNAR_INDEXER_URL,
+    );
     const vaults = await getMorphoVaultsData({ environments: [environment] });
 
     const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
@@ -1116,7 +1154,12 @@ describe("getMorphoVaultSnapshots V2 address redirect", () => {
   // Build a minimal mock client backed by the base environment with lunarIndexerUrl
   const mockClient = {
     environments: {
-      base: createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL),
+      base: createBaseEnvironment(
+        undefined,
+        undefined,
+        undefined,
+        LUNAR_INDEXER_URL,
+      ),
     },
   } as unknown as MoonwellClient;
 
@@ -1150,7 +1193,9 @@ describe("getMorphoVaultSnapshots V2 address redirect", () => {
     expect(snapshots.length).toBeGreaterThan(0);
     // V1 vault: no redirect occurs, so snapshot addresses come through as-is from the indexer
     for (const snap of snapshots) {
-      expect(snap.vaultAddress).toBe(MOCK_VAULT_SNAPSHOT_1.vaultAddress.toLowerCase());
+      expect(snap.vaultAddress).toBe(
+        MOCK_VAULT_SNAPSHOT_1.vaultAddress.toLowerCase(),
+      );
     }
   });
 });

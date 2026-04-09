@@ -59,8 +59,9 @@ export async function getMorphoVaultSnapshots<
 
   const matchedEntry = Object.entries(environment.config.vaults).find(
     ([, vaultConfig]) =>
-      environment.config.tokens[vaultConfig.vaultToken as string]?.address?.toLowerCase() ===
-      requestedVaultAddress.toLowerCase(),
+      environment.config.tokens[
+        vaultConfig.vaultToken as string
+      ]?.address?.toLowerCase() === requestedVaultAddress.toLowerCase(),
   );
 
   if (matchedEntry !== undefined) {
@@ -79,13 +80,13 @@ export async function getMorphoVaultSnapshots<
 
   const snapshots = lunarIndexerUrl
     ? await fetchVaultSnapshotsFromLunarIndexer(
-      fetchAddress,
-      environment.chainId,
-      lunarIndexerUrl,
-      period,
-      customStartTime,
-      customEndTime,
-    )
+        fetchAddress,
+        environment.chainId,
+        lunarIndexerUrl,
+        period,
+        customStartTime,
+        customEndTime,
+      )
     : await fetchVaultSnapshotsFromPonder(fetchAddress, environment);
 
   // Restore the originally-requested vault address on every snapshot so
