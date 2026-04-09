@@ -15,6 +15,7 @@ import type { Chain, Environment } from "../../../environments/index.js";
 import type { MorphoVaultSnapshot } from "../../../types/morphoVault.js";
 import {
   fetchVaultSnapshotsFromIndexer,
+  getV1VaultKey,
   transformVaultSnapshotsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
@@ -44,26 +45,59 @@ export async function getMorphoVaultSnapshots<
   }
 
   const {
-    vaultAddress,
+    vaultAddress: requestedVaultAddress,
     period,
     startTime: customStartTime,
     endTime: customEndTime,
   } = args as GetMorphoVaultSnapshotsParameters<environments, undefined>;
 
+  // For V2 vaults, fetch snapshots using the paired V1 address.
+  // Historical snapshots are indexed against V1 since that is where assets are held.
+  // The original (V2) address is preserved so that returned snapshots carry the
+  // address the caller requested, not the internal V1 address used for fetching.
+  let fetchAddress = requestedVaultAddress;
+
+  const matchedEntry = Object.entries(environment.config.vaults).find(
+    ([, vaultConfig]) =>
+      environment.config.tokens[vaultConfig.vaultToken as string]?.address?.toLowerCase() ===
+      requestedVaultAddress.toLowerCase(),
+  );
+
+  if (matchedEntry !== undefined) {
+    const [matchedVaultKey] = matchedEntry;
+    const v1VaultKey = getV1VaultKey(environment, matchedVaultKey);
+
+    if (v1VaultKey) {
+      const v1Token = environment.config.tokens[v1VaultKey];
+      if (v1Token?.address) {
+        fetchAddress = v1Token.address;
+      }
+    }
+  }
+
   const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
 
-  if (lunarIndexerUrl) {
-    return fetchVaultSnapshotsFromLunarIndexer(
-      vaultAddress,
+  const snapshots = lunarIndexerUrl
+    ? await fetchVaultSnapshotsFromLunarIndexer(
+      fetchAddress,
       environment.chainId,
       lunarIndexerUrl,
       period,
       customStartTime,
       customEndTime,
-    );
+    )
+    : await fetchVaultSnapshotsFromPonder(fetchAddress, environment);
+
+  // Restore the originally-requested vault address on every snapshot so
+  // callers keying by address see the V2 address they asked for.
+  if (fetchAddress.toLowerCase() !== requestedVaultAddress.toLowerCase()) {
+    return snapshots.map((s) => ({
+      ...s,
+      vaultAddress: requestedVaultAddress.toLowerCase(),
+    }));
   }
 
-  return fetchVaultSnapshotsFromPonder(vaultAddress, environment);
+  return snapshots;
 }
 
 async function fetchVaultSnapshotsFromLunarIndexer(

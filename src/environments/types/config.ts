@@ -73,6 +73,7 @@ export type VaultConfig<tokens> = {
   multiReward?: Address;
   version?: 1 | 2; // 1 = MetaMorpho V1, 2 = Morpho Vault V2
   deprecated?: boolean;
+  v1VaultKey?: keyof tokens; // For V2 vaults: the key of the paired V1 liquidity adapter vault
 };
 
 export type MarketConfig<tokens> = {

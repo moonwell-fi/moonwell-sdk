@@ -30,6 +30,7 @@ import {
 import {
   fetchTokenMap,
   fetchVaultsFromIndexer,
+  getV1VaultKey,
   transformVaultsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
@@ -178,6 +179,29 @@ async function getMorphoVaultsDataFromIndexer(params: {
           environment,
           tokenMap,
         );
+
+        // For V2 vaults, substitute TVL from the paired V1 vault.
+        // V2 routes deposits through V1 via a liquidity adapter, so V1 holds
+        // the actual assets — the Morpho API returns only V2's idle assets (~$13).
+        // APY and rewards are kept from V2's own indexer data.
+        const vaultByKey = new Map(vaults.map((v) => [v.vaultKey, v]));
+        vaults = vaults.map((vault) => {
+          const v1VaultKey = getV1VaultKey(environment, vault.vaultKey);
+          if (!v1VaultKey) return vault;
+          const v1Vault = vaultByKey.get(v1VaultKey);
+          if (!v1Vault) {
+            return vault;
+          }
+          return {
+            ...vault,
+            totalSupply: v1Vault.totalSupply,
+            totalSupplyUsd: v1Vault.totalSupplyUsd,
+            vaultSupply: v1Vault.vaultSupply,
+            totalLiquidity: v1Vault.totalLiquidity,
+            totalLiquidityUsd: v1Vault.totalLiquidityUsd,
+            underlyingPrice: v1Vault.underlyingPrice,
+          };
+        });
 
         // Filter by specific vault addresses if requested
         if (params.vaults) {
@@ -455,8 +479,8 @@ async function getMorphoVaultsDataFromOnChain(params: {
         .filter((address) =>
           params.vaults
             ? params.vaults
-                .map((id) => id.toLowerCase())
-                .includes(address.toLowerCase())
+              .map((id) => id.toLowerCase())
+              .includes(address.toLowerCase())
             : true,
         );
 
@@ -467,31 +491,31 @@ async function getMorphoVaultsDataFromOnChain(params: {
         .filter((address) =>
           params.vaults
             ? params.vaults
-                .map((id) => id.toLowerCase())
-                .includes(address.toLowerCase())
+              .map((id) => id.toLowerCase())
+              .includes(address.toLowerCase())
             : true,
         );
 
       // Run v1 and v2 queries in parallel within this environment
       const queryPromises: Promise<
         | readonly {
-            vault: `0x${string}`;
-            totalSupply: bigint;
-            totalAssets: bigint;
-            underlyingPrice: bigint;
-            fee: bigint;
-            timelock: bigint;
-            markets: readonly {
-              marketId: `0x${string}`;
-              marketCollateral: `0x${string}`;
-              marketCollateralName: string;
-              marketCollateralSymbol: string;
-              marketLltv: bigint;
-              marketApy: bigint;
-              marketLiquidity: bigint;
-              vaultSupplied: bigint;
-            }[];
-          }[]
+          vault: `0x${string}`;
+          totalSupply: bigint;
+          totalAssets: bigint;
+          underlyingPrice: bigint;
+          fee: bigint;
+          timelock: bigint;
+          markets: readonly {
+            marketId: `0x${string}`;
+            marketCollateral: `0x${string}`;
+            marketCollateralName: string;
+            marketCollateralSymbol: string;
+            marketLltv: bigint;
+            marketApy: bigint;
+            marketLiquidity: bigint;
+            vaultSupplied: bigint;
+          }[];
+        }[]
         | undefined
       >[] = [];
 
@@ -966,9 +990,35 @@ async function getMorphoVaultsDataFromOnChain(params: {
         ),
       );
 
-      const vaults = settled.flatMap((s) =>
+      let vaults = settled.flatMap((s) =>
         s.status === "fulfilled" ? s.value : [],
       );
+
+      // For V2 vaults, substitute TVL from the paired V1 vault (same as indexer path).
+      // V2 routes deposits through V1 via a liquidity adapter, so V1 holds the actual
+      // assets — on-chain data returns only V2's idle assets.
+      const onChainVaultByKey = new Map(vaults.map((v) => [v.vaultKey, v]));
+
+      vaults = vaults.map((vault) => {
+        const v1VaultKey = getV1VaultKey(environment, vault.vaultKey);
+        if (!v1VaultKey) return vault;
+
+        const v1Vault = onChainVaultByKey.get(v1VaultKey);
+
+        if (!v1Vault) {
+          return vault;
+        }
+
+        return {
+          ...vault,
+          totalSupply: v1Vault.totalSupply,
+          totalSupplyUsd: v1Vault.totalSupplyUsd,
+          vaultSupply: v1Vault.vaultSupply,
+          totalLiquidity: v1Vault.totalLiquidity,
+          totalLiquidityUsd: v1Vault.totalLiquidityUsd,
+          underlyingPrice: v1Vault.underlyingPrice,
+        };
+      });
 
       return {
         ...(await aggregator),
@@ -1491,7 +1541,7 @@ export async function getMorphoVaultsRewards(
             .filter(
               (reward) =>
                 reward.vaultId.toLowerCase() ===
-                  vault.vaultToken.address.toLowerCase() &&
+                vault.vaultToken.address.toLowerCase() &&
                 (reward.chainId === vault.chainId || !currentChainRewardsOnly),
             )
             .map((reward) => {

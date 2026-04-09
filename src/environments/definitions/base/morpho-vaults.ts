@@ -10,6 +10,7 @@ export const vaults = createVaultConfig({
       campaignId:
         "0x1df9a935f6b928b4809c4fda483f16839140864b2b412cc5fea85fd5d9d00e57",
       version: 2,
+      v1VaultKey: "mwETHv1",
     },
     mwETHv1: {
       underlyingToken: "ETH",
@@ -23,6 +24,7 @@ export const vaults = createVaultConfig({
       campaignId:
         "0xec43a3d75ae25c5255eb06b3aac6b79ccb2cdb6b99740ea13553661b0f06b756",
       version: 2,
+      v1VaultKey: "mwUSDCv1",
     },
     mwUSDCv1: {
       underlyingToken: "USDC",
@@ -36,6 +38,7 @@ export const vaults = createVaultConfig({
       campaignId:
         "0x03430078e052d58b6e80fa8e373c38a75736f1d24768b9c92a2e44bc4ce62b1d",
       version: 2,
+      v1VaultKey: "mwEURCv1",
     },
     mwEURCv1: {
       underlyingToken: "EURC",
@@ -49,6 +52,7 @@ export const vaults = createVaultConfig({
       campaignId:
         "0xb230a09331c22280ae3e02a65caad21a553274912352d8f93c7a92c0f9bb3da4",
       version: 2,
+      v1VaultKey: "mwcbBTCv1",
     },
     mwcbBTCv1: {
       underlyingToken: "cbBTC",
@@ -62,6 +66,7 @@ export const vaults = createVaultConfig({
       campaignId:
         "0x6738320fdf80785ff7a1d45ed93a6ffa07068ce9ec4170c1887d09f32fba7b57",
       version: 2,
+      v1VaultKey: "meUSDCv1",
     },
     meUSDCv1: {
       underlyingToken: "USDC",
