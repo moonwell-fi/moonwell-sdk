@@ -15,6 +15,7 @@ import type { Chain, Environment } from "../../../environments/index.js";
 import type { MorphoVaultSnapshot } from "../../../types/morphoVault.js";
 import {
   fetchVaultSnapshotsFromIndexer,
+  getV1VaultKey,
   transformVaultSnapshotsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
@@ -43,8 +44,8 @@ export async function getMorphoVaultSnapshots<
     return [];
   }
 
-  let {
-    vaultAddress,
+  const {
+    vaultAddress: requestedVaultAddress,
     period,
     startTime: customStartTime,
     endTime: customEndTime,
@@ -52,38 +53,51 @@ export async function getMorphoVaultSnapshots<
 
   // For V2 vaults, fetch snapshots using the paired V1 address.
   // Historical snapshots are indexed against V1 since that is where assets are held.
-  let v1VaultKey: string | undefined;
+  // The original (V2) address is preserved so that returned snapshots carry the
+  // address the caller requested, not the internal V1 address used for fetching.
+  let fetchAddress = requestedVaultAddress;
 
-  for (const [vaultKey, vaultConfig] of Object.entries(environment.config.vaults)) {
-    const tokenAddress = environment.config.tokens[vaultKey]?.address;
+  const matchedEntry = Object.entries(environment.config.vaults).find(
+    ([, vaultConfig]) =>
+      environment.config.tokens[vaultConfig.vaultToken as string]?.address?.toLowerCase() ===
+      requestedVaultAddress.toLowerCase(),
+  );
 
-    if (tokenAddress?.toLowerCase() === vaultAddress.toLowerCase()) {
-      const rawKey = vaultConfig.v1VaultKey;
-      v1VaultKey = typeof rawKey === "string" ? rawKey : undefined;
-      break;
-    }
-  }
-  if (v1VaultKey) {
-    const v1Token = environment.config.tokens[v1VaultKey];
-    if (v1Token?.address) {
-      vaultAddress = v1Token.address;
+  if (matchedEntry !== undefined) {
+    const [matchedVaultKey] = matchedEntry;
+    const v1VaultKey = getV1VaultKey(environment, matchedVaultKey);
+
+    if (v1VaultKey) {
+      const v1Token = environment.config.tokens[v1VaultKey];
+      if (v1Token?.address) {
+        fetchAddress = v1Token.address;
+      }
     }
   }
 
   const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
 
-  if (lunarIndexerUrl) {
-    return fetchVaultSnapshotsFromLunarIndexer(
-      vaultAddress,
+  const snapshots = lunarIndexerUrl
+    ? await fetchVaultSnapshotsFromLunarIndexer(
+      fetchAddress,
       environment.chainId,
       lunarIndexerUrl,
       period,
       customStartTime,
       customEndTime,
-    );
+    )
+    : await fetchVaultSnapshotsFromPonder(fetchAddress, environment);
+
+  // Restore the originally-requested vault address on every snapshot so
+  // callers keying by address see the V2 address they asked for.
+  if (fetchAddress.toLowerCase() !== requestedVaultAddress.toLowerCase()) {
+    return snapshots.map((s) => ({
+      ...s,
+      vaultAddress: requestedVaultAddress.toLowerCase(),
+    }));
   }
 
-  return fetchVaultSnapshotsFromPonder(vaultAddress, environment);
+  return snapshots;
 }
 
 async function fetchVaultSnapshotsFromLunarIndexer(

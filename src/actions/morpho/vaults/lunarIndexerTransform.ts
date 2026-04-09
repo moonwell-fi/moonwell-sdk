@@ -482,6 +482,18 @@ export async function fetchVaultSnapshotsFromIndexer(
  * @param chainId - Chain ID for the snapshots
  * @returns Array of transformed MorphoVaultSnapshot objects
  */
+/**
+ * Returns the V1 vault key paired with a given vault, or undefined if the vault
+ * has no V1 pair (i.e. it is already a V1 vault or has no v1VaultKey configured).
+ */
+export function getV1VaultKey(
+  environment: Environment,
+  vaultKey: string,
+): string | undefined {
+  const rawKey = environment.config.vaults[vaultKey]?.v1VaultKey;
+  return typeof rawKey === "string" ? rawKey : undefined;
+}
+
 export function transformVaultSnapshotsFromIndexer(
   snapshots: LunarIndexerVaultSnapshot[],
   chainId: number,

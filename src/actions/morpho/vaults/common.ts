@@ -30,6 +30,7 @@ import {
 import {
   fetchTokenMap,
   fetchVaultsFromIndexer,
+  getV1VaultKey,
   transformVaultsFromIndexer,
 } from "./lunarIndexerTransform.js";
 
@@ -185,17 +186,12 @@ async function getMorphoVaultsDataFromIndexer(params: {
         // APY and rewards are kept from V2's own indexer data.
         const vaultByKey = new Map(vaults.map((v) => [v.vaultKey, v]));
         vaults = vaults.map((vault) => {
-          const rawKey = environment.config.vaults[vault.vaultKey]?.v1VaultKey;
-          const v1VaultKey = typeof rawKey === "string" ? rawKey : undefined;
-
+          const v1VaultKey = getV1VaultKey(environment, vault.vaultKey);
           if (!v1VaultKey) return vault;
-
           const v1Vault = vaultByKey.get(v1VaultKey);
-
           if (!v1Vault) {
             return vault;
           }
-
           return {
             ...vault,
             totalSupply: v1Vault.totalSupply,
@@ -994,9 +990,35 @@ async function getMorphoVaultsDataFromOnChain(params: {
         ),
       );
 
-      const vaults = settled.flatMap((s) =>
+      let vaults = settled.flatMap((s) =>
         s.status === "fulfilled" ? s.value : [],
       );
+
+      // For V2 vaults, substitute TVL from the paired V1 vault (same as indexer path).
+      // V2 routes deposits through V1 via a liquidity adapter, so V1 holds the actual
+      // assets — on-chain data returns only V2's idle assets.
+      const onChainVaultByKey = new Map(vaults.map((v) => [v.vaultKey, v]));
+
+      vaults = vaults.map((vault) => {
+        const v1VaultKey = getV1VaultKey(environment, vault.vaultKey);
+        if (!v1VaultKey) return vault;
+
+        const v1Vault = onChainVaultByKey.get(v1VaultKey);
+
+        if (!v1Vault) {
+          return vault;
+        }
+
+        return {
+          ...vault,
+          totalSupply: v1Vault.totalSupply,
+          totalSupplyUsd: v1Vault.totalSupplyUsd,
+          vaultSupply: v1Vault.vaultSupply,
+          totalLiquidity: v1Vault.totalLiquidity,
+          totalLiquidityUsd: v1Vault.totalLiquidityUsd,
+          underlyingPrice: v1Vault.underlyingPrice,
+        };
+      });
 
       return {
         ...(await aggregator),

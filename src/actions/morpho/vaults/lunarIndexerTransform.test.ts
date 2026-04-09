@@ -1,15 +1,19 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Amount } from "../../../common/amount.js";
+import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { createEnvironment as createBaseEnvironment } from "../../../environments/definitions/base/environment.js";
 import {
   fetchTokenMap,
   fetchVaultFromIndexer,
   fetchVaultSnapshotsFromIndexer,
   fetchVaultsFromIndexer,
+  getV1VaultKey,
   transformVaultFromIndexer,
   transformVaultSnapshotsFromIndexer,
   transformVaultsFromIndexer,
 } from "./lunarIndexerTransform.js";
+import { getMorphoVaultsData } from "./common.js";
+import { getMorphoVaultSnapshots } from "./getMorphoVaultSnapshots.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -987,5 +991,166 @@ describe("Lunar Indexer Transformation Tests", () => {
     expect(typeof snap.totalLiquidity).toBe("number");
     expect(typeof snap.totalLiquidityUsd).toBe("number");
     expect(typeof snap.timestamp).toBe("number");
+  });
+});
+
+// ─── getV1VaultKey unit tests ─────────────────────────────────────────────────
+
+describe("getV1VaultKey", () => {
+  test("returns v1VaultKey for a V2 vault", () => {
+    const env = createBaseEnvironment();
+    expect(getV1VaultKey(env, "meUSDC")).toBe("meUSDCv1");
+    expect(getV1VaultKey(env, "mwUSDC")).toBe("mwUSDCv1");
+    expect(getV1VaultKey(env, "mwETH")).toBe("mwETHv1");
+  });
+
+  test("returns undefined for a V1 vault", () => {
+    const env = createBaseEnvironment();
+    expect(getV1VaultKey(env, "meUSDCv1")).toBeUndefined();
+    expect(getV1VaultKey(env, "mwUSDCv1")).toBeUndefined();
+    expect(getV1VaultKey(env, "mwETHv1")).toBeUndefined();
+  });
+
+  test("returns undefined for an unknown vault key", () => {
+    const env = createBaseEnvironment();
+    expect(getV1VaultKey(env, "doesNotExist")).toBeUndefined();
+  });
+});
+
+// ─── V2 vault TVL substitution tests ─────────────────────────────────────────
+
+// V2 vault token address (meUSDC) and its paired V1 (meUSDCv1)
+const MEUSDC_V2_ADDRESS = "0xbb2f06ceae42cbcf5559ed0713538c8892d977c9";
+const MEUSDC_V1_ADDRESS = "0xe1ba476304255353aef290e6474a417d06e7b773";
+
+describe("V2 vault TVL substitution (indexer path)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", createMockFetch());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("V2 vault TVL fields are substituted from paired V1 vault", async () => {
+    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const vaults = await getMorphoVaultsData({ environments: [environment] });
+
+    const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
+    const meUSDCv1 = vaults.find((v) => v.vaultKey === "meUSDCv1");
+
+    expect(meUSDC).toBeDefined();
+    expect(meUSDCv1).toBeDefined();
+
+    // TVL should be taken from V1
+    expect(meUSDC!.totalSupplyUsd).toBeCloseTo(meUSDCv1!.totalSupplyUsd, 0);
+    expect(meUSDC!.totalLiquidityUsd).toBeCloseTo(meUSDCv1!.totalLiquidityUsd, 0);
+    expect(meUSDC!.totalSupply.value).toBeCloseTo(meUSDCv1!.totalSupply.value, 4);
+    expect(meUSDC!.totalLiquidity.value).toBeCloseTo(meUSDCv1!.totalLiquidity.value, 4);
+    expect(meUSDC!.underlyingPrice).toBeCloseTo(meUSDCv1!.underlyingPrice, 4);
+  });
+
+  test("V2 vault APY and rewards are NOT substituted from V1", async () => {
+    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const vaults = await getMorphoVaultsData({ environments: [environment] });
+
+    const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
+
+    // APY/rewards come from V2's own indexer data (MOCK_MEUSDC_VAULT values)
+    expect(meUSDC!.baseApy).toBeCloseTo(Number.parseFloat(MOCK_MEUSDC_VAULT.baseApy), 6);
+    expect(meUSDC!.rewardsApy).toBeCloseTo(Number.parseFloat(MOCK_MEUSDC_VAULT.rewardsApy), 6);
+    expect(meUSDC!.totalApy).toBeCloseTo(Number.parseFloat(MOCK_MEUSDC_VAULT.totalApy), 6);
+  });
+
+  test("V1 vaults are not affected by the substitution", async () => {
+    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const vaults = await getMorphoVaultsData({ environments: [environment] });
+
+    const meUSDCv1 = vaults.find((v) => v.vaultKey === "meUSDCv1");
+
+    expect(meUSDCv1!.totalSupplyUsd).toBeCloseTo(
+      Number.parseFloat(MOCK_MEUSDCV1_VAULT.totalAssetsUsd),
+      0,
+    );
+    expect(meUSDCv1!.totalLiquidityUsd).toBeCloseTo(
+      Number.parseFloat(MOCK_MEUSDCV1_VAULT.totalLiquidityUsd),
+      0,
+    );
+  });
+
+  test("V2 vault returns original data when V1 vault is missing from results", async () => {
+    // Mock fetch that omits meUSDCv1 from the vault list
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.includes("/api/v1/vaults/tokens/")) {
+          return makeJsonResponse({ results: MOCK_TOKENS, nextCursor: null });
+        }
+        if (url.includes("/api/v1/vaults/vaults/")) {
+          // Return only V2 vault, no V1 pair
+          return makeJsonResponse({
+            results: [MOCK_MEUSDC_VAULT],
+            nextCursor: null,
+          });
+        }
+        return Promise.reject(new Error(`Unmocked URL: ${url}`));
+      }),
+    );
+
+    const environment = createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL);
+    const vaults = await getMorphoVaultsData({ environments: [environment] });
+
+    const meUSDC = vaults.find((v) => v.vaultKey === "meUSDC");
+    expect(meUSDC).toBeDefined();
+    // Should retain its own TVL since V1 was not found
+    expect(meUSDC!.totalSupplyUsd).toBeCloseTo(
+      Number.parseFloat(MOCK_MEUSDC_VAULT.totalAssetsUsd),
+      0,
+    );
+  });
+});
+
+// ─── Snapshot address redirect tests ─────────────────────────────────────────
+
+describe("getMorphoVaultSnapshots V2 address redirect", () => {
+  // Build a minimal mock client backed by the base environment with lunarIndexerUrl
+  const mockClient = {
+    environments: {
+      base: createBaseEnvironment(undefined, undefined, undefined, LUNAR_INDEXER_URL),
+    },
+  } as unknown as MoonwellClient;
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", createMockFetch());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("snapshots requested for a V2 vault are returned with the V2 address", async () => {
+    const snapshots = await getMorphoVaultSnapshots(mockClient, {
+      chainId: BASE_CHAIN_ID,
+      vaultAddress: MEUSDC_V2_ADDRESS,
+    });
+
+    expect(snapshots.length).toBeGreaterThan(0);
+    // All snapshots must carry the V2 address the caller passed, not the V1 fetch address
+    for (const snap of snapshots) {
+      expect(snap.vaultAddress).toBe(MEUSDC_V2_ADDRESS.toLowerCase());
+    }
+  });
+
+  test("snapshots requested for a V1 vault are returned without any address rewrite", async () => {
+    const snapshots = await getMorphoVaultSnapshots(mockClient, {
+      chainId: BASE_CHAIN_ID,
+      vaultAddress: MEUSDC_V1_ADDRESS,
+    });
+
+    expect(snapshots.length).toBeGreaterThan(0);
+    // V1 vault: no redirect occurs, so snapshot addresses come through as-is from the indexer
+    for (const snap of snapshots) {
+      expect(snap.vaultAddress).toBe(MOCK_VAULT_SNAPSHOT_1.vaultAddress.toLowerCase());
+    }
   });
 });
