@@ -21,6 +21,7 @@
     "test": "vitest -c ./test/vitest.config.ts dev",
     "preinstall": "pnpx only-allow pnpm",
     "postinstall": "git submodule update --init --recursive",
+    "prepare": "husky",
     "deps": "pnpx taze -r",
     "preconstruct": "bun scripts/preconstruct.ts",
     "changeset:prepublish": "pnpm version:update && bun scripts/prepublishOnly.ts && pnpm build",
@@ -35,13 +36,13 @@
     "@changesets/cli": "^2.27.9",
     "bun": "^1.1.12",
     "dayjs": "^1.11.13",
+    "husky": "^9.1.7",
     "jsdom": "^25.0.1",
     "knip": "^5.33.3",
     "lint-staged": "^15.1.0",
     "prool": "^0.0.16",
     "publint": "^0.2.11",
     "sherif": "^1.0.0",
-    "simple-git-hooks": "^2.9.0",
     "typescript": "5.9.3",
     "vitest": "^2.1.2"
   },
@@ -51,9 +52,6 @@
       "biome check --no-errors-on-unmatched"
     ],
     "!(*.ts)": ["biome format --no-errors-on-unmatched --write"]
-  },
-  "simple-git-hooks": {
-    "pre-commit": "npx lint-staged"
   },
   "packageManager": "pnpm@9.1.0",
   "pnpm": {
