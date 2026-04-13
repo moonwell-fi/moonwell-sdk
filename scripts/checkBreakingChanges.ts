@@ -22,9 +22,9 @@ function git(...args: string[]): string {
   return result.stdout ?? "";
 }
 
-// Returns whether any changeset on disk declares a `major` bump.
+// Returns whether any changeset on disk declares a `minor` or `major` bump.
 // Changesets persist until `pnpm changeset:version` consumes them.
-function hasMajorChangeset(): boolean {
+function hasSufficientChangeset(): boolean {
   const changesetDir = join(root, ".changeset");
   if (!existsSync(changesetDir)) return false;
 
@@ -37,7 +37,9 @@ function hasMajorChangeset(): boolean {
     // Frontmatter format: ---\n"pkg": major|minor|patch\n---
     const match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return false;
-    return match[1].split("\n").some((line) => line.endsWith(": major"));
+    return match[1]
+      .split("\n")
+      .some((line) => line.endsWith(": major") || line.endsWith(": minor"));
   });
 }
 
@@ -115,13 +117,13 @@ const hasBreakingChanges =
   removedExports.length > 0 || removedFields.length > 0;
 
 if (!hasBreakingChanges) process.exit(0);
-if (hasMajorChangeset()) process.exit(0);
+if (hasSufficientChangeset()) process.exit(0);
 
 const anyChangeset = hasAnyChangesetFile();
 
 const border = "═".repeat(58);
 const headline = anyChangeset
-  ? `⚠  BREAKING CHANGE — changeset must be bumped to ${BOLD}major${RESET}${RED}${BOLD}`
+  ? `⚠  BREAKING CHANGE — changeset must be bumped to ${BOLD}minor${RESET}${RED}${BOLD} or ${BOLD}major${RESET}${RED}${BOLD}`
   : "⚠  BREAKING CHANGE DETECTED — no changeset found";
 const lines: string[] = [
   `${BOLD}${YELLOW}╔${border}╗${RESET}`,
@@ -151,8 +153,8 @@ if (removedFields.length > 0) {
 
 lines.push(`${BOLD}${YELLOW}╠${border}╣${RESET}`);
 const action = anyChangeset
-  ? `Update your changeset bump type to ${BOLD}major${RESET}.`
-  : `Run: ${BOLD}pnpm changeset${RESET}  and select ${BOLD}major${RESET}.`;
+  ? `Update your changeset bump type to ${BOLD}minor${RESET} or ${BOLD}major${RESET}.`
+  : `Run: ${BOLD}pnpm changeset${RESET}  and select ${BOLD}minor${RESET} or ${BOLD}major${RESET}.`;
 const padding = " ".repeat(Math.max(0, 57 - stripAnsi(action).length));
 lines.push(
   `${BOLD}${YELLOW}║${RESET}  ${action}${padding}${BOLD}${YELLOW}║${RESET}`,
