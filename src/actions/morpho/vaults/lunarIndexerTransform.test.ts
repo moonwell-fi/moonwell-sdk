@@ -242,7 +242,7 @@ const MOCK_MEUSDCV1_VAULT = {
   id: "8453-0xe1ba476304255353aef290e6474a417d06e7b773",
   chainId: BASE_CHAIN_ID,
   address: "0xe1ba476304255353aef290e6474a417d06e7b773",
-  // Indexer returns its own name; SDK config overrides with "Moonwell Ecosystem USDC Vault V1"
+  // Indexer returns its own name; SDK config overrides with "Moonwell Ecosystem USDC V1"
   name: "Moonwell Ecosystem USDC Vault",
   symbol: "meUSDCv1",
   decimals: 18,
@@ -780,8 +780,8 @@ describe("Lunar Indexer Transformation Tests", () => {
       tokenMap,
     );
 
-    // SDK config has name "Moonwell Ecosystem USDC Vault V1"
-    expect(vault.vaultToken.name).toBe("Moonwell Ecosystem USDC Vault V1");
+    // SDK config has name "Moonwell Ecosystem USDC V1"
+    expect(vault.vaultToken.name).toBe("Moonwell Ecosystem USDC V1");
     expect(vault.vaultToken.symbol).toBe("meUSDCv1");
     expect(vault.vaultKey).toBe("meUSDCv1");
   });
