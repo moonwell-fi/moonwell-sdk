@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.10.7
+
+### Patch Changes
+
+- [#258](https://github.com/moonwell-fi/moonwell-sdk/pull/258) [`c483cf01f71051e740c1dc71583a3316c96eefbc`](https://github.com/moonwell-fi/moonwell-sdk/commit/c483cf01f71051e740c1dc71583a3316c96eefbc) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix meUSDC vaults names
+
 ## 0.10.6
 
 ### Patch Changes
