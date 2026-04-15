@@ -4,12 +4,19 @@ import utc from "dayjs/plugin/utc.js";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentFromArgs, isStartOfDay } from "../../../common/index.js";
+import type { NetworkParameterType } from "../../../common/types.js";
 import type {
-  MorphoVaultParameterType,
-  NetworkParameterType,
-} from "../../../common/types.js";
-import type { Chain, Environment } from "../../../environments/index.js";
+  Chain,
+  Environment,
+  GetEnvironment,
+  VaultsType,
+} from "../../../environments/index.js";
 import type { MorphoVaultUserPositionSnapshot } from "../../../types/morphoUserPosition.js";
+import {
+  DEFAULT_LUNAR_TIMEOUT_MS,
+  createLunarIndexerClient,
+  shouldFallback,
+} from "../../lunar-indexer-client.js";
 
 dayjs.extend(utc);
 
@@ -17,7 +24,15 @@ export type GetMorphoVaultUserPositionSnapshotsParameters<
   environments,
   network extends Chain | undefined,
 > = NetworkParameterType<environments, network> &
-  MorphoVaultParameterType<network> & {
+  (undefined extends network
+    ? {
+        /** Address of the vault token (omit to get all vaults for the account) */
+        vaultAddress?: Address;
+      }
+    : {
+        /** Vault key */
+        vault: keyof VaultsType<GetEnvironment<network>>;
+      }) & {
     userAddress: Address;
   };
 
@@ -38,13 +53,37 @@ export async function getMorphoVaultUserPositionSnapshots<
     return [];
   }
 
-  let { vaultAddress, vault } = args as unknown as {
-    vaultAddress: Address;
-    vault: string;
+  const { vaultAddress: rawVaultAddress, vault } = args as unknown as {
+    vaultAddress: Address | undefined;
+    vault: string | undefined;
   };
 
+  const vaultAddress: Address | undefined =
+    rawVaultAddress ?? (vault ? environment.vaults[vault].address : undefined);
+
+  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+
+  if (lunarIndexerUrl) {
+    try {
+      return await fetchUserPositionSnapshotsFromLunar(
+        args.userAddress,
+        vaultAddress,
+        lunarIndexerUrl,
+        environment,
+      );
+    } catch (error) {
+      if (!shouldFallback(error)) {
+        throw error;
+      }
+      console.debug(
+        "[Lunar fallback] Falling back to Ponder for vault user position snapshots:",
+        error,
+      );
+    }
+  }
+
   if (!vaultAddress) {
-    vaultAddress = environment.vaults[vault].address;
+    return [];
   }
 
   return fetchUserPositionSnapshots(
@@ -52,6 +91,45 @@ export async function getMorphoVaultUserPositionSnapshots<
     vaultAddress,
     environment,
   );
+}
+
+async function fetchUserPositionSnapshotsFromLunar(
+  userAddress: Address,
+  vaultAddress: Address | undefined,
+  lunarIndexerUrl: string,
+  environment: Environment,
+): Promise<MorphoVaultUserPositionSnapshot[]> {
+  const lunarClient = createLunarIndexerClient({
+    baseUrl: lunarIndexerUrl,
+    timeout: DEFAULT_LUNAR_TIMEOUT_MS,
+  });
+
+  const endTime = Math.floor(Date.now() / 1000);
+  const startTime = endTime - 3 * 365 * 24 * 60 * 60;
+
+  const portfolio = await lunarClient.getVaultAccountPortfolio(userAddress, {
+    startTime,
+    endTime,
+    granularity: "1d",
+    chainId: environment.chainId,
+    ...(vaultAddress ? { vault: vaultAddress } : {}),
+  });
+
+  const snapshots: MorphoVaultUserPositionSnapshot[] = [];
+
+  for (const position of portfolio.positions) {
+    for (const v of position.vaults) {
+      snapshots.push({
+        chainId: v.chainId,
+        account: userAddress,
+        vaultAddress: v.vaultAddress as Address,
+        suppliedUsd: v.shareBalanceUsd,
+        timestamp: position.timestamp * 1000,
+      });
+    }
+  }
+
+  return snapshots;
 }
 
 async function fetchUserPositionSnapshots(
