@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.11.0
+
+### Minor Changes
+
+- [#260](https://github.com/moonwell-fi/moonwell-sdk/pull/260) [`cc83ffd2babd54b26679cc128c468aeb8f603501`](https://github.com/moonwell-fi/moonwell-sdk/commit/cc83ffd2babd54b26679cc128c468aeb8f603501) Thanks [@bprofiro](https://github.com/bprofiro)! - replace ponder for lunar-indexer on getMorphoVaultUserPositionSnapshots
+
 ## 0.10.7
 
 ### Patch Changes
