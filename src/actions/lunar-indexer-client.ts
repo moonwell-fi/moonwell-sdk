@@ -74,6 +74,30 @@ export interface LunarPortfolioOptions {
   market?: string;
 }
 
+export interface LunarVaultPortfolioOptions {
+  startTime: number;
+  endTime: number;
+  granularity?: "1h" | "6h" | "1d";
+  chainId?: number;
+  vault?: string;
+}
+
+export interface LunarVaultPosition {
+  chainId: number;
+  vaultAddress: string;
+  shareBalance: string;
+  shareBalanceUsd: number;
+  assetsValue: number;
+}
+
+export interface LunarVaultPortfolio {
+  account: string;
+  positions: Array<{
+    timestamp: number;
+    vaults: LunarVaultPosition[];
+  }>;
+}
+
 export interface LunarComptroller {
   id: string;
   chainId: number;
@@ -251,6 +275,7 @@ export const DEFAULT_LUNAR_TIMEOUT_MS = 10_000;
 export class LunarIndexerClient {
   private client: AxiosInstance;
   private stakingClient: AxiosInstance;
+  private vaultsClient: AxiosInstance;
 
   constructor(config: LunarIndexerConfig) {
     this.client = axios.create({
@@ -263,6 +288,14 @@ export class LunarIndexerClient {
 
     this.stakingClient = axios.create({
       baseURL: `${config.baseUrl}/api/v1/staking`,
+      timeout: config.timeout || DEFAULT_LUNAR_TIMEOUT_MS,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    this.vaultsClient = axios.create({
+      baseURL: `${config.baseUrl}/api/v1/vaults`,
       timeout: config.timeout || DEFAULT_LUNAR_TIMEOUT_MS,
       headers: {
         "Content-Type": "application/json",
@@ -464,6 +497,37 @@ export class LunarIndexerClient {
         `Failed to fetch staking snapshots for chain ${chainId}`,
         axios.isAxiosError(error) ? error.response?.status : undefined,
         `/snapshots/${chainId}`,
+        error as Error,
+      );
+    }
+  }
+
+  /**
+   * Get vault account portfolio with historical positions
+   */
+  async getVaultAccountPortfolio(
+    accountAddress: string,
+    options: LunarVaultPortfolioOptions,
+  ): Promise<LunarVaultPortfolio> {
+    try {
+      const params: Record<string, string> = {
+        startTime: options.startTime.toString(),
+        endTime: options.endTime.toString(),
+      };
+      if (options.granularity) params.granularity = options.granularity;
+      if (options.chainId) params.chainId = options.chainId.toString();
+      if (options.vault) params.vault = options.vault;
+
+      const response = await this.vaultsClient.get<LunarVaultPortfolio>(
+        `/account/${accountAddress.toLowerCase()}/portfolio`,
+        { params },
+      );
+      return response.data;
+    } catch (error) {
+      throw new LunarIndexerError(
+        `Failed to fetch vault portfolio for account ${accountAddress}`,
+        axios.isAxiosError(error) ? error.response?.status : undefined,
+        `/account/${accountAddress}/portfolio`,
         error as Error,
       );
     }
