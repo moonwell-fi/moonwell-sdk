@@ -8,7 +8,6 @@ import { tokens } from "./tokens.js";
 
 const createEnvironment = (
   rpcUrls?: string[],
-  indexerUrl?: string,
   governanceIndexerUrl?: string,
 ): Environment<typeof tokens, {}, {}, {}, {}> =>
   createEnvironmentConfig({
@@ -23,7 +22,6 @@ const createEnvironment = (
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http("https://rpc.moonwell.fi/main/evm/1"),
-    indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",

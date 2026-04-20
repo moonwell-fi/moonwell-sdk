@@ -43,7 +43,6 @@ const MOCK_INDEXER_URL = "https://mock-indexer.test";
 const mockEnvironment = {
   lunarIndexerUrl: MOCK_INDEXER_URL,
   chainId: 8453,
-  indexerUrl: "https://mock-ponder.test",
   custom: { morpho: { minimalDeployment: true } },
   config: {
     morphoMarkets: {

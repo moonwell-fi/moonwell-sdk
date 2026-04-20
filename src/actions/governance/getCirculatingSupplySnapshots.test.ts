@@ -1,4 +1,4 @@
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../test/client.js";
 
@@ -23,22 +23,6 @@ function makeSnapshot(overrides?: Partial<Record<string, unknown>>) {
     circulatingSupply: "4000000000.0",
     ...overrides,
   };
-}
-
-function makeAxiosNetworkError(): AxiosError {
-  return new AxiosError("Network Error", "ECONNREFUSED");
-}
-
-function makeAxiosHttpError(status: number): AxiosError {
-  const error = new AxiosError(`HTTP ${status}`, "ERR_BAD_RESPONSE");
-  (error as AxiosError & { response: unknown }).response = {
-    status,
-    data: null,
-    statusText: String(status),
-    headers: {} as never,
-    config: { headers: {} as never },
-  };
-  return error;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,75 +128,6 @@ describe("getCirculatingSupplySnapshots — lunar indexer path", () => {
     });
 
     expect(result).toEqual([]);
-  });
-
-  test("network error falls back to legacy Ponder path", async () => {
-    vi.spyOn(axios, "get").mockRejectedValueOnce(makeAxiosNetworkError());
-
-    // Ponder fallback also fails → getCirculatingSupplySnapshots returns []
-    vi.spyOn(axios, "post").mockRejectedValueOnce(new Error("Ponder down"));
-
-    const result = await testClient.getCirculatingSupplySnapshots({
-      chainId: CHAIN_ID,
-    });
-
-    // Falls back to Ponder path (which also fails → returns [])
-    expect(result).toEqual([]);
-    expect(vi.mocked(axios.get)).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/staking/circulating-supply/"),
-      expect.anything(),
-    );
-    expect(vi.mocked(axios.post)).toHaveBeenCalled();
-  });
-
-  test("5xx error falls back to Ponder path", async () => {
-    vi.spyOn(axios, "get").mockRejectedValueOnce(makeAxiosHttpError(503));
-
-    const ponderSnapshot = {
-      chainId: CHAIN_ID,
-      tokenAddress: WELL_ADDRESS,
-      circulatingSupply: 3_000_000_000,
-      timestamp: 1700000000,
-    };
-    vi.spyOn(axios, "post").mockResolvedValueOnce({
-      status: 200,
-      data: {
-        data: {
-          circulatingSupplyDailySnapshots: { items: [ponderSnapshot] },
-        },
-      },
-    });
-
-    const result = await testClient.getCirculatingSupplySnapshots({
-      chainId: CHAIN_ID,
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]?.circulatingSupply).toBe(3_000_000_000);
-  });
-
-  test("4xx error (not 404) propagates instead of falling back", async () => {
-    vi.spyOn(axios, "get").mockRejectedValueOnce(makeAxiosHttpError(400));
-    const postSpy = vi.spyOn(axios, "post");
-
-    await expect(
-      testClient.getCirculatingSupplySnapshots({ chainId: CHAIN_ID }),
-    ).rejects.toThrow();
-
-    // Post (Ponder fallback) must NOT have been called
-    expect(postSpy).not.toHaveBeenCalled();
-  });
-
-  test("404 error falls back to Ponder path", async () => {
-    vi.spyOn(axios, "get").mockRejectedValueOnce(makeAxiosHttpError(404));
-    vi.spyOn(axios, "post").mockRejectedValueOnce(new Error("Ponder down"));
-
-    const result = await testClient.getCirculatingSupplySnapshots({
-      chainId: CHAIN_ID,
-    });
-
-    expect(result).toEqual([]);
-    expect(vi.mocked(axios.post)).toHaveBeenCalled();
   });
 });
 

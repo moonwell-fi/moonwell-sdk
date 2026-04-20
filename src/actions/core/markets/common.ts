@@ -23,18 +23,7 @@ export const getMarketsData = async (environment: Environment) => {
   const isMoonriver = environment.chainId === 1285;
 
   if (environment.lunarIndexerUrl && !isMoonriver) {
-    try {
-      const result = await fetchMarketsFromLunar(environment);
-      return result;
-    } catch (error) {
-      // Import shouldFallback dynamically
-      const { shouldFallback } = await import("../../lunar-indexer-client.js");
-
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug("[Lunar fallback] Falling back to RPC/Ponder:", error);
-    }
+    return await fetchMarketsFromLunar(environment);
   }
 
   const homeEnvironment =

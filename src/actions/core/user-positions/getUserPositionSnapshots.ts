@@ -1,4 +1,3 @@
-import axios from "axios";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
@@ -6,7 +5,6 @@ import {
   applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
-  isStartOfDay,
   toApiGranularity,
 } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
@@ -15,7 +13,6 @@ import type { UserPositionSnapshot } from "../../../types/userPosition.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
-  shouldFallback,
 } from "../../lunar-indexer-client.js";
 import { transformPortfolioToSnapshots } from "../../lunar-indexer-transformers.js";
 
@@ -56,7 +53,6 @@ export type GetUserPositionSnapshotsReturnType = Promise<
  * - Default behavior (no time parameters): Returns 365 days of history
  * - Parameter priority: Custom timestamps > period > default (365 days)
  * - When using Lunar Indexer, custom time ranges are supported
- * - When falling back to Ponder, all available data is returned (client-side filtering may be needed)
  * - Snapshots are filtered to start-of-day for "1d" granularity
  */
 export async function getUserPositionSnapshots<
@@ -90,34 +86,17 @@ async function fetchUserPositionSnapshots(
   endTime?: number,
   granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
-  if (environment.lunarIndexerUrl) {
-    try {
-      const result = await fetchUserPositionSnapshotsFromLunar(
-        userAddress,
-        environment,
-        period,
-        startTime,
-        endTime,
-        granularity,
-      );
-      return result;
-    } catch (error) {
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug(
-        "[Lunar fallback] Falling back to Ponder for user snapshots:",
-        error,
-      );
-    }
+  if (!environment.lunarIndexerUrl) {
+    return [];
   }
-
-  // Ponder fallback returns all available data (doesn't support time filtering)
-  const result = await fetchUserPositionSnapshotsFromPonder(
+  return fetchUserPositionSnapshotsFromLunar(
     userAddress,
     environment,
+    period,
+    startTime,
+    endTime,
+    granularity,
   );
-  return result;
 }
 
 async function fetchUserPositionSnapshotsFromLunar(
@@ -176,85 +155,4 @@ async function fetchUserPositionSnapshotsFromLunar(
     snapshots.slice(firstNonZeroIndex),
     resolvedGranularity,
   );
-}
-
-async function fetchUserPositionSnapshotsFromPonder(
-  userAddress: Address,
-  environment: Environment,
-): Promise<UserPositionSnapshot[]> {
-  const dailyData: UserDailyData[] = [];
-  let hasNextPage = true;
-  let endCursor: string | undefined;
-
-  interface UserDailyData {
-    totalBorrowsUSD: string;
-    totalSuppliesUSD: string;
-    totalCollateralUSD: string;
-    timestamp: number;
-  }
-
-  while (hasNextPage) {
-    const result = await axios.post<{
-      data: {
-        accountDailySnapshots: {
-          items: UserDailyData[];
-          pageInfo: {
-            hasNextPage: boolean;
-            endCursor: string;
-          };
-        };
-      };
-    }>(environment.indexerUrl, {
-      query: `
-          query {
-            accountDailySnapshots(
-              limit: 365,
-              orderDirection: "desc",
-              orderBy: "timestamp",
-              where: { accountAddress: "${userAddress.toLowerCase()}", chainId: ${environment.chainId} }
-              ${endCursor ? `after: "${endCursor}"` : ""}
-            ) {
-              items {
-                timestamp,
-                totalBorrowsUSD,
-                totalSuppliesUSD,
-                totalCollateralUSD,
-              }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-            }
-          }
-        `,
-    });
-
-    dailyData.push(
-      ...result.data.data.accountDailySnapshots.items.filter(
-        (f: { timestamp: number }) => isStartOfDay(f.timestamp),
-      ),
-    );
-    hasNextPage = result.data.data.accountDailySnapshots.pageInfo.hasNextPage;
-    endCursor = result.data.data.accountDailySnapshots.pageInfo.endCursor;
-  }
-
-  if (dailyData.length > 0) {
-    return dailyData.map((point: UserDailyData) => {
-      const borrowUsd = Number(point.totalBorrowsUSD);
-      const suppliedUsd = Number(point.totalSuppliesUSD);
-      const collateralUsd = Number(point.totalCollateralUSD);
-
-      const result: UserPositionSnapshot = {
-        chainId: environment.chainId,
-        timestamp: point.timestamp * 1000,
-        totalSupplyUsd: suppliedUsd,
-        totalBorrowsUsd: borrowUsd,
-        totalCollateralUsd: collateralUsd,
-      };
-
-      return result;
-    });
-  } else {
-    return [];
-  }
 }

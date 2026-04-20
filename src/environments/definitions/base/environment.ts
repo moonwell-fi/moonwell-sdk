@@ -15,7 +15,6 @@ const base = defineChain({ ...baseChain, testnet: false });
 
 const createEnvironment = (
   rpcUrls?: string[],
-  indexerUrl?: string,
   governanceIndexerUrl?: string,
   lunarIndexerUrl?: string,
 ): Environment<
@@ -37,7 +36,6 @@ const createEnvironment = (
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http("https://rpc.moonwell.fi/main/evm/8453"),
-    indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",

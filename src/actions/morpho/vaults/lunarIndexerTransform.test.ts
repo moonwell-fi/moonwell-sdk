@@ -1036,7 +1036,6 @@ describe("V2 vault TVL substitution (indexer path)", () => {
     const environment = createBaseEnvironment(
       undefined,
       undefined,
-      undefined,
       LUNAR_INDEXER_URL,
     );
     const vaults = await getMorphoVaultsData({ environments: [environment] });
@@ -1068,7 +1067,6 @@ describe("V2 vault TVL substitution (indexer path)", () => {
     const environment = createBaseEnvironment(
       undefined,
       undefined,
-      undefined,
       LUNAR_INDEXER_URL,
     );
     const vaults = await getMorphoVaultsData({ environments: [environment] });
@@ -1092,7 +1090,6 @@ describe("V2 vault TVL substitution (indexer path)", () => {
 
   test("V1 vaults are not affected by the substitution", async () => {
     const environment = createBaseEnvironment(
-      undefined,
       undefined,
       undefined,
       LUNAR_INDEXER_URL,
@@ -1133,7 +1130,6 @@ describe("V2 vault TVL substitution (indexer path)", () => {
     const environment = createBaseEnvironment(
       undefined,
       undefined,
-      undefined,
       LUNAR_INDEXER_URL,
     );
     const vaults = await getMorphoVaultsData({ environments: [environment] });
@@ -1154,12 +1150,7 @@ describe("getMorphoVaultSnapshots V2 address redirect", () => {
   // Build a minimal mock client backed by the base environment with lunarIndexerUrl
   const mockClient = {
     environments: {
-      base: createBaseEnvironment(
-        undefined,
-        undefined,
-        undefined,
-        LUNAR_INDEXER_URL,
-      ),
+      base: createBaseEnvironment(undefined, undefined, LUNAR_INDEXER_URL),
     },
   } as unknown as MoonwellClient;
 

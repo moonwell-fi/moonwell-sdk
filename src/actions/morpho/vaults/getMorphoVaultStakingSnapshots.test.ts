@@ -5,10 +5,7 @@
  * They verify:
  *  - Correct API granularity is requested for each period
  *  - Client-side applyGranularity thins the results correctly
- *  - Lunar Indexer fallback to Ponder on 5xx / network errors
  */
-import axios from "axios";
-import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import type { Environment } from "../../../environments/index.js";
@@ -26,15 +23,11 @@ vi.mock("../../lunar-indexer-client.js", async (importOriginal) => {
   return { ...actual, createLunarIndexerClient: vi.fn() };
 });
 
-// Only spy on axios.post so that axios.isAxiosError stays real (needed by shouldFallback)
-const axiosPostSpy = vi.spyOn(axios, "post");
-
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
 
 const MOCK_LUNAR_URL = "https://mock-lunar.test";
-const MOCK_PONDER_URL = "https://mock-ponder.test";
 const MOCK_VAULT_ADDRESS = "0xaabbccdd00112233445566778899aabbccddeeff";
 
 const NO_MORE_PAGES = null as unknown as string;
@@ -72,29 +65,9 @@ function makeClient(lunarIndexerUrl?: string): MoonwellClient {
       base: {
         chainId: 8453,
         lunarIndexerUrl,
-        indexerUrl: MOCK_PONDER_URL,
       } as unknown as Environment,
     },
   } as unknown as MoonwellClient;
-}
-
-function createAxiosError(status?: number): AxiosError {
-  const response = status
-    ? ({
-        status,
-        data: {},
-        headers: {},
-        statusText: "",
-      } as AxiosResponse)
-    : undefined;
-
-  return new AxiosError(
-    `Request failed${status ? ` with status ${status}` : ""}`,
-    status ? AxiosError.ERR_BAD_RESPONSE : AxiosError.ERR_NETWORK,
-    undefined,
-    undefined,
-    response,
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -114,22 +87,10 @@ beforeEach(() => {
     results: [],
     nextCursor: NO_MORE_PAGES,
   });
-
-  axiosPostSpy.mockResolvedValue({
-    status: 200,
-    data: {
-      data: {
-        vaultStakingDailySnapshots: {
-          items: [],
-          pageInfo: { hasNextPage: false, endCursor: "" },
-        },
-      },
-    },
-  });
 });
 
 // ---------------------------------------------------------------------------
-// Routing: Lunar vs Ponder
+// Routing
 // ---------------------------------------------------------------------------
 
 describe("per-environment routing", () => {
@@ -144,23 +105,17 @@ describe("per-environment routing", () => {
       expect.objectContaining({ baseUrl: MOCK_LUNAR_URL }),
     );
     expect(mockGetVaultStakingSnapshots).toHaveBeenCalled();
-    expect(axiosPostSpy).not.toHaveBeenCalled();
   });
 
-  test("calls Ponder when lunarIndexerUrl is NOT configured", async () => {
-    const client = makeClient(undefined); // no Lunar URL
-    await getMorphoVaultStakingSnapshots(client, {
+  test("returns [] when lunarIndexerUrl is NOT configured", async () => {
+    const client = makeClient(undefined);
+    const result = await getMorphoVaultStakingSnapshots(client, {
       chainId: 8453,
       vaultAddress: MOCK_VAULT_ADDRESS,
     });
 
     expect(createLunarIndexerClient).not.toHaveBeenCalled();
-    expect(axiosPostSpy).toHaveBeenCalledWith(
-      MOCK_PONDER_URL,
-      expect.objectContaining({
-        query: expect.stringContaining(MOCK_VAULT_ADDRESS.toLowerCase()),
-      }),
-    );
+    expect(result).toEqual([]);
   });
 
   test("vaultAddress is lowercased when passed to Lunar API", async () => {
@@ -309,54 +264,6 @@ describe("client-side granularity thinning", () => {
 
     // Oldest should be first
     expect(result[0].timestamp).toBe(base * 1000);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Fallback behavior
-// ---------------------------------------------------------------------------
-
-describe("fallback to Ponder", () => {
-  test("falls back to Ponder when Lunar returns a 500 error", async () => {
-    mockGetVaultStakingSnapshots.mockRejectedValue(createAxiosError(500));
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    const result = await getMorphoVaultStakingSnapshots(client, {
-      chainId: 8453,
-      vaultAddress: MOCK_VAULT_ADDRESS,
-    });
-
-    expect(axiosPostSpy).toHaveBeenCalledWith(
-      MOCK_PONDER_URL,
-      expect.anything(),
-    );
-    expect(result).toEqual([]);
-  });
-
-  test("falls back to Ponder on network error (no response)", async () => {
-    mockGetVaultStakingSnapshots.mockRejectedValue(createAxiosError());
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    await getMorphoVaultStakingSnapshots(client, {
-      chainId: 8453,
-      vaultAddress: MOCK_VAULT_ADDRESS,
-    });
-
-    expect(axiosPostSpy).toHaveBeenCalled();
-  });
-
-  test("does NOT fall back on 400 bad request — throws instead", async () => {
-    mockGetVaultStakingSnapshots.mockRejectedValue(createAxiosError(400));
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    await expect(
-      getMorphoVaultStakingSnapshots(client, {
-        chainId: 8453,
-        vaultAddress: MOCK_VAULT_ADDRESS,
-      }),
-    ).rejects.toThrow();
-
-    expect(axiosPostSpy).not.toHaveBeenCalled();
   });
 });
 

@@ -4,7 +4,6 @@ import { getEnvironmentFromArgs } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain } from "../../environments/index.js";
 import type { CirculatingSupplySnapshot } from "../../types/circulatingSupply.js";
-import { shouldFallback } from "../lunar-indexer-client.js";
 
 export type GetCirculatingSupplySnapshotsParameters<
   environments,
@@ -74,100 +73,28 @@ export async function getCirculatingSupplySnapshots<
     return [];
   }
 
-  if (environment.lunarIndexerUrl) {
-    try {
-      const items = await fetchCirculatingSupplyFromLunar(
-        environment.lunarIndexerUrl,
-        environment.chainId,
-      );
-      return items.flatMap((item) => {
-        const token = Object.values(environment.config.tokens).find(
-          (t) => t.address.toLowerCase() === item.tokenAddress.toLowerCase(),
-        );
-        if (!token) return [];
-        return [
-          {
-            chainId: item.chainId,
-            token,
-            circulatingSupply: Number.parseFloat(item.circulatingSupply),
-            totalSupply: item.totalSupply,
-            excludedBalance: item.excludedBalance,
-            timestamp: item.timestamp,
-          },
-        ];
-      });
-    } catch (error) {
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug(
-        "[Lunar fallback] Falling back for circulating supply snapshots:",
-        error,
-      );
-    }
-  }
-
-  // Legacy fallback: GraphQL POST to Ponder indexer
-  try {
-    const response = await axios.post<{
-      data: {
-        circulatingSupplyDailySnapshots: {
-          items: {
-            chainId: number;
-            tokenAddress: string;
-            circulatingSupply: number;
-            timestamp: number;
-          }[];
-        };
-      };
-    }>(environment.indexerUrl, {
-      query: `
-          {
-            circulatingSupplyDailySnapshots(
-              where: { chainId: ${environment.chainId} }
-              orderBy: "timestamp"
-              orderDirection: "desc"
-              limit: 1000
-            ) {
-              items {
-                chainId
-                tokenAddress
-                circulatingSupply
-                timestamp
-              }
-            }
-          }
-        `,
-    });
-
-    if (
-      response.status === 200 &&
-      response.data?.data?.circulatingSupplyDailySnapshots
-    ) {
-      return response.data.data.circulatingSupplyDailySnapshots.items.flatMap(
-        (item) => {
-          const token = Object.values(environment.config.tokens).find(
-            (t) => t.address.toLowerCase() === item.tokenAddress.toLowerCase(),
-          );
-          if (!token) return [];
-          return [
-            {
-              chainId: item.chainId,
-              token,
-              circulatingSupply: item.circulatingSupply,
-              timestamp: item.timestamp,
-            },
-          ];
-        },
-      );
-    } else {
-      return [];
-    }
-  } catch (ex) {
-    console.error(
-      "An error occurred while fetching getCirculatingSupplySnapshots...",
-      ex,
-    );
+  if (!environment.lunarIndexerUrl) {
     return [];
   }
+
+  const items = await fetchCirculatingSupplyFromLunar(
+    environment.lunarIndexerUrl,
+    environment.chainId,
+  );
+  return items.flatMap((item) => {
+    const token = Object.values(environment.config.tokens).find(
+      (t) => t.address.toLowerCase() === item.tokenAddress.toLowerCase(),
+    );
+    if (!token) return [];
+    return [
+      {
+        chainId: item.chainId,
+        token,
+        circulatingSupply: Number.parseFloat(item.circulatingSupply),
+        totalSupply: item.totalSupply,
+        excludedBalance: item.excludedBalance,
+        timestamp: item.timestamp,
+      },
+    ];
+  });
 }

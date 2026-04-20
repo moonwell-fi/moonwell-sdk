@@ -11,6 +11,8 @@ import {
 } from "../../../types/proposal.js";
 import type { ApiProposal } from "../governor-api-client.js";
 
+export const WORMHOLE_CONTRACT = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+
 type PonderExtendedProposalData = {
   id: number;
   title: string;
@@ -27,8 +29,6 @@ type PonderExtendedProposalData = {
 };
 
 axios.defaults.timeout = 5_000;
-
-export const WORMHOLE_CONTRACT = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
 
 /**
  * Extract proposal subtitle from description
@@ -315,35 +315,6 @@ export const getProposalsOnChainData = async (
 };
 
 /**
- * Append extended proposal data (Ponder-based, for Moonriver)
- */
-export const appendProposalExtendedData = (
-  proposals: Proposal[],
-  extendedDatas: PonderExtendedProposalData[],
-) => {
-  proposals.forEach((proposal) => {
-    const extendedData = extendedDatas.find(
-      (item) => item.id === proposal.proposalId,
-    );
-
-    if (extendedData) {
-      proposal.title = extendedData.title;
-      proposal.calldatas = extendedData.calldatas;
-      proposal.description = extendedData.description;
-      proposal.signatures = extendedData.signatures;
-      proposal.stateChanges = extendedData.stateChanges.map((change) => ({
-        blockNumber: change.blockNumber,
-        transactionHash: change.transactionHash,
-        state: change.state,
-        chainId: proposal.chainId,
-      }));
-      proposal.subtitle = extendedData.subtitle;
-      proposal.targets = extendedData.targets;
-    }
-  });
-};
-
-/**
  * Get proposal data from on-chain (Ponder-based, for Moonriver)
  */
 export const getProposalData = async (params: {
@@ -616,9 +587,32 @@ export const getCrossChainProposalData = async (params: {
   }
 };
 
-/**
- * Get extended proposal data from Ponder (for Moonriver)
- */
+export const appendProposalExtendedData = (
+  proposals: Proposal[],
+  extendedDatas: PonderExtendedProposalData[],
+) => {
+  proposals.forEach((proposal) => {
+    const extendedData = extendedDatas.find(
+      (item) => item.id === proposal.proposalId,
+    );
+
+    if (extendedData) {
+      proposal.title = extendedData.title;
+      proposal.calldatas = extendedData.calldatas;
+      proposal.description = extendedData.description;
+      proposal.signatures = extendedData.signatures;
+      proposal.stateChanges = extendedData.stateChanges.map((change) => ({
+        blockNumber: change.blockNumber,
+        transactionHash: change.transactionHash,
+        state: change.state,
+        chainId: proposal.chainId,
+      }));
+      proposal.subtitle = extendedData.subtitle;
+      proposal.targets = extendedData.targets;
+    }
+  });
+};
+
 export const getExtendedProposalData = async (params: {
   environment: Environment;
   id?: number;
