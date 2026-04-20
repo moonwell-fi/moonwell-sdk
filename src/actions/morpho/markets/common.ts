@@ -886,18 +886,33 @@ async function getMorphoMarketsDataFromIndexer(params: {
         ]),
       );
 
-      const rawData = await fetchSharedLiquidityFromLunar(
-        lunarIndexerUrl,
-        environment.chainId,
-      );
-      const marketIds = markets.map((m) => m.marketId);
-      const data = computeSharedLiquidityFromLunar(
-        rawData,
-        marketIds,
-        marketParamsMap,
-        environment.chainId,
-      );
-      return { environment, data };
+      try {
+        const rawData = await fetchSharedLiquidityFromLunar(
+          lunarIndexerUrl,
+          environment.chainId,
+        );
+        const marketIds = markets.map((m) => m.marketId);
+        const data = computeSharedLiquidityFromLunar(
+          rawData,
+          marketIds,
+          marketParamsMap,
+          environment.chainId,
+        );
+        return { environment, data };
+      } catch (error) {
+        console.warn(
+          `[getMorphoMarketsData] Lunar shared liquidity failed for chain ${environment.chainId}:`,
+          error,
+        );
+        environment.onError?.(error, {
+          source: "morpho-shared-liquidity",
+          chainId: environment.chainId,
+        });
+        return {
+          environment,
+          data: [] as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
+        };
+      }
     }),
   );
 

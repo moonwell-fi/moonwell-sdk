@@ -1,3 +1,4 @@
+import axios from "axios";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
@@ -5,6 +6,7 @@ import {
   applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
+  isStartOfDay,
   toApiGranularity,
 } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
@@ -87,7 +89,9 @@ async function fetchUserPositionSnapshots(
   granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
-    return [];
+    return environment.indexerUrl
+      ? fetchUserPositionSnapshotsFromPonder(userAddress, environment)
+      : [];
   }
   try {
     return await fetchUserPositionSnapshotsFromLunar(
@@ -167,4 +171,74 @@ async function fetchUserPositionSnapshotsFromLunar(
     snapshots.slice(firstNonZeroIndex),
     resolvedGranularity,
   );
+}
+
+async function fetchUserPositionSnapshotsFromPonder(
+  userAddress: Address,
+  environment: Environment,
+): Promise<UserPositionSnapshot[]> {
+  if (!environment.indexerUrl) return [];
+
+  interface UserDailyData {
+    totalBorrowsUSD: string;
+    totalSuppliesUSD: string;
+    totalCollateralUSD: string;
+    timestamp: number;
+  }
+
+  const dailyData: UserDailyData[] = [];
+  let hasNextPage = true;
+  let endCursor: string | undefined;
+
+  while (hasNextPage) {
+    const result = await axios.post<{
+      data: {
+        accountDailySnapshots: {
+          items: UserDailyData[];
+          pageInfo: { hasNextPage: boolean; endCursor: string };
+        };
+      };
+    }>(environment.indexerUrl, {
+      query: `
+          query {
+            accountDailySnapshots(
+              limit: 365,
+              orderDirection: "desc",
+              orderBy: "timestamp",
+              where: { accountAddress: "${userAddress.toLowerCase()}", chainId: ${environment.chainId} }
+              ${endCursor ? `after: "${endCursor}"` : ""}
+            ) {
+              items {
+                timestamp,
+                totalBorrowsUSD,
+                totalSuppliesUSD,
+                totalCollateralUSD,
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        `,
+    });
+
+    dailyData.push(
+      ...result.data.data.accountDailySnapshots.items.filter(
+        (f: { timestamp: number }) => isStartOfDay(f.timestamp),
+      ),
+    );
+    hasNextPage = result.data.data.accountDailySnapshots.pageInfo.hasNextPage;
+    endCursor = result.data.data.accountDailySnapshots.pageInfo.endCursor;
+  }
+
+  if (dailyData.length === 0) return [];
+
+  return dailyData.map((point) => ({
+    chainId: environment.chainId,
+    timestamp: point.timestamp * 1000,
+    totalSupplyUsd: Number(point.totalSuppliesUSD),
+    totalBorrowsUsd: Number(point.totalBorrowsUSD),
+    totalCollateralUsd: Number(point.totalCollateralUSD),
+  }));
 }

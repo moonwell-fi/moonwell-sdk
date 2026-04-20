@@ -1,3 +1,4 @@
+import axios from "axios";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
   type SnapshotPeriod,
@@ -140,7 +141,9 @@ async function fetchCoreMarketSnapshots(
   endTime?: number,
 ): Promise<MarketSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
-    return [];
+    return environment.indexerUrl
+      ? fetchCoreMarketSnapshotsFromPonder(marketAddress, environment)
+      : [];
   }
   try {
     return await fetchCoreMarketSnapshotsFromLunar(
@@ -161,6 +164,106 @@ async function fetchCoreMarketSnapshots(
     });
     return [];
   }
+}
+
+async function fetchCoreMarketSnapshotsFromPonder(
+  marketAddress: string,
+  environment: Environment,
+): Promise<MarketSnapshot[]> {
+  if (!environment.indexerUrl) return [];
+
+  interface MarketDailyData {
+    totalBorrows: number;
+    totalBorrowsUSD: number;
+    totalSupplies: number;
+    totalSuppliesUSD: number;
+    totalLiquidity: number;
+    totalLiquidityUSD: number;
+    baseSupplyApy: number;
+    baseBorrowApy: number;
+    timestamp: number;
+  }
+
+  const dailyData: MarketDailyData[] = [];
+  let hasNextPage = true;
+  let endCursor: string | undefined;
+
+  while (hasNextPage) {
+    const result = await axios.post<{
+      data: {
+        marketDailySnapshots: {
+          items: MarketDailyData[];
+          pageInfo: { hasNextPage: boolean; endCursor: string };
+        };
+      };
+    }>(environment.indexerUrl, {
+      query: `
+          query {
+            marketDailySnapshots (
+              limit: 1000,
+              orderBy: "timestamp"
+              orderDirection: "desc"
+              where: {marketAddress: "${marketAddress.toLowerCase()}", chainId: ${environment.chainId}}
+              ${endCursor ? `after: "${endCursor}"` : ""}
+            ) {
+              items {
+                totalBorrows
+                totalBorrowsUSD
+                totalSupplies
+                totalSuppliesUSD
+                totalLiquidity
+                totalLiquidityUSD
+                baseSupplyApy
+                baseBorrowApy
+                timestamp
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        `,
+    });
+
+    dailyData.push(
+      ...result.data.data.marketDailySnapshots.items.filter(
+        (f: { timestamp: number }) => isStartOfDay(f.timestamp),
+      ),
+    );
+    hasNextPage = result.data.data.marketDailySnapshots.pageInfo.hasNextPage;
+    endCursor = result.data.data.marketDailySnapshots.pageInfo.endCursor;
+  }
+
+  if (dailyData.length === 0) return [];
+
+  return dailyData.map((point) => {
+    const supplied = Number(point.totalSupplies);
+    const borrow = Number(point.totalBorrows);
+    const borrowUsd = Number(point.totalBorrowsUSD);
+    const suppliedUsd = Number(point.totalSuppliesUSD);
+    const liquidity = Math.max(point.totalLiquidity, 0);
+    const liquidityUsd = Math.max(point.totalLiquidityUSD, 0);
+    const price = suppliedUsd / supplied;
+
+    return {
+      marketId: marketAddress.toLowerCase(),
+      chainId: environment.chainId,
+      timestamp: point.timestamp * 1000,
+      totalSupply: supplied,
+      totalSupplyUsd: suppliedUsd,
+      totalBorrows: borrow,
+      totalBorrowsUsd: borrowUsd,
+      totalLiquidity: liquidity,
+      totalLiquidityUsd: liquidityUsd,
+      totalReallocatableLiquidity: 0,
+      totalReallocatableLiquidityUsd: 0,
+      baseSupplyApy: point.baseSupplyApy,
+      baseBorrowApy: point.baseBorrowApy,
+      collateralTokenPrice: price,
+      loanTokenPrice: price,
+    };
+  });
 }
 
 async function fetchCoreMarketSnapshotsFromLunar(

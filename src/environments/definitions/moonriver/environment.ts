@@ -6,7 +6,11 @@ import { markets } from "./core-markets.js";
 import { custom } from "./custom.js";
 import { tokens } from "./tokens.js";
 
-const createEnvironment = (rpcUrls?: string[], governanceIndexerUrl?: string) =>
+const createEnvironment = (
+  rpcUrls?: string[],
+  indexerUrl?: string,
+  governanceIndexerUrl?: string,
+) =>
   createEnvironmentConfig({
     key: "moonriver",
     name: "Moonriver",
@@ -19,6 +23,7 @@ const createEnvironment = (rpcUrls?: string[], governanceIndexerUrl?: string) =>
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http("https://rpc.moonwell.fi/main/evm/1285"),
+    indexerUrl: indexerUrl || "https://ponder.moonwell.fi",
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",

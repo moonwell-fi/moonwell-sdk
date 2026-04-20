@@ -228,6 +228,7 @@ export const createEnvironmentConfig = <
   name: string;
   chain: Chain;
   transport: Transport;
+  indexerUrl?: string;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
   onError?: (
@@ -495,6 +496,7 @@ export const createEnvironmentConfig = <
     name: config.name,
     chainId: config.chain.id,
     chain: config.chain,
+    indexerUrl: config.indexerUrl,
     governanceIndexerUrl: config.governanceIndexerUrl,
     lunarIndexerUrl: config.lunarIndexerUrl,
     onError: config.onError,
@@ -533,6 +535,7 @@ export type Environment<
   name: string;
   chainId: number;
   chain: Chain;
+  indexerUrl?: string;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
   onError?: (
