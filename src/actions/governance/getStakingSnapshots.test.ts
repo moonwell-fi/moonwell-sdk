@@ -1,5 +1,5 @@
 import axios from "axios";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../test/client.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import type { Environment } from "../../environments/index.js";
