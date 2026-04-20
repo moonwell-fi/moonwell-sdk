@@ -23,7 +23,14 @@ export const getMarketsData = async (environment: Environment) => {
   const isMoonriver = environment.chainId === 1285;
 
   if (environment.lunarIndexerUrl && !isMoonriver) {
-    return await fetchMarketsFromLunar(environment);
+    try {
+      return await fetchMarketsFromLunar(environment);
+    } catch (error) {
+      console.warn(
+        `[getMarketsData] Lunar Indexer failed for chain ${environment.chainId}, falling back to on-chain:`,
+        error,
+      );
+    }
   }
 
   const homeEnvironment =
