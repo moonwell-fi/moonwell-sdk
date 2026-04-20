@@ -81,7 +81,9 @@ describe("Lunar Indexer routing", () => {
   });
 
   test("skips Lunar Indexer when lunarIndexerUrl is not set", async () => {
-    const env = makeEnvironment({ lunarIndexerUrl: undefined });
+    const env = makeEnvironment({
+      lunarIndexerUrl: undefined,
+    } as unknown as Partial<Environment>);
     await getMarketsData(env);
 
     expect(createLunarIndexerClient).not.toHaveBeenCalled();
@@ -110,7 +112,9 @@ describe("onError callback", () => {
   });
 
   test("does not call onError when lunarIndexerUrl is not set", async () => {
-    const env = makeEnvironment({ lunarIndexerUrl: undefined });
+    const env = makeEnvironment({
+      lunarIndexerUrl: undefined,
+    } as unknown as Partial<Environment>);
     await getMarketsData(env);
 
     expect(mockOnError).not.toHaveBeenCalled();

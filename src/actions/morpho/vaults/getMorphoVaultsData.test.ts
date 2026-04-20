@@ -91,7 +91,9 @@ describe("lunarIndexerUrl routing", () => {
   });
 
   test("skips Lunar Indexer when lunarIndexerUrl is not set", async () => {
-    const env = makeEnvironment({ lunarIndexerUrl: undefined });
+    const env = makeEnvironment({
+      lunarIndexerUrl: undefined,
+    } as unknown as Partial<Environment>);
 
     await getMorphoVaultsData({ environments: [env] });
 
@@ -124,7 +126,9 @@ describe("onError callback", () => {
   });
 
   test("does not call onError when lunarIndexerUrl is not set", async () => {
-    const env = makeEnvironment({ lunarIndexerUrl: undefined });
+    const env = makeEnvironment({
+      lunarIndexerUrl: undefined,
+    } as unknown as Partial<Environment>);
 
     await getMorphoVaultsData({ environments: [env] });
 
