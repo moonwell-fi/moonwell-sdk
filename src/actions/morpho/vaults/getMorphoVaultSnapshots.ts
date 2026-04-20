@@ -74,7 +74,7 @@ export async function getMorphoVaultSnapshots<
     }
   }
 
-  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+  const lunarIndexerUrl = environment.lunarIndexerUrl;
 
   if (!lunarIndexerUrl) {
     return [];

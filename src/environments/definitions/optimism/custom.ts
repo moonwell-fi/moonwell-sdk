@@ -5,7 +5,6 @@ export const custom = createCustomConfig({
     minimalDeployment: true,
     apiUrl: "https://api.morpho.org/graphql",
     rewardsApiUrl: "https://rewards.morpho.org",
-    lunarIndexerUrl: "https://lunar-services-worker.moonwell.workers.dev",
   },
   governance: {
     token: "WELL",

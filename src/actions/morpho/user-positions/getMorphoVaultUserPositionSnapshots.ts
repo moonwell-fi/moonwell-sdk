@@ -55,7 +55,7 @@ export async function getMorphoVaultUserPositionSnapshots<
   const vaultAddress: Address | undefined =
     rawVaultAddress ?? (vault ? environment.vaults[vault].address : undefined);
 
-  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+  const lunarIndexerUrl = environment.lunarIndexerUrl;
 
   if (!lunarIndexerUrl) {
     return [];

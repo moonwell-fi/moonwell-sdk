@@ -30,6 +30,10 @@ export const getMarketsData = async (environment: Environment) => {
         `[getMarketsData] Lunar Indexer failed for chain ${environment.chainId}, falling back to on-chain:`,
         error,
       );
+      environment.onError?.(error, {
+        source: "markets",
+        chainId: environment.chainId,
+      });
     }
   }
 

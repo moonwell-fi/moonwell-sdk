@@ -141,7 +141,6 @@ export type CustomConfigType = {
     minimalDeployment?: boolean;
     apiUrl?: string; // For api.morpho.org/graphql
     rewardsApiUrl?: string; // For rewards.morpho.org
-    lunarIndexerUrl?: string; // For lunar-services vault endpoints
   };
   governance?: {
     token: GovernanceToken;
@@ -231,6 +230,10 @@ export const createEnvironmentConfig = <
   transport: Transport;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
+  onError?: (
+    error: unknown,
+    context: { source: string; chainId: number },
+  ) => void;
   tokens: TokensConfig<tokens>;
   markets: MarketsConfig<markets, tokens>;
   vaults: VaultsConfig<vaults, tokens>;
@@ -494,6 +497,7 @@ export const createEnvironmentConfig = <
     chain: config.chain,
     governanceIndexerUrl: config.governanceIndexerUrl,
     lunarIndexerUrl: config.lunarIndexerUrl,
+    onError: config.onError,
     tokens: tokenContracts,
     markets: marketContracts,
     vaults: vaultsContracts,
@@ -531,6 +535,10 @@ export type Environment<
   chain: Chain;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
+  onError?: (
+    error: unknown,
+    context: { source: string; chainId: number },
+  ) => void;
   tokens: {
     [name in keyof tokens]: TokenContractReturnType;
   };

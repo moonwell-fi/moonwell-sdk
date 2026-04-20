@@ -153,14 +153,13 @@ async function getMorphoVaultsDataFromIndexer(params: {
   // Filter environments that have vaults and Lunar Indexer URL configured
   const environmentsWithVaults = environments.filter(
     (environment) =>
-      Object.keys(environment.vaults).length > 0 &&
-      environment.custom?.morpho?.lunarIndexerUrl,
+      Object.keys(environment.vaults).length > 0 && environment.lunarIndexerUrl,
   );
 
   // Fetch vaults from Lunar Indexer for each environment
   const environmentsVaultsSettlements = await Promise.allSettled(
     environmentsWithVaults.map(async (environment) => {
-      const lunarIndexerUrl = environment.custom.morpho!.lunarIndexerUrl!;
+      const lunarIndexerUrl = environment.lunarIndexerUrl!;
 
       try {
         // Fetch tokens and vaults in parallel
@@ -228,6 +227,10 @@ async function getMorphoVaultsDataFromIndexer(params: {
           `Failed to fetch vaults from Lunar Indexer for chain ${environment.chainId}, falling back to on-chain:`,
           error,
         );
+        environment.onError?.(error, {
+          source: "vaults",
+          chainId: environment.chainId,
+        });
         throw { environment, error };
       }
     }),
@@ -442,9 +445,7 @@ export async function getMorphoVaultsData(params: {
   const { environments } = params;
 
   // Check if any environment has Lunar Indexer URL configured
-  const hasLunarIndexer = environments.some(
-    (env) => env.custom?.morpho?.lunarIndexerUrl,
-  );
+  const hasLunarIndexer = environments.some((env) => env.lunarIndexerUrl);
 
   // Use Lunar Indexer implementation if available
   if (hasLunarIndexer) {

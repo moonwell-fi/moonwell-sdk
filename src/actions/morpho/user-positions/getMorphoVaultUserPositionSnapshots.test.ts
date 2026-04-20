@@ -67,7 +67,7 @@ function makeClient(lunarIndexerUrl?: string): MoonwellClient {
     environments: {
       base: {
         chainId: MOCK_CHAIN_ID,
-        custom: lunarIndexerUrl ? { morpho: { lunarIndexerUrl } } : undefined,
+        lunarIndexerUrl,
       } as unknown as Environment,
     },
   } as unknown as MoonwellClient;
