@@ -77,24 +77,36 @@ export async function getCirculatingSupplySnapshots<
     return [];
   }
 
-  const items = await fetchCirculatingSupplyFromLunar(
-    environment.lunarIndexerUrl,
-    environment.chainId,
-  );
-  return items.flatMap((item) => {
-    const token = Object.values(environment.config.tokens).find(
-      (t) => t.address.toLowerCase() === item.tokenAddress.toLowerCase(),
+  try {
+    const items = await fetchCirculatingSupplyFromLunar(
+      environment.lunarIndexerUrl,
+      environment.chainId,
     );
-    if (!token) return [];
-    return [
-      {
-        chainId: item.chainId,
-        token,
-        circulatingSupply: Number.parseFloat(item.circulatingSupply),
-        totalSupply: item.totalSupply,
-        excludedBalance: item.excludedBalance,
-        timestamp: item.timestamp,
-      },
-    ];
-  });
+    return items.flatMap((item) => {
+      const token = Object.values(environment.config.tokens).find(
+        (t) => t.address.toLowerCase() === item.tokenAddress.toLowerCase(),
+      );
+      if (!token) return [];
+      return [
+        {
+          chainId: item.chainId,
+          token,
+          circulatingSupply: Number.parseFloat(item.circulatingSupply),
+          totalSupply: item.totalSupply,
+          excludedBalance: item.excludedBalance,
+          timestamp: item.timestamp,
+        },
+      ];
+    });
+  } catch (error) {
+    console.warn(
+      `[getCirculatingSupplySnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "circulating-supply",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }

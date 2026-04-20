@@ -142,13 +142,25 @@ async function fetchCoreMarketSnapshots(
   if (!environment.lunarIndexerUrl) {
     return [];
   }
-  return fetchCoreMarketSnapshotsFromLunar(
-    marketAddress,
-    environment,
-    period,
-    startTime,
-    endTime,
-  );
+  try {
+    return await fetchCoreMarketSnapshotsFromLunar(
+      marketAddress,
+      environment,
+      period,
+      startTime,
+      endTime,
+    );
+  } catch (error) {
+    console.warn(
+      `[getMarketSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "market-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchCoreMarketSnapshotsFromLunar(
@@ -271,6 +283,36 @@ export async function fetchIsolatedMarketSnapshots(
     return [];
   }
 
+  try {
+    return await fetchIsolatedMarketSnapshotsFromLunar(
+      marketAddress,
+      environment,
+      lunarIndexerUrl,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  } catch (error) {
+    console.warn(
+      `[getMarketSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "market-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
+}
+
+async function fetchIsolatedMarketSnapshotsFromLunar(
+  marketAddress: string,
+  environment: Environment,
+  lunarIndexerUrl: string,
+  period?: "1M" | "3M" | "1Y" | "ALL",
+  customStartTime?: number,
+  customEndTime?: number,
+): Promise<MarketSnapshot[]> {
   const { startTime } = calculateTimeRange(
     period,
     customStartTime,

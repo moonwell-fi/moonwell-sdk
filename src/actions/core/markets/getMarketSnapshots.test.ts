@@ -342,12 +342,7 @@ describe("fetchIsolatedMarketSnapshots — stkWELL workaround (unit)", () => {
     expect(snapshots[0].totalSupply).toBeCloseTo(100 / 0.006);
   });
 
-  test("throws non-recoverable errors instead of falling through to fallbacks", async () => {
-    // 4xx (not 404) should not fall back — it signals a bad request.
-    // fetchMarketSnapshotsFromIndexer now uses axios, so it throws AxiosErrors on
-    // non-2xx responses. shouldFallback returns false for 4xx (except 404).
-    // Only reject the stkWELL market call; let the WELL price call succeed so
-    // its promise doesn't become an unhandled rejection.
+  test("returns [] and calls onError when Lunar throws", async () => {
     const clientError = Object.assign(new Error("Bad Request"), {
       isAxiosError: true,
       response: { status: 400, statusText: "Bad Request" },
@@ -362,8 +357,10 @@ describe("fetchIsolatedMarketSnapshots — stkWELL workaround (unit)", () => {
       },
     );
 
-    await expect(
-      fetchIsolatedMarketSnapshots(STKWELL_MARKET_ID, mockEnvironment),
-    ).rejects.toThrow("Bad Request");
+    const result = await fetchIsolatedMarketSnapshots(
+      STKWELL_MARKET_ID,
+      mockEnvironment,
+    );
+    expect(result).toEqual([]);
   });
 });

@@ -89,14 +89,26 @@ async function fetchUserPositionSnapshots(
   if (!environment.lunarIndexerUrl) {
     return [];
   }
-  return fetchUserPositionSnapshotsFromLunar(
-    userAddress,
-    environment,
-    period,
-    startTime,
-    endTime,
-    granularity,
-  );
+  try {
+    return await fetchUserPositionSnapshotsFromLunar(
+      userAddress,
+      environment,
+      period,
+      startTime,
+      endTime,
+      granularity,
+    );
+  } catch (error) {
+    console.warn(
+      `[getUserPositionSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "user-position-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchUserPositionSnapshotsFromLunar(

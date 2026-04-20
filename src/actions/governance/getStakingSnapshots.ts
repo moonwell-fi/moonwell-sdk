@@ -49,13 +49,25 @@ export async function getStakingSnapshots<
     return [];
   }
 
-  return fetchStakingSnapshotsFromLunar(
-    environment.chainId,
-    environment.lunarIndexerUrl,
-    period,
-    customStartTime,
-    customEndTime,
-  );
+  try {
+    return await fetchStakingSnapshotsFromLunar(
+      environment.chainId,
+      environment.lunarIndexerUrl,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  } catch (error) {
+    console.warn(
+      `[getStakingSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "staking-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchStakingSnapshotsFromLunar(
