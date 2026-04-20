@@ -37,6 +37,8 @@ export default defineConfig({
       "src/actions/lunar-indexer-client.test.ts",
       "src/actions/governance/getMerklRewardsData.test.ts",
       "src/actions/governance/getCirculatingSupplySnapshots.test.ts",
+      "src/actions/governance/getStakingSnapshots.test.ts",
+      "src/actions/core/user-positions/getUserPositionSnapshots.test.ts",
       "src/client/createMoonwellClient.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
