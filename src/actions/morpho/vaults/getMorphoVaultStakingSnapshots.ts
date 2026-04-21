@@ -58,14 +58,26 @@ export async function getMorphoVaultStakingSnapshots<
     return [];
   }
 
-  return fetchVaultStakingSnapshotsFromLunar(
-    vaultAddress,
-    lunarIndexerUrl,
-    environment.chainId,
-    period,
-    customStartTime,
-    customEndTime,
-  );
+  try {
+    return await fetchVaultStakingSnapshotsFromLunar(
+      vaultAddress,
+      lunarIndexerUrl,
+      environment.chainId,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  } catch (error) {
+    console.warn(
+      `[getMorphoVaultStakingSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "morpho-vault-staking-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchVaultStakingSnapshotsFromLunar(

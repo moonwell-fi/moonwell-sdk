@@ -82,11 +82,10 @@ export const createMoonwellClient = <const networks>(config: {
     context: { source: string; chainId: number },
   ) => void;
 }) => {
-  const environments = Object.keys(config.networks).reduce((prev, curr) => {
-    const key = curr as SupportedChains;
-    const networkConfig = (config.networks as NetworksConfig<SupportedChains>)[
-      key
-    ]!;
+  const environments = Object.entries(
+    config.networks as NetworksConfig<SupportedChains>,
+  ).reduce((prev, [curr, networkConfig]) => {
+    if (!networkConfig) return prev;
     return {
       ...prev,
       [curr]: createEnvironment({

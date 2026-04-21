@@ -66,12 +66,14 @@ export const getMarketsData = async (environment: Environment) => {
       allMarketsInfoResult.reason,
     );
     const seizePaused =
-      protocolInfoResult.status === "fulfilled"
-        ? protocolInfoResult.value!.seizePaused
+      protocolInfoResult.status === "fulfilled" &&
+      protocolInfoResult.value !== undefined
+        ? protocolInfoResult.value.seizePaused
         : false;
     const transferPaused =
-      protocolInfoResult.status === "fulfilled"
-        ? protocolInfoResult.value!.transferPaused
+      protocolInfoResult.status === "fulfilled" &&
+      protocolInfoResult.value !== undefined
+        ? protocolInfoResult.value.transferPaused
         : false;
     return await getMarketsFromMTokenFallback(
       environment,
@@ -81,14 +83,27 @@ export const getMarketsData = async (environment: Environment) => {
   }
 
   const { seizePaused, transferPaused } =
-    protocolInfoResult.status === "fulfilled"
-      ? protocolInfoResult.value!
+    protocolInfoResult.status === "fulfilled" &&
+    protocolInfoResult.value !== undefined
+      ? protocolInfoResult.value
       : { seizePaused: false, transferPaused: false };
-  const allMarketsInfo = allMarketsInfoResult.value!;
+  const allMarketsInfo = allMarketsInfoResult.value;
+  if (!allMarketsInfo) {
+    environment.onError?.(new Error("getAllMarketsInfo returned undefined"), {
+      source: "markets-onchain-missing-views",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
   const nativeTokenPriceRaw =
-    nativePriceResult.status === "fulfilled" ? nativePriceResult.value! : 0n;
+    nativePriceResult.status === "fulfilled" &&
+    nativePriceResult.value !== undefined
+      ? nativePriceResult.value
+      : 0n;
   const governanceTokenPriceRaw =
-    govPriceResult.status === "fulfilled" ? govPriceResult.value! : 0n;
+    govPriceResult.status === "fulfilled" && govPriceResult.value !== undefined
+      ? govPriceResult.value
+      : 0n;
 
   const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
   const nativeTokenPrice = new Amount(nativeTokenPriceRaw, 18);

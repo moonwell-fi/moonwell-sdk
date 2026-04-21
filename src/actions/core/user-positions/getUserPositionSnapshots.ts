@@ -89,9 +89,23 @@ async function fetchUserPositionSnapshots(
   granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
-    return environment.indexerUrl
-      ? fetchUserPositionSnapshotsFromPonder(userAddress, environment)
-      : [];
+    if (!environment.indexerUrl) return [];
+    try {
+      return await fetchUserPositionSnapshotsFromPonder(
+        userAddress,
+        environment,
+      );
+    } catch (error) {
+      console.warn(
+        `[getUserPositionSnapshots] Ponder failed for chain ${environment.chainId}:`,
+        error,
+      );
+      environment.onError?.(error, {
+        source: "user-position-snapshots-ponder",
+        chainId: environment.chainId,
+      });
+      return [];
+    }
   }
   try {
     return await fetchUserPositionSnapshotsFromLunar(

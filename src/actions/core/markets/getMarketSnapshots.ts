@@ -141,9 +141,23 @@ async function fetchCoreMarketSnapshots(
   endTime?: number,
 ): Promise<MarketSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
-    return environment.indexerUrl
-      ? fetchCoreMarketSnapshotsFromPonder(marketAddress, environment)
-      : [];
+    if (!environment.indexerUrl) return [];
+    try {
+      return await fetchCoreMarketSnapshotsFromPonder(
+        marketAddress,
+        environment,
+      );
+    } catch (error) {
+      console.warn(
+        `[getMarketSnapshots] Ponder failed for chain ${environment.chainId}:`,
+        error,
+      );
+      environment.onError?.(error, {
+        source: "market-snapshots-ponder",
+        chainId: environment.chainId,
+      });
+      return [];
+    }
   }
   try {
     return await fetchCoreMarketSnapshotsFromLunar(

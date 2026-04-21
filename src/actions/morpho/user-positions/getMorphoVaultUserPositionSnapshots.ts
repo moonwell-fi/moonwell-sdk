@@ -61,12 +61,24 @@ export async function getMorphoVaultUserPositionSnapshots<
     return [];
   }
 
-  return fetchUserPositionSnapshotsFromLunar(
-    args.userAddress,
-    vaultAddress,
-    lunarIndexerUrl,
-    environment,
-  );
+  try {
+    return await fetchUserPositionSnapshotsFromLunar(
+      args.userAddress,
+      vaultAddress,
+      lunarIndexerUrl,
+      environment,
+    );
+  } catch (error) {
+    console.warn(
+      `[getMorphoVaultUserPositionSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "morpho-vault-user-position-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchUserPositionSnapshotsFromLunar(

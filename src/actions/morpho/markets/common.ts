@@ -828,6 +828,10 @@ async function getMorphoMarketsDataFromIndexer(params: {
           `Failed to fetch markets from Lunar Indexer for chain ${environment.chainId}, falling back to on-chain:`,
           error,
         );
+        environment.onError?.(error, {
+          source: "morpho-markets",
+          chainId: environment.chainId,
+        });
         // Return rejection so we can fall back to on-chain for this environment
         return Promise.reject({ environment, error });
       }
@@ -840,9 +844,9 @@ async function getMorphoMarketsDataFromIndexer(params: {
 
   // Collect environments that failed to fetch from indexer for fallback
   const failedEnvironments = marketsSettlements
-    .filter((s) => s.status === "rejected")
-    .map((s: any) => s.reason?.environment)
-    .filter((env) => env !== undefined);
+    .filter((s): s is PromiseRejectedResult => s.status === "rejected")
+    .map((s) => (s.reason as { environment?: Environment }).environment)
+    .filter((env): env is Environment => env !== undefined);
 
   // Fall back to on-chain for environments where indexer failed
   let fallbackMarkets: MorphoMarket[] = [];
@@ -850,11 +854,24 @@ async function getMorphoMarketsDataFromIndexer(params: {
     console.warn(
       `Falling back to on-chain for ${failedEnvironments.length} environment(s)`,
     );
-    fallbackMarkets = await getMorphoMarketsDataFromOnChain({
-      environments: failedEnvironments,
-      markets: params.markets,
-      includeRewards: params.includeRewards,
-    });
+    try {
+      fallbackMarkets = await getMorphoMarketsDataFromOnChain({
+        environments: failedEnvironments,
+        markets: params.markets,
+        includeRewards: params.includeRewards,
+      });
+    } catch (rpcError) {
+      console.warn(
+        `RPC fallback also failed for ${failedEnvironments.length} environment(s):`,
+        rpcError,
+      );
+      for (const env of failedEnvironments) {
+        env.onError?.(rpcError, {
+          source: "morpho-markets-rpc-fallback",
+          chainId: env.chainId,
+        });
+      }
+    }
   }
 
   // Fetch shared liquidity from lunar-indexer.

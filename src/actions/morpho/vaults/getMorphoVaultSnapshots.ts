@@ -80,14 +80,27 @@ export async function getMorphoVaultSnapshots<
     return [];
   }
 
-  const snapshots = await fetchVaultSnapshotsFromLunarIndexer(
-    fetchAddress,
-    environment.chainId,
-    lunarIndexerUrl,
-    period,
-    customStartTime,
-    customEndTime,
-  );
+  let snapshots: MorphoVaultSnapshot[];
+  try {
+    snapshots = await fetchVaultSnapshotsFromLunarIndexer(
+      fetchAddress,
+      environment.chainId,
+      lunarIndexerUrl,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  } catch (error) {
+    console.warn(
+      `[getMorphoVaultSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "morpho-vault-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 
   // Restore the originally-requested vault address on every snapshot so
   // callers keying by address see the V2 address they asked for.
