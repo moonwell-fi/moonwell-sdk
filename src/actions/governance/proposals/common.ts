@@ -460,13 +460,8 @@ export const getCrossChainProposalData = async (params: {
             Number(params.id) -
             (params.environment.custom?.governance?.proposalIdOffset || 0);
 
-          if (params.id < 0) {
-            return [];
-          } else {
-            if (BigInt(params.id) > xcCount) {
-              return [];
-            }
-          }
+          if (params.id < 0) return [];
+          if (BigInt(params.id) > xcCount) return [];
         }
 
         const ids = params.id
@@ -652,7 +647,7 @@ export const getExtendedProposalData = async (params: {
   environment: Environment;
   id?: number;
 }): Promise<PonderExtendedProposalData[]> => {
-  let result: PonderExtendedProposalData[] = [];
+  const result: PonderExtendedProposalData[] = [];
   let lastId = -1;
   let shouldContinue = true;
   const MAX_PAGES = 100;
@@ -740,7 +735,7 @@ export const getExtendedProposalData = async (params: {
           lastId = last(proposals)!.id;
         }
 
-        result = result.concat(proposals);
+        result.push(...proposals);
       } else {
         shouldContinue = false;
       }

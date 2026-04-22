@@ -80,9 +80,8 @@ export async function getMorphoVaultSnapshots<
     return [];
   }
 
-  let snapshots: MorphoVaultSnapshot[];
   try {
-    snapshots = await fetchVaultSnapshotsFromLunarIndexer(
+    const snapshots = await fetchVaultSnapshotsFromLunarIndexer(
       fetchAddress,
       environment.chainId,
       lunarIndexerUrl,
@@ -90,6 +89,17 @@ export async function getMorphoVaultSnapshots<
       customStartTime,
       customEndTime,
     );
+
+    // Restore the originally-requested vault address on every snapshot so
+    // callers keying by address see the V2 address they asked for.
+    if (fetchAddress.toLowerCase() !== requestedVaultAddress.toLowerCase()) {
+      return snapshots.map((s) => ({
+        ...s,
+        vaultAddress: requestedVaultAddress.toLowerCase(),
+      }));
+    }
+
+    return snapshots;
   } catch (error) {
     console.warn(
       `[getMorphoVaultSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
@@ -101,17 +111,6 @@ export async function getMorphoVaultSnapshots<
     });
     return [];
   }
-
-  // Restore the originally-requested vault address on every snapshot so
-  // callers keying by address see the V2 address they asked for.
-  if (fetchAddress.toLowerCase() !== requestedVaultAddress.toLowerCase()) {
-    return snapshots.map((s) => ({
-      ...s,
-      vaultAddress: requestedVaultAddress.toLowerCase(),
-    }));
-  }
-
-  return snapshots;
 }
 
 async function fetchVaultSnapshotsFromLunarIndexer(

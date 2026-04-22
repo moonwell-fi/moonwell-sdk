@@ -832,7 +832,6 @@ async function getMorphoMarketsDataFromIndexer(params: {
           source: "morpho-markets",
           chainId: environment.chainId,
         });
-        // Return rejection so we can fall back to on-chain for this environment
         return Promise.reject({ environment, error });
       }
     }),
