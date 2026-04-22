@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.12.0
+
+### Minor Changes
+
+- [#262](https://github.com/moonwell-fi/moonwell-sdk/pull/262) [`5dcd1fd7f9e05dfeb890824915845a792f173995`](https://github.com/moonwell-fi/moonwell-sdk/commit/5dcd1fd7f9e05dfeb890824915845a792f173995) Thanks [@bprofiro](https://github.com/bprofiro)! - remove ponder and subgraph dead code
+
 ## 0.11.0
 
 ### Minor Changes
