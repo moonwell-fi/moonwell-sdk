@@ -15,7 +15,6 @@ import type { UserPositionSnapshot } from "../../../types/userPosition.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
-  shouldFallback,
 } from "../../lunar-indexer-client.js";
 import { transformPortfolioToSnapshots } from "../../lunar-indexer-transformers.js";
 
@@ -56,7 +55,6 @@ export type GetUserPositionSnapshotsReturnType = Promise<
  * - Default behavior (no time parameters): Returns 365 days of history
  * - Parameter priority: Custom timestamps > period > default (365 days)
  * - When using Lunar Indexer, custom time ranges are supported
- * - When falling back to Ponder, all available data is returned (client-side filtering may be needed)
  * - Snapshots are filtered to start-of-day for "1d" granularity
  */
 export async function getUserPositionSnapshots<
@@ -90,34 +88,45 @@ async function fetchUserPositionSnapshots(
   endTime?: number,
   granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
-  if (environment.lunarIndexerUrl) {
+  if (!environment.lunarIndexerUrl) {
+    if (!environment.indexerUrl) return [];
     try {
-      const result = await fetchUserPositionSnapshotsFromLunar(
+      return await fetchUserPositionSnapshotsFromPonder(
         userAddress,
         environment,
-        period,
-        startTime,
-        endTime,
-        granularity,
       );
-      return result;
     } catch (error) {
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug(
-        "[Lunar fallback] Falling back to Ponder for user snapshots:",
+      console.warn(
+        `[getUserPositionSnapshots] Ponder failed for chain ${environment.chainId}:`,
         error,
       );
+      environment.onError?.(error, {
+        source: "user-position-snapshots-ponder",
+        chainId: environment.chainId,
+      });
+      return [];
     }
   }
-
-  // Ponder fallback returns all available data (doesn't support time filtering)
-  const result = await fetchUserPositionSnapshotsFromPonder(
-    userAddress,
-    environment,
-  );
-  return result;
+  try {
+    return await fetchUserPositionSnapshotsFromLunar(
+      userAddress,
+      environment,
+      period,
+      startTime,
+      endTime,
+      granularity,
+    );
+  } catch (error) {
+    console.warn(
+      `[getUserPositionSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "user-position-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchUserPositionSnapshotsFromLunar(
@@ -182,9 +191,7 @@ async function fetchUserPositionSnapshotsFromPonder(
   userAddress: Address,
   environment: Environment,
 ): Promise<UserPositionSnapshot[]> {
-  const dailyData: UserDailyData[] = [];
-  let hasNextPage = true;
-  let endCursor: string | undefined;
+  if (!environment.indexerUrl) return [];
 
   interface UserDailyData {
     totalBorrowsUSD: string;
@@ -193,15 +200,16 @@ async function fetchUserPositionSnapshotsFromPonder(
     timestamp: number;
   }
 
+  const dailyData: UserDailyData[] = [];
+  let hasNextPage = true;
+  let endCursor: string | undefined;
+
   while (hasNextPage) {
     const result = await axios.post<{
       data: {
         accountDailySnapshots: {
           items: UserDailyData[];
-          pageInfo: {
-            hasNextPage: boolean;
-            endCursor: string;
-          };
+          pageInfo: { hasNextPage: boolean; endCursor: string };
         };
       };
     }>(environment.indexerUrl, {
@@ -238,23 +246,13 @@ async function fetchUserPositionSnapshotsFromPonder(
     endCursor = result.data.data.accountDailySnapshots.pageInfo.endCursor;
   }
 
-  if (dailyData.length > 0) {
-    return dailyData.map((point: UserDailyData) => {
-      const borrowUsd = Number(point.totalBorrowsUSD);
-      const suppliedUsd = Number(point.totalSuppliesUSD);
-      const collateralUsd = Number(point.totalCollateralUSD);
+  if (dailyData.length === 0) return [];
 
-      const result: UserPositionSnapshot = {
-        chainId: environment.chainId,
-        timestamp: point.timestamp * 1000,
-        totalSupplyUsd: suppliedUsd,
-        totalBorrowsUsd: borrowUsd,
-        totalCollateralUsd: collateralUsd,
-      };
-
-      return result;
-    });
-  } else {
-    return [];
-  }
+  return dailyData.map((point) => ({
+    chainId: environment.chainId,
+    timestamp: point.timestamp * 1000,
+    totalSupplyUsd: Number(point.totalSuppliesUSD),
+    totalBorrowsUsd: Number(point.totalBorrowsUSD),
+    totalCollateralUsd: Number(point.totalCollateralUSD),
+  }));
 }

@@ -11,6 +11,8 @@ import {
 } from "../../../types/proposal.js";
 import type { ApiProposal } from "../governor-api-client.js";
 
+export const WORMHOLE_CONTRACT = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+
 type PonderExtendedProposalData = {
   id: number;
   title: string;
@@ -27,8 +29,6 @@ type PonderExtendedProposalData = {
 };
 
 axios.defaults.timeout = 5_000;
-
-export const WORMHOLE_CONTRACT = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
 
 /**
  * Extract proposal subtitle from description
@@ -315,8 +315,308 @@ export const getProposalsOnChainData = async (
 };
 
 /**
- * Append extended proposal data (Ponder-based, for Moonriver)
+ * Get proposal data from on-chain (Ponder-based, for Moonriver)
  */
+export const getProposalData = async (params: {
+  environment: Environment;
+  id?: number;
+}) => {
+  try {
+    if (params.environment.contracts.governor) {
+      let count = 0n;
+      let quorum = 0n;
+
+      if (params.environment.chainId === moonriver.id) {
+        [count, quorum] = await Promise.all([
+          params.environment.contracts.governor.read.proposalCount(),
+          params.environment.contracts.governor.read.getQuorum(),
+        ]);
+      } else {
+        [count, quorum] = await Promise.all([
+          params.environment.contracts.governor.read.proposalCount(),
+          params.environment.contracts.governor.read.quorumVotes(),
+        ]);
+      }
+
+      if (params.id) {
+        if (BigInt(params.id) > count) {
+          return [];
+        }
+      }
+
+      const ids = params.id
+        ? [BigInt(params.id)]
+        : Array.from({ length: Number(count) }, (_, i) => count - BigInt(i));
+
+      const proposalDataCall = Promise.all(
+        ids.map((id) =>
+          params.environment.contracts.governor?.read.proposals([id]),
+        ),
+      );
+
+      const proposalStateCall = Promise.all(
+        ids.map((id) =>
+          params.environment.contracts.governor?.read.state([id]),
+        ),
+      );
+
+      const [proposalsData, proposalsState] = await Promise.all([
+        proposalDataCall,
+        proposalStateCall,
+      ]);
+
+      const proposals = proposalsData?.map((item, index: number) => {
+        const state = proposalsState?.[index]!;
+
+        const [
+          id,
+          proposer,
+          eta,
+          startTimestamp,
+          endTimestamp,
+          startBlock,
+          forVotes,
+          againstVotes,
+          abstainVotes,
+          totalVotes,
+          canceled,
+          executed,
+        ] = item!;
+
+        const proposal: Proposal = {
+          chainId: params.environment.chainId,
+          id: Number(id),
+          proposalId: Number(id),
+          proposer,
+          eta: Number(eta),
+          startTimestamp: Number(startTimestamp),
+          endTimestamp: Number(endTimestamp),
+          startBlock: Number(startBlock),
+          forVotes: new Amount(forVotes, 18),
+          againstVotes: new Amount(againstVotes, 18),
+          abstainVotes: new Amount(abstainVotes, 18),
+          totalVotes: new Amount(totalVotes, 18),
+          canceled,
+          executed,
+          quorum: new Amount(quorum, 18),
+          state,
+        };
+
+        return proposal;
+      });
+
+      return proposals;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.warn(
+      `[getProposalData] RPC failed for chain ${params.environment.chainId}:`,
+      error,
+    );
+    params.environment.onError?.(error, {
+      source: "governance-proposals",
+      chainId: params.environment.chainId,
+    });
+    return [];
+  }
+};
+
+/**
+ * Get cross-chain proposal data (Ponder-based, for Moonriver)
+ */
+export const getCrossChainProposalData = async (params: {
+  environment: Environment;
+  id?: number;
+}) => {
+  try {
+    if (params.environment.contracts.governor) {
+      const xcGovernanceSettings = params.environment.custom.governance;
+      if (
+        params.environment.contracts.multichainGovernor &&
+        xcGovernanceSettings &&
+        xcGovernanceSettings.chainIds.length > 0
+      ) {
+        const xcEnvironments = xcGovernanceSettings.chainIds
+          .map((chainId) =>
+            (Object.values(publicEnvironments) as Environment[]).find(
+              (env) => env.chainId === chainId,
+            ),
+          )
+          .filter((xcEnvironment) => !!xcEnvironment)
+          .filter(
+            (xcEnvironment) =>
+              xcEnvironment!.custom?.wormhole?.chainId &&
+              xcEnvironment!.contracts.voteCollector,
+          );
+
+        const [xcCount, xcQuorum] = await Promise.all([
+          params.environment.contracts.multichainGovernor.read.proposalCount(),
+          params.environment.contracts.multichainGovernor.read.quorum(),
+        ]);
+
+        if (params.id) {
+          params.id =
+            Number(params.id) -
+            (params.environment.custom?.governance?.proposalIdOffset || 0);
+
+          if (params.id < 0) return [];
+          if (BigInt(params.id) > xcCount) return [];
+        }
+
+        const ids = params.id
+          ? [BigInt(params.id)]
+          : Array.from(
+              { length: Number(xcCount) },
+              (_, i) => xcCount - BigInt(i),
+            );
+
+        const xcProposalsDataCall = Promise.all(
+          ids.map((id) =>
+            params.environment.contracts.multichainGovernor?.read.proposals([
+              id,
+            ]),
+          ),
+        );
+
+        const xcProposalsStateCall = Promise.all(
+          ids.map((id) =>
+            params.environment.contracts.multichainGovernor?.read.state([id]),
+          ),
+        );
+
+        const xcVotesCall = Promise.all(
+          xcEnvironments.map((xcEnvironment) =>
+            Promise.all(
+              ids.map((id) =>
+                params.environment.contracts.multichainGovernor?.read.chainVoteCollectorVotes(
+                  [(xcEnvironment!.custom as any).wormhole.chainId, id],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        const [xcProposalsData, xcProposalsState, xcVotes] = await Promise.all([
+          xcProposalsDataCall,
+          xcProposalsStateCall,
+          xcVotesCall,
+        ]);
+
+        const proposals = ids.map((xcId, proposalIndex: number) => {
+          const state = xcProposalsState?.[proposalIndex]!;
+          const id =
+            Number(xcId) +
+            (params.environment.custom?.governance?.proposalIdOffset || 0);
+
+          const votesCollected = false;
+
+          const votes = xcVotes.reduce(
+            (prevVotes, currVotes) => {
+              const voteData = currVotes[proposalIndex];
+              if (!voteData) {
+                return prevVotes;
+              }
+
+              // chainVoteCollectorVotes returns [forVotes, againstVotes, abstainVotes]
+              const forVotes = voteData[0] || 0n;
+              const againstVotes = voteData[1] || 0n;
+              const abstainVotes = voteData[2] || 0n;
+              const totalVotes = forVotes + againstVotes + abstainVotes;
+
+              return {
+                totalVotes: prevVotes.totalVotes + totalVotes,
+                forVotes: prevVotes.forVotes + forVotes,
+                againstVotes: prevVotes.againstVotes + againstVotes,
+                abstainVotes: prevVotes.abstainVotes + abstainVotes,
+              };
+            },
+            {
+              totalVotes: 0n,
+              forVotes: 0n,
+              againstVotes: 0n,
+              abstainVotes: 0n,
+            },
+          );
+
+          const proposalData = xcProposalsData?.[proposalIndex];
+          if (!proposalData) {
+            throw new Error(
+              `Proposal data not found for index ${proposalIndex}`,
+            );
+          }
+
+          const [
+            proposer,
+            _voteSnapshotTimestamp,
+            votingStartTime,
+            votingEndTime,
+            crossChainVoteCollectionEndTimestamp,
+            voteSnapshotBlock,
+            proposalForVotes,
+            proposalAgainstVotes,
+            proposalAbstainVotes,
+            proposalTotalVotes,
+            canceled,
+            executed,
+          ] = proposalData;
+
+          const multichainState = (
+            MultichainProposalStateMapping as { [key: number]: ProposalState }
+          )[state]!;
+
+          const proposal: Proposal = {
+            chainId: params.environment.chainId,
+            id,
+            proposalId: Number(xcId),
+            proposer,
+            eta: Number(crossChainVoteCollectionEndTimestamp),
+            startTimestamp: Number(votingStartTime),
+            endTimestamp: Number(votingEndTime),
+            startBlock: Number(voteSnapshotBlock),
+            forVotes: new Amount(proposalForVotes + votes.forVotes, 18),
+            againstVotes: new Amount(
+              proposalAgainstVotes + votes.againstVotes,
+              18,
+            ),
+            abstainVotes: new Amount(
+              proposalAbstainVotes + votes.abstainVotes,
+              18,
+            ),
+            totalVotes: new Amount(proposalTotalVotes + votes.totalVotes, 18),
+            canceled,
+            executed,
+            quorum: new Amount(xcQuorum, 18),
+            state: multichainState,
+            multichain: {
+              id: Number(xcId),
+              votesCollected,
+            },
+          };
+
+          return proposal;
+        });
+
+        return proposals;
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.warn(
+      `[getCrossChainProposalData] RPC failed for chain ${params.environment.chainId}:`,
+      error,
+    );
+    params.environment.onError?.(error, {
+      source: "governance-proposals",
+      chainId: params.environment.chainId,
+    });
+    return [];
+  }
+};
+
 export const appendProposalExtendedData = (
   proposals: Proposal[],
   extendedDatas: PonderExtendedProposalData[],
@@ -343,374 +643,113 @@ export const appendProposalExtendedData = (
   });
 };
 
-/**
- * Get proposal data from on-chain (Ponder-based, for Moonriver)
- */
-export const getProposalData = async (params: {
-  environment: Environment;
-  id?: number;
-}) => {
-  if (params.environment.contracts.governor) {
-    let count = 0n;
-    let quorum = 0n;
-
-    if (params.environment.chainId === moonriver.id) {
-      [count, quorum] = await Promise.all([
-        params.environment.contracts.governor.read.proposalCount(),
-        params.environment.contracts.governor.read.getQuorum(),
-      ]);
-    } else {
-      [count, quorum] = await Promise.all([
-        params.environment.contracts.governor.read.proposalCount(),
-        params.environment.contracts.governor.read.quorumVotes(),
-      ]);
-    }
-
-    if (params.id) {
-      if (BigInt(params.id) > count) {
-        return [];
-      }
-    }
-
-    const ids = params.id
-      ? [BigInt(params.id)]
-      : Array.from({ length: Number(count) }, (_, i) => count - BigInt(i));
-
-    const proposalDataCall = Promise.all(
-      ids.map((id) =>
-        params.environment.contracts.governor?.read.proposals([id]),
-      ),
-    );
-
-    const proposalStateCall = Promise.all(
-      ids.map((id) => params.environment.contracts.governor?.read.state([id])),
-    );
-
-    const [proposalsData, proposalsState] = await Promise.all([
-      proposalDataCall,
-      proposalStateCall,
-    ]);
-
-    const proposals = proposalsData?.map((item, index: number) => {
-      const state = proposalsState?.[index]!;
-
-      const [
-        id,
-        proposer,
-        eta,
-        startTimestamp,
-        endTimestamp,
-        startBlock,
-        forVotes,
-        againstVotes,
-        abstainVotes,
-        totalVotes,
-        canceled,
-        executed,
-      ] = item!;
-
-      const proposal: Proposal = {
-        chainId: params.environment.chainId,
-        id: Number(id),
-        proposalId: Number(id),
-        proposer,
-        eta: Number(eta),
-        startTimestamp: Number(startTimestamp),
-        endTimestamp: Number(endTimestamp),
-        startBlock: Number(startBlock),
-        forVotes: new Amount(forVotes, 18),
-        againstVotes: new Amount(againstVotes, 18),
-        abstainVotes: new Amount(abstainVotes, 18),
-        totalVotes: new Amount(totalVotes, 18),
-        canceled,
-        executed,
-        quorum: new Amount(quorum, 18),
-        state,
-      };
-
-      return proposal;
-    });
-
-    return proposals;
-  } else {
-    return [];
-  }
-};
-
-/**
- * Get cross-chain proposal data (Ponder-based, for Moonriver)
- */
-export const getCrossChainProposalData = async (params: {
-  environment: Environment;
-  id?: number;
-}) => {
-  if (params.environment.contracts.governor) {
-    const xcGovernanceSettings = params.environment.custom.governance;
-    if (
-      params.environment.contracts.multichainGovernor &&
-      xcGovernanceSettings &&
-      xcGovernanceSettings.chainIds.length > 0
-    ) {
-      const xcEnvironments = xcGovernanceSettings.chainIds
-        .map((chainId) =>
-          (Object.values(publicEnvironments) as Environment[]).find(
-            (env) => env.chainId === chainId,
-          ),
-        )
-        .filter((xcEnvironment) => !!xcEnvironment)
-        .filter(
-          (xcEnvironment) =>
-            xcEnvironment!.custom?.wormhole?.chainId &&
-            xcEnvironment!.contracts.voteCollector,
-        );
-
-      const [xcCount, xcQuorum] = await Promise.all([
-        params.environment.contracts.multichainGovernor.read.proposalCount(),
-        params.environment.contracts.multichainGovernor.read.quorum(),
-      ]);
-
-      if (params.id) {
-        params.id =
-          Number(params.id) -
-          (params.environment.custom?.governance?.proposalIdOffset || 0);
-
-        if (params.id < 0) {
-          return [];
-        } else {
-          if (BigInt(params.id) > xcCount) {
-            return [];
-          }
-        }
-      }
-
-      const ids = params.id
-        ? [BigInt(params.id)]
-        : Array.from(
-            { length: Number(xcCount) },
-            (_, i) => xcCount - BigInt(i),
-          );
-
-      const xcProposalsDataCall = Promise.all(
-        ids.map((id) =>
-          params.environment.contracts.multichainGovernor?.read.proposals([id]),
-        ),
-      );
-
-      const xcProposalsStateCall = Promise.all(
-        ids.map((id) =>
-          params.environment.contracts.multichainGovernor?.read.state([id]),
-        ),
-      );
-
-      const xcVotesCall = Promise.all(
-        xcEnvironments.map((xcEnvironment) =>
-          Promise.all(
-            ids.map((id) =>
-              params.environment.contracts.multichainGovernor?.read.chainVoteCollectorVotes(
-                [(xcEnvironment!.custom as any).wormhole.chainId, id],
-              ),
-            ),
-          ),
-        ),
-      );
-
-      const [xcProposalsData, xcProposalsState, xcVotes] = await Promise.all([
-        xcProposalsDataCall,
-        xcProposalsStateCall,
-        xcVotesCall,
-      ]);
-
-      const proposals = ids.map((xcId, proposalIndex: number) => {
-        const state = xcProposalsState?.[proposalIndex]!;
-        const id =
-          Number(xcId) +
-          (params.environment.custom?.governance?.proposalIdOffset || 0);
-
-        const votesCollected = false;
-
-        const votes = xcVotes.reduce(
-          (prevVotes, currVotes) => {
-            const voteData = currVotes[proposalIndex];
-            if (!voteData) {
-              return prevVotes;
-            }
-
-            // chainVoteCollectorVotes returns [forVotes, againstVotes, abstainVotes]
-            const forVotes = voteData[0] || 0n;
-            const againstVotes = voteData[1] || 0n;
-            const abstainVotes = voteData[2] || 0n;
-            const totalVotes = forVotes + againstVotes + abstainVotes;
-
-            return {
-              totalVotes: prevVotes.totalVotes + totalVotes,
-              forVotes: prevVotes.forVotes + forVotes,
-              againstVotes: prevVotes.againstVotes + againstVotes,
-              abstainVotes: prevVotes.abstainVotes + abstainVotes,
-            };
-          },
-          { totalVotes: 0n, forVotes: 0n, againstVotes: 0n, abstainVotes: 0n },
-        );
-
-        const proposalData = xcProposalsData?.[proposalIndex];
-        if (!proposalData) {
-          throw new Error(`Proposal data not found for index ${proposalIndex}`);
-        }
-
-        const [
-          proposer,
-          _voteSnapshotTimestamp,
-          votingStartTime,
-          votingEndTime,
-          crossChainVoteCollectionEndTimestamp,
-          voteSnapshotBlock,
-          proposalForVotes,
-          proposalAgainstVotes,
-          proposalAbstainVotes,
-          proposalTotalVotes,
-          canceled,
-          executed,
-        ] = proposalData;
-
-        const multichainState = (
-          MultichainProposalStateMapping as { [key: number]: ProposalState }
-        )[state]!;
-
-        const proposal: Proposal = {
-          chainId: params.environment.chainId,
-          id,
-          proposalId: Number(xcId),
-          proposer,
-          eta: Number(crossChainVoteCollectionEndTimestamp),
-          startTimestamp: Number(votingStartTime),
-          endTimestamp: Number(votingEndTime),
-          startBlock: Number(voteSnapshotBlock),
-          forVotes: new Amount(proposalForVotes + votes.forVotes, 18),
-          againstVotes: new Amount(
-            proposalAgainstVotes + votes.againstVotes,
-            18,
-          ),
-          abstainVotes: new Amount(
-            proposalAbstainVotes + votes.abstainVotes,
-            18,
-          ),
-          totalVotes: new Amount(proposalTotalVotes + votes.totalVotes, 18),
-          canceled,
-          executed,
-          quorum: new Amount(xcQuorum, 18),
-          state: multichainState,
-          multichain: {
-            id: Number(xcId),
-            votesCollected,
-          },
-        };
-
-        return proposal;
-      });
-
-      return proposals;
-    } else {
-      return [];
-    }
-  } else {
-    return [];
-  }
-};
-
-/**
- * Get extended proposal data from Ponder (for Moonriver)
- */
 export const getExtendedProposalData = async (params: {
   environment: Environment;
   id?: number;
 }): Promise<PonderExtendedProposalData[]> => {
-  let result: PonderExtendedProposalData[] = [];
+  const result: PonderExtendedProposalData[] = [];
   let lastId = -1;
   let shouldContinue = true;
+  const MAX_PAGES = 100;
+  let page = 0;
 
-  while (shouldContinue) {
-    const response = await axios.post<{
-      data: {
-        proposals: {
-          items: {
-            proposalId: number;
-            description: string;
-            targets: string[];
-            calldatas: string[];
-            signatures: string[];
-            stateChanges: {
-              items: {
-                txnHash: string;
-                blockNumber: number;
-                newState: string;
-              }[];
-            };
-          }[];
+  try {
+    while (shouldContinue && page < MAX_PAGES) {
+      page++;
+      const response = await axios.post<{
+        data: {
+          proposals: {
+            items: {
+              proposalId: number;
+              description: string;
+              targets: string[];
+              calldatas: string[];
+              signatures: string[];
+              stateChanges: {
+                items: {
+                  txnHash: string;
+                  blockNumber: number;
+                  newState: string;
+                }[];
+              };
+            }[];
+          };
         };
-      };
-    }>("https://ponder-eu2.moonwell.fi", {
-      query: `
-          query {
-            proposals(
-              limit: 1000,
-              orderDirection: "desc",
-              orderBy: "proposalId",
-              where: {
-                chainId: ${params.environment.chainId}
-                ${params.id ? `, proposalId: ${params.id}` : lastId >= 0 ? `, proposalId_lt: ${lastId}` : ""}
-              }
-            ) {
-              items {
-                id
-                proposalId
-                description
-                targets
-                calldatas
-                signatures
-                stateChanges(orderBy: "blockNumber") {
-                  items {
-                    txnHash
-                    blockNumber
-                    newState
+      }>("https://ponder-eu2.moonwell.fi", {
+        query: `
+            query {
+              proposals(
+                limit: 1000,
+                orderDirection: "desc",
+                orderBy: "proposalId",
+                where: {
+                  chainId: ${params.environment.chainId}
+                  ${params.id ? `, proposalId: ${params.id}` : lastId >= 0 ? `, proposalId_lt: ${lastId}` : ""}
+                }
+              ) {
+                items {
+                  id
+                  proposalId
+                  description
+                  targets
+                  calldatas
+                  signatures
+                  stateChanges(orderBy: "blockNumber") {
+                    items {
+                      txnHash
+                      blockNumber
+                      newState
+                    }
                   }
                 }
               }
             }
-          }
-        `,
-    });
-
-    if (response.status === 200 && response.data?.data?.proposals) {
-      const proposals = response.data.data.proposals.items.map((item) => {
-        const extendedProposalData: PonderExtendedProposalData = {
-          id: item.proposalId,
-          title: `Proposal #${item.proposalId}`,
-          subtitle: extractProposalSubtitle(item.description),
-          description: item.description,
-          calldatas: item.calldatas,
-          signatures: item.signatures,
-          stateChanges: item.stateChanges.items.map((change) => {
-            return {
-              blockNumber: change.blockNumber,
-              state: change.newState,
-              transactionHash: change.txnHash,
-            };
-          }),
-          targets: item.targets,
-        };
-
-        return extendedProposalData;
+          `,
       });
 
-      if (proposals.length < 1000 || proposals.length === 0) {
-        shouldContinue = false;
-      } else {
-        lastId = last(proposals)!.id;
-      }
+      if (response.status === 200 && response.data?.data?.proposals) {
+        const proposals = response.data.data.proposals.items.map((item) => {
+          const extendedProposalData: PonderExtendedProposalData = {
+            id: item.proposalId,
+            title: `Proposal #${item.proposalId}`,
+            subtitle: extractProposalSubtitle(item.description),
+            description: item.description,
+            calldatas: item.calldatas,
+            signatures: item.signatures,
+            stateChanges: item.stateChanges.items.map((change) => {
+              return {
+                blockNumber: change.blockNumber,
+                state: change.newState,
+                transactionHash: change.txnHash,
+              };
+            }),
+            targets: item.targets,
+          };
 
-      result = result.concat(proposals);
-    } else {
-      shouldContinue = false;
+          return extendedProposalData;
+        });
+
+        if (proposals.length < 1000 || proposals.length === 0) {
+          shouldContinue = false;
+        } else {
+          lastId = last(proposals)!.id;
+        }
+
+        result.push(...proposals);
+      } else {
+        shouldContinue = false;
+      }
     }
+  } catch (error) {
+    console.warn(
+      `[getExtendedProposalData] Ponder failed for chain ${params.environment.chainId}:`,
+      error,
+    );
+    params.environment.onError?.(error, {
+      source: "governance-proposals",
+      chainId: params.environment.chainId,
+    });
+    return result;
   }
 
   return result;

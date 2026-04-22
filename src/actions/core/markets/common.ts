@@ -24,16 +24,16 @@ export const getMarketsData = async (environment: Environment) => {
 
   if (environment.lunarIndexerUrl && !isMoonriver) {
     try {
-      const result = await fetchMarketsFromLunar(environment);
-      return result;
+      return await fetchMarketsFromLunar(environment);
     } catch (error) {
-      // Import shouldFallback dynamically
-      const { shouldFallback } = await import("../../lunar-indexer-client.js");
-
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug("[Lunar fallback] Falling back to RPC/Ponder:", error);
+      console.warn(
+        `[getMarketsData] Lunar Indexer failed for chain ${environment.chainId}, falling back to on-chain:`,
+        error,
+      );
+      environment.onError?.(error, {
+        source: "markets",
+        chainId: environment.chainId,
+      });
     }
   }
 
@@ -66,12 +66,14 @@ export const getMarketsData = async (environment: Environment) => {
       allMarketsInfoResult.reason,
     );
     const seizePaused =
-      protocolInfoResult.status === "fulfilled"
-        ? protocolInfoResult.value!.seizePaused
+      protocolInfoResult.status === "fulfilled" &&
+      protocolInfoResult.value !== undefined
+        ? protocolInfoResult.value.seizePaused
         : false;
     const transferPaused =
-      protocolInfoResult.status === "fulfilled"
-        ? protocolInfoResult.value!.transferPaused
+      protocolInfoResult.status === "fulfilled" &&
+      protocolInfoResult.value !== undefined
+        ? protocolInfoResult.value.transferPaused
         : false;
     return await getMarketsFromMTokenFallback(
       environment,
@@ -81,14 +83,27 @@ export const getMarketsData = async (environment: Environment) => {
   }
 
   const { seizePaused, transferPaused } =
-    protocolInfoResult.status === "fulfilled"
-      ? protocolInfoResult.value!
+    protocolInfoResult.status === "fulfilled" &&
+    protocolInfoResult.value !== undefined
+      ? protocolInfoResult.value
       : { seizePaused: false, transferPaused: false };
-  const allMarketsInfo = allMarketsInfoResult.value!;
+  const allMarketsInfo = allMarketsInfoResult.value;
+  if (!allMarketsInfo) {
+    environment.onError?.(new Error("getAllMarketsInfo returned undefined"), {
+      source: "markets-onchain-missing-views",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
   const nativeTokenPriceRaw =
-    nativePriceResult.status === "fulfilled" ? nativePriceResult.value! : 0n;
+    nativePriceResult.status === "fulfilled" &&
+    nativePriceResult.value !== undefined
+      ? nativePriceResult.value
+      : 0n;
   const governanceTokenPriceRaw =
-    govPriceResult.status === "fulfilled" ? govPriceResult.value! : 0n;
+    govPriceResult.status === "fulfilled" && govPriceResult.value !== undefined
+      ? govPriceResult.value
+      : 0n;
 
   const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
   const nativeTokenPrice = new Amount(nativeTokenPriceRaw, 18);

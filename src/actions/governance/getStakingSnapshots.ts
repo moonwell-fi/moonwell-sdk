@@ -13,7 +13,6 @@ import type { StakingSnapshot } from "../../types/staking.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
-  shouldFallback,
 } from "../lunar-indexer-client.js";
 import { transformStakingSnapshots } from "../lunar-indexer-transformers.js";
 
@@ -47,36 +46,40 @@ export async function getStakingSnapshots<
     endTime: customEndTime,
   } = (args ?? {}) as GetStakingSnapshotsParameters<environments, undefined>;
 
-  if (environment.lunarIndexerUrl) {
-    try {
-      return await fetchStakingSnapshotsFromLunar(
-        environment.chainId,
-        environment.lunarIndexerUrl,
-        period,
-        customStartTime,
-        customEndTime,
-      );
-    } catch (error) {
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug(
-        "[Lunar fallback] Falling back to Ponder for staking snapshots:",
-        error,
-      );
-    }
+  if (!environment.lunarIndexerUrl) {
+    const { startTime } = calculateTimeRange(
+      period,
+      customStartTime,
+      customEndTime,
+    );
+    return environment.indexerUrl
+      ? fetchStakingSnapshotsFromPonder(
+          environment.chainId,
+          environment.indexerUrl,
+          startTime,
+        )
+      : [];
   }
 
-  const { startTime } = calculateTimeRange(
-    period,
-    customStartTime,
-    customEndTime,
-  );
-  return fetchStakingSnapshotsFromPonder(
-    environment.chainId,
-    environment.indexerUrl,
-    startTime,
-  );
+  try {
+    return await fetchStakingSnapshotsFromLunar(
+      environment.chainId,
+      environment.lunarIndexerUrl,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  } catch (error) {
+    console.warn(
+      `[getStakingSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "staking-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchStakingSnapshotsFromLunar(

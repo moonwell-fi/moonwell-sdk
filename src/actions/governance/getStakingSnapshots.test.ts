@@ -1,6 +1,5 @@
 import axios from "axios";
-import { AxiosError, type AxiosResponse } from "axios";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../test/client.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import type { Environment } from "../../environments/index.js";
@@ -31,7 +30,6 @@ vi.mock("../lunar-indexer-client.js", async (importOriginal) => {
 // ---------------------------------------------------------------------------
 
 const MOCK_LUNAR_URL = "https://mock-lunar.test";
-const MOCK_PONDER_URL = "https://mock-ponder.test";
 
 const NO_MORE_PAGES = null as unknown as string;
 
@@ -69,14 +67,28 @@ function makeClient(lunarIndexerUrl?: string): MoonwellClient {
       base: {
         chainId: 8453,
         lunarIndexerUrl,
-        indexerUrl: MOCK_PONDER_URL,
       } as unknown as Environment,
     },
   } as unknown as MoonwellClient;
 }
 
-/** Minimal MoonwellClient simulating moonriver (no lunarIndexerUrl). */
+const MOCK_PONDER_URL = "https://mock-ponder.test";
+
+/** Minimal MoonwellClient simulating moonriver (no lunarIndexerUrl, no indexerUrl). */
 function makeMoonriverClient(): MoonwellClient {
+  return {
+    environments: {
+      moonriver: {
+        chainId: 1285,
+        lunarIndexerUrl: undefined,
+        indexerUrl: undefined,
+      } as unknown as Environment,
+    },
+  } as unknown as MoonwellClient;
+}
+
+/** Minimal MoonwellClient simulating moonriver with Ponder indexerUrl. */
+function makeMoonriverClientWithPonder(): MoonwellClient {
   return {
     environments: {
       moonriver: {
@@ -86,25 +98,6 @@ function makeMoonriverClient(): MoonwellClient {
       } as unknown as Environment,
     },
   } as unknown as MoonwellClient;
-}
-
-function createAxiosError(status?: number): AxiosError {
-  const response = status
-    ? ({
-        status,
-        data: {},
-        headers: {},
-        statusText: "",
-      } as AxiosResponse)
-    : undefined;
-
-  return new AxiosError(
-    `Request failed${status ? ` with status ${status}` : ""}`,
-    status ? AxiosError.ERR_BAD_RESPONSE : AxiosError.ERR_NETWORK,
-    undefined,
-    undefined,
-    response,
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +209,7 @@ describe("Testing staking snapshots (integration)", () => {
     },
   );
 
-  test("moonriver returns staking snapshots via Ponder (no Lunar Indexer URL)", async () => {
+  test("moonriver returns empty array (no Lunar Indexer URL)", async () => {
     const snapshots = await testClient.getStakingSnapshots<
       (typeof testClient.environments)["moonriver"]["chain"]
     >({
@@ -224,6 +217,7 @@ describe("Testing staking snapshots (integration)", () => {
       period: "3M",
     });
     expect(Array.isArray(snapshots)).toBe(true);
+    expect(snapshots).toHaveLength(0);
   });
 
   test("base returns staking snapshots via Lunar Indexer", async () => {
@@ -253,8 +247,6 @@ describe("Testing staking snapshots (integration)", () => {
 
 describe("Testing staking snapshots (unit / behavior)", () => {
   const mockGetStakingSnapshotsFn = vi.fn();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let axiosPostSpy: ReturnType<typeof vi.spyOn<any, any>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -267,21 +259,6 @@ describe("Testing staking snapshots (unit / behavior)", () => {
       results: [],
       nextCursor: NO_MORE_PAGES,
     });
-
-    axiosPostSpy = vi.spyOn(axios, "post").mockResolvedValue({
-      status: 200,
-      data: {
-        data: {
-          stakingDailySnapshots: {
-            items: [],
-          },
-        },
-      },
-    } as never);
-  });
-
-  afterEach(() => {
-    axiosPostSpy.mockRestore();
   });
 
   // --- Per-chain routing ---
@@ -294,20 +271,14 @@ describe("Testing staking snapshots (unit / behavior)", () => {
       expect.objectContaining({ baseUrl: MOCK_LUNAR_URL }),
     );
     expect(mockGetStakingSnapshotsFn).toHaveBeenCalled();
-    expect(axiosPostSpy).not.toHaveBeenCalled();
   });
 
-  test("does NOT call Lunar Indexer for moonriver (no lunarIndexerUrl)", async () => {
+  test("returns [] for moonriver (no lunarIndexerUrl)", async () => {
     const client = makeMoonriverClient();
-    await getStakingSnapshots(client, { chainId: 1285 });
+    const result = await getStakingSnapshots(client, { chainId: 1285 });
 
     expect(createLunarIndexerClient).not.toHaveBeenCalled();
-    expect(axiosPostSpy).toHaveBeenCalledWith(
-      MOCK_PONDER_URL,
-      expect.objectContaining({
-        query: expect.stringContaining("chainId: 1285"),
-      }),
-    );
+    expect(result).toEqual([]);
   });
 
   test("returns empty array when no environment matches", async () => {
@@ -457,90 +428,6 @@ describe("Testing staking snapshots (unit / behavior)", () => {
     );
   });
 
-  // --- Fallback to Ponder ---
-
-  test("falls back to Ponder when Lunar returns a 500 error", async () => {
-    mockGetStakingSnapshotsFn.mockRejectedValue(createAxiosError(500));
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    const result = await getStakingSnapshots(client, { chainId: 8453 });
-
-    expect(axiosPostSpy).toHaveBeenCalledWith(
-      MOCK_PONDER_URL,
-      expect.anything(),
-    );
-    expect(result).toEqual([]);
-  });
-
-  test("falls back to Ponder when Lunar returns a 404 error", async () => {
-    mockGetStakingSnapshotsFn.mockRejectedValue(createAxiosError(404));
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    await getStakingSnapshots(client, { chainId: 8453 });
-
-    expect(axiosPostSpy).toHaveBeenCalled();
-  });
-
-  test("falls back to Ponder on network error (no response)", async () => {
-    mockGetStakingSnapshotsFn.mockRejectedValue(createAxiosError());
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    await getStakingSnapshots(client, { chainId: 8453 });
-
-    expect(axiosPostSpy).toHaveBeenCalled();
-  });
-
-  test("does NOT fall back on 400 bad request — throws instead", async () => {
-    mockGetStakingSnapshotsFn.mockRejectedValue(createAxiosError(400));
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    await expect(
-      getStakingSnapshots(client, { chainId: 8453 }),
-    ).rejects.toThrow();
-
-    expect(axiosPostSpy).not.toHaveBeenCalled();
-  });
-
-  test("does NOT fall back on 401 unauthorized — throws instead", async () => {
-    mockGetStakingSnapshotsFn.mockRejectedValue(createAxiosError(401));
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    await expect(
-      getStakingSnapshots(client, { chainId: 8453 }),
-    ).rejects.toThrow();
-  });
-
-  test("Ponder data is returned after successful fallback", async () => {
-    mockGetStakingSnapshotsFn.mockRejectedValue(createAxiosError(500));
-
-    const recentTimestamp = Math.floor(Date.now() / 1000) - 86400; // yesterday
-    const ponderItems = [
-      {
-        chainId: 8453,
-        totalStaked: 5000,
-        totalStakedUSD: 2500,
-        timestamp: recentTimestamp,
-      },
-    ];
-    axiosPostSpy.mockResolvedValue({
-      status: 200,
-      data: {
-        data: {
-          stakingDailySnapshots: {
-            items: ponderItems,
-          },
-        },
-      },
-    } as never);
-
-    const client = makeClient(MOCK_LUNAR_URL);
-    const result = await getStakingSnapshots(client, { chainId: 8453 });
-
-    expect(result).toHaveLength(1);
-    expect(result[0].totalStaked).toBe(5000);
-    expect(result[0].totalStakedUSD).toBe(2500);
-  });
-
   // --- endTime / startTime forwarding ---
 
   test("custom endTime is forwarded to Lunar API", async () => {
@@ -568,5 +455,69 @@ describe("Testing staking snapshots (unit / behavior)", () => {
       8453,
       expect.objectContaining({ startTime: customStart, endTime: customEnd }),
     );
+  });
+});
+
+describe("Ponder path (indexerUrl, no lunarIndexerUrl)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const ponderItems = [
+    {
+      chainId: 1285,
+      totalStaked: 1000,
+      totalStakedUSD: 500,
+      timestamp: 1700000000,
+    },
+    {
+      chainId: 1285,
+      totalStaked: 2000,
+      totalStakedUSD: 1000,
+      timestamp: 1700086400,
+    },
+  ];
+
+  test("calls axios.post with indexerUrl when no lunarIndexerUrl", async () => {
+    vi.spyOn(axios, "post").mockResolvedValueOnce({
+      status: 200,
+      data: { data: { stakingDailySnapshots: { items: ponderItems } } },
+    });
+
+    const client = makeMoonriverClientWithPonder();
+    await getStakingSnapshots(client, { chainId: 1285 });
+
+    expect(vi.mocked(axios.post)).toHaveBeenCalledWith(
+      MOCK_PONDER_URL,
+      expect.objectContaining({
+        query: expect.stringContaining("chainId: 1285"),
+      }),
+    );
+    expect(createLunarIndexerClient).not.toHaveBeenCalled();
+  });
+
+  test("returns mapped snapshot data from Ponder", async () => {
+    vi.spyOn(axios, "post").mockResolvedValueOnce({
+      status: 200,
+      data: { data: { stakingDailySnapshots: { items: ponderItems } } },
+    });
+
+    const client = makeMoonriverClientWithPonder();
+    const result = await getStakingSnapshots(client, {
+      chainId: 1285,
+      period: "ALL",
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result[0]?.totalStaked).toBe(1000);
+    expect(result[1]?.totalStaked).toBe(2000);
+  });
+
+  test("returns [] when both lunarIndexerUrl and indexerUrl are absent", async () => {
+    const client = makeMoonriverClient();
+    const result = await getStakingSnapshots(client, { chainId: 1285 });
+
+    expect(result).toEqual([]);
+    expect(vi.mocked(axios.post)).not.toHaveBeenCalled();
   });
 });

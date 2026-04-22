@@ -77,12 +77,15 @@ export type NetworksConfig<networks> = {} extends networks
 
 export const createMoonwellClient = <const networks>(config: {
   networks: NetworksConfig<Narrow<networks>>;
+  onError?: (
+    error: unknown,
+    context: { source: string; chainId: number },
+  ) => void;
 }) => {
-  const environments = Object.keys(config.networks).reduce((prev, curr) => {
-    const key = curr as SupportedChains;
-    const networkConfig = (config.networks as NetworksConfig<SupportedChains>)[
-      key
-    ]!;
+  const environments = Object.entries(
+    config.networks as NetworksConfig<SupportedChains>,
+  ).reduce((prev, [curr, networkConfig]) => {
+    if (!networkConfig) return prev;
     return {
       ...prev,
       [curr]: createEnvironment({
@@ -142,6 +145,15 @@ export const createMoonwellClient = <const networks>(config: {
       [name in keyof networks as Extract<name, "polygon">]: PolygonEnvironment;
     }
   >;
+
+  if (config.onError) {
+    const onError = config.onError;
+    for (const env of Object.values(
+      environments as Record<string, Environment>,
+    )) {
+      env.onError = onError;
+    }
+  }
 
   const client = {
     environments,

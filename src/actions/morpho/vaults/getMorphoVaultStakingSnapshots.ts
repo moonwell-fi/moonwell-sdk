@@ -1,23 +1,20 @@
-import axios from "axios";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
   type SnapshotPeriod,
   applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
-  isStartOfDay,
   toApiGranularity,
 } from "../../../common/index.js";
 import type {
   MorphoVaultParameterType,
   NetworkParameterType,
 } from "../../../common/types.js";
-import type { Chain, Environment } from "../../../environments/index.js";
+import type { Chain } from "../../../environments/index.js";
 import type { MorphoVaultStakingSnapshot } from "../../../types/morphoVault.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
-  shouldFallback,
 } from "../../lunar-indexer-client.js";
 import { transformVaultStakingSnapshots } from "../../lunar-indexer-transformers.js";
 
@@ -56,37 +53,31 @@ export async function getMorphoVaultStakingSnapshots<
   } = args as GetMorphoVaultStakingSnapshotsParameters<environments, undefined>;
 
   const { lunarIndexerUrl } = environment;
-  if (lunarIndexerUrl) {
-    try {
-      return await fetchVaultStakingSnapshotsFromLunar(
-        vaultAddress,
-        lunarIndexerUrl,
-        environment.chainId,
-        period,
-        customStartTime,
-        customEndTime,
-      );
-    } catch (error) {
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug(
-        "[Lunar fallback] Falling back to Ponder for vault staking snapshots:",
-        error,
-      );
-    }
+
+  if (!lunarIndexerUrl) {
+    return [];
   }
 
-  const { startTime } = calculateTimeRange(
-    period,
-    customStartTime,
-    customEndTime,
-  );
-  return fetchVaultStakingSnapshotsFromPonder(
-    vaultAddress,
-    environment,
-    startTime,
-  );
+  try {
+    return await fetchVaultStakingSnapshotsFromLunar(
+      vaultAddress,
+      lunarIndexerUrl,
+      environment.chainId,
+      period,
+      customStartTime,
+      customEndTime,
+    );
+  } catch (error) {
+    console.warn(
+      `[getMorphoVaultStakingSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "morpho-vault-staking-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchVaultStakingSnapshotsFromLunar(
@@ -130,82 +121,4 @@ async function fetchVaultStakingSnapshotsFromLunar(
 
   allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
   return applyGranularity(allSnapshots, granularity);
-}
-
-interface VaultStakingData {
-  totalStaked: number;
-  totalStakedUSD: number;
-  timestamp: number;
-}
-
-async function fetchVaultStakingSnapshotsFromPonder(
-  vaultAddress: string,
-  environment: Environment,
-  startTime?: number,
-): Promise<MorphoVaultStakingSnapshot[]> {
-  const dailyData: VaultStakingData[] = [];
-  let hasNextPage = true;
-  let endCursor: string | undefined;
-
-  while (hasNextPage) {
-    const result = await axios.post<{
-      data: {
-        vaultStakingDailySnapshots: {
-          items: VaultStakingData[];
-          pageInfo: {
-            hasNextPage: boolean;
-            endCursor: string;
-          };
-        };
-      };
-    }>(environment.indexerUrl, {
-      query: `
-          query {
-            vaultStakingDailySnapshots (
-              limit: 365,
-              orderBy: "timestamp"
-              orderDirection: "desc"
-              where: {vaultAddress: "${vaultAddress.toLowerCase()}", chainId: ${environment.chainId}}
-              ${endCursor ? `after: "${endCursor}"` : ""}
-            ) {
-              items {
-                  totalStaked
-                  totalStakedUSD
-                  timestamp
-              }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-            }
-          }
-        `,
-    });
-
-    if (result.data.data.vaultStakingDailySnapshots) {
-      dailyData.push(
-        ...result.data.data.vaultStakingDailySnapshots.items.filter(
-          (f: { timestamp: number }) =>
-            isStartOfDay(f.timestamp) &&
-            (startTime === undefined || f.timestamp >= startTime),
-        ),
-      );
-      hasNextPage =
-        result.data.data.vaultStakingDailySnapshots.pageInfo.hasNextPage;
-      endCursor =
-        result.data.data.vaultStakingDailySnapshots.pageInfo.endCursor;
-    }
-  }
-
-  if (dailyData.length > 0) {
-    return dailyData.map((point: VaultStakingData) => ({
-      vaultAddress: vaultAddress.toLowerCase(),
-      chainId: environment.chainId,
-      timestamp: point.timestamp * 1000,
-      totalStaked: Number(point.totalStaked),
-      totalStakedUsd: Number(point.totalStakedUSD),
-    }));
-  } else {
-    return [];
-  }
 }

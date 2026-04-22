@@ -2,9 +2,8 @@ import axios from "axios";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { getEnvironmentFromArgs } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
-import type { Chain } from "../../environments/index.js";
+import type { Chain, Environment } from "../../environments/index.js";
 import type { CirculatingSupplySnapshot } from "../../types/circulatingSupply.js";
-import { shouldFallback } from "../lunar-indexer-client.js";
 
 export type GetCirculatingSupplySnapshotsParameters<
   environments,
@@ -74,40 +73,50 @@ export async function getCirculatingSupplySnapshots<
     return [];
   }
 
-  if (environment.lunarIndexerUrl) {
-    try {
-      const items = await fetchCirculatingSupplyFromLunar(
-        environment.lunarIndexerUrl,
-        environment.chainId,
-      );
-      return items.flatMap((item) => {
-        const token = Object.values(environment.config.tokens).find(
-          (t) => t.address.toLowerCase() === item.tokenAddress.toLowerCase(),
-        );
-        if (!token) return [];
-        return [
-          {
-            chainId: item.chainId,
-            token,
-            circulatingSupply: Number.parseFloat(item.circulatingSupply),
-            totalSupply: item.totalSupply,
-            excludedBalance: item.excludedBalance,
-            timestamp: item.timestamp,
-          },
-        ];
-      });
-    } catch (error) {
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug(
-        "[Lunar fallback] Falling back for circulating supply snapshots:",
-        error,
-      );
-    }
+  if (!environment.lunarIndexerUrl) {
+    return environment.indexerUrl
+      ? fetchCirculatingSupplyFromPonder(environment)
+      : [];
   }
 
-  // Legacy fallback: GraphQL POST to Ponder indexer
+  try {
+    const items = await fetchCirculatingSupplyFromLunar(
+      environment.lunarIndexerUrl,
+      environment.chainId,
+    );
+    return items.flatMap((item) => {
+      const token = Object.values(environment.config.tokens).find(
+        (t) => t.address.toLowerCase() === item.tokenAddress.toLowerCase(),
+      );
+      if (!token) return [];
+      return [
+        {
+          chainId: item.chainId,
+          token,
+          circulatingSupply: Number.parseFloat(item.circulatingSupply),
+          totalSupply: item.totalSupply,
+          excludedBalance: item.excludedBalance,
+          timestamp: item.timestamp,
+        },
+      ];
+    });
+  } catch (error) {
+    console.warn(
+      `[getCirculatingSupplySnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "circulating-supply",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
+}
+
+async function fetchCirculatingSupplyFromPonder(
+  environment: Environment,
+): Promise<CirculatingSupplySnapshot[]> {
+  if (!environment.indexerUrl) return [];
   try {
     const response = await axios.post<{
       data: {
@@ -160,9 +169,8 @@ export async function getCirculatingSupplySnapshots<
           ];
         },
       );
-    } else {
-      return [];
     }
+    return [];
   } catch (ex) {
     console.error(
       "An error occurred while fetching getCirculatingSupplySnapshots...",

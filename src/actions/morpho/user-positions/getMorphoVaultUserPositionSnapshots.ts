@@ -1,9 +1,6 @@
-import axios from "axios";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc.js";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { getEnvironmentFromArgs, isStartOfDay } from "../../../common/index.js";
+import { getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type {
   Chain,
@@ -15,10 +12,7 @@ import type { MorphoVaultUserPositionSnapshot } from "../../../types/morphoUserP
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
-  shouldFallback,
 } from "../../lunar-indexer-client.js";
-
-dayjs.extend(utc);
 
 export type GetMorphoVaultUserPositionSnapshotsParameters<
   environments,
@@ -61,36 +55,30 @@ export async function getMorphoVaultUserPositionSnapshots<
   const vaultAddress: Address | undefined =
     rawVaultAddress ?? (vault ? environment.vaults[vault].address : undefined);
 
-  const lunarIndexerUrl = environment.custom?.morpho?.lunarIndexerUrl;
+  const lunarIndexerUrl = environment.lunarIndexerUrl;
 
-  if (lunarIndexerUrl) {
-    try {
-      return await fetchUserPositionSnapshotsFromLunar(
-        args.userAddress,
-        vaultAddress,
-        lunarIndexerUrl,
-        environment,
-      );
-    } catch (error) {
-      if (!shouldFallback(error)) {
-        throw error;
-      }
-      console.debug(
-        "[Lunar fallback] Falling back to Ponder for vault user position snapshots:",
-        error,
-      );
-    }
-  }
-
-  if (!vaultAddress) {
+  if (!lunarIndexerUrl) {
     return [];
   }
 
-  return fetchUserPositionSnapshots(
-    args.userAddress,
-    vaultAddress,
-    environment,
-  );
+  try {
+    return await fetchUserPositionSnapshotsFromLunar(
+      args.userAddress,
+      vaultAddress,
+      lunarIndexerUrl,
+      environment,
+    );
+  } catch (error) {
+    console.warn(
+      `[getMorphoVaultUserPositionSnapshots] Lunar Indexer failed for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "morpho-vault-user-position-snapshots",
+      chainId: environment.chainId,
+    });
+    return [];
+  }
 }
 
 async function fetchUserPositionSnapshotsFromLunar(
@@ -130,81 +118,4 @@ async function fetchUserPositionSnapshotsFromLunar(
   }
 
   return snapshots;
-}
-
-async function fetchUserPositionSnapshots(
-  userAddress: Address,
-  vaultAddress: Address,
-  environment: Environment,
-): Promise<MorphoVaultUserPositionSnapshot[]> {
-  const dailyData: MorphoVaultUserDailyData[] = [];
-  let hasNextPage = true;
-  let endCursor: string | undefined;
-
-  interface MorphoVaultUserDailyData {
-    totalSuppliesUSD: string;
-    timestamp: number;
-  }
-
-  while (hasNextPage) {
-    const result = await axios.post<{
-      data: {
-        accountVaultDailySnapshots: {
-          items: MorphoVaultUserDailyData[];
-          pageInfo: {
-            hasNextPage: boolean;
-            endCursor: string;
-          };
-        };
-      };
-    }>(environment.indexerUrl, {
-      query: `
-          query {
-            accountVaultDailySnapshots(
-              limit: 365,
-              orderDirection: "desc",
-              orderBy: "timestamp",
-              where: { vaultAddress: "${vaultAddress.toLowerCase()}", accountAddress: "${userAddress.toLowerCase()}", chainId: ${environment.chainId} }
-              ${endCursor ? `after: "${endCursor}"` : ""}
-            ) {
-              items {
-                totalSuppliesUSD
-                timestamp
-              }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-            }
-          }
-        `,
-    });
-
-    dailyData.push(
-      ...result.data.data.accountVaultDailySnapshots.items.filter(
-        (f: { timestamp: number }) => isStartOfDay(f.timestamp),
-      ),
-    );
-    hasNextPage =
-      result.data.data.accountVaultDailySnapshots.pageInfo.hasNextPage;
-    endCursor = result.data.data.accountVaultDailySnapshots.pageInfo.endCursor;
-  }
-
-  if (dailyData.length > 0) {
-    return dailyData.map((point: MorphoVaultUserDailyData) => {
-      const suppliedUsd = Number(point.totalSuppliesUSD);
-
-      const result: MorphoVaultUserPositionSnapshot = {
-        chainId: environment.chainId,
-        timestamp: point.timestamp * 1000,
-        suppliedUsd: suppliedUsd,
-        account: userAddress,
-        vaultAddress: vaultAddress,
-      };
-
-      return result;
-    });
-  } else {
-    return [];
-  }
 }

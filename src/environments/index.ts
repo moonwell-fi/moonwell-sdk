@@ -147,49 +147,28 @@ export type GetEnvironment<chain> = chain extends typeof base
 export const createEnvironment = <const chain extends Chain>(config: {
   chain: chain;
   rpcUrls?: string[] | undefined;
-  indexerUrl?: string;
 }): GetEnvironment<chain> => {
   switch (config.chain.id) {
     case base.id:
-      return createBaseEnvironment(
-        config.rpcUrls,
-        config.indexerUrl,
-      ) as GetEnvironment<chain>;
+      return createBaseEnvironment(config.rpcUrls) as GetEnvironment<chain>;
     case moonbeam.id:
-      return createMoonbeamEnvironment(
-        config.rpcUrls,
-        config.indexerUrl,
-      ) as GetEnvironment<chain>;
+      return createMoonbeamEnvironment(config.rpcUrls) as GetEnvironment<chain>;
     case moonriver.id:
       return createMoonriverEnvironment(
         config.rpcUrls,
-        config.indexerUrl,
       ) as GetEnvironment<chain>;
     case optimism.id:
-      return createOptimismEnvironment(
-        config.rpcUrls,
-        config.indexerUrl,
-      ) as GetEnvironment<chain>;
+      return createOptimismEnvironment(config.rpcUrls) as GetEnvironment<chain>;
     case ethereum.id:
-      return createEthereumEnvironment(
-        config.rpcUrls,
-        config.indexerUrl,
-      ) as GetEnvironment<chain>;
+      return createEthereumEnvironment(config.rpcUrls) as GetEnvironment<chain>;
     case avalanche.id:
       return createAvalancheEnvironment(
         config.rpcUrls,
-        config.indexerUrl,
       ) as GetEnvironment<chain>;
     case arbitrum.id:
-      return createArbitrumEnvironment(
-        config.rpcUrls,
-        config.indexerUrl,
-      ) as GetEnvironment<chain>;
+      return createArbitrumEnvironment(config.rpcUrls) as GetEnvironment<chain>;
     case polygon.id:
-      return createPolygonEnvironment(
-        config.rpcUrls,
-        config.indexerUrl,
-      ) as GetEnvironment<chain>;
+      return createPolygonEnvironment(config.rpcUrls) as GetEnvironment<chain>;
     default:
       throw new Error("Unsupported chainId");
   }
