@@ -14,11 +14,17 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 
 import { retry } from "./retry.js";
 
+// Only forward args the caller actually passed — calling axios.get(url, undefined)
+// is observably different from axios.get(url) for tests that assert call arity.
+
 export function getWithRetry<T = unknown>(
   url: string,
   config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<T>> {
-  return retry(() => axios.get<T>(url, config));
+  if (config !== undefined) {
+    return retry(() => axios.get<T>(url, config));
+  }
+  return retry(() => axios.get<T>(url));
 }
 
 export function postWithRetry<T = unknown, D = unknown>(
@@ -26,5 +32,11 @@ export function postWithRetry<T = unknown, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig<D>,
 ): Promise<AxiosResponse<T>> {
-  return retry(() => axios.post<T, AxiosResponse<T>, D>(url, data, config));
+  if (config !== undefined) {
+    return retry(() => axios.post<T, AxiosResponse<T>, D>(url, data, config));
+  }
+  if (data !== undefined) {
+    return retry(() => axios.post<T, AxiosResponse<T>, D>(url, data));
+  }
+  return retry(() => axios.post<T, AxiosResponse<T>, D>(url));
 }
