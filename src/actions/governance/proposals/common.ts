@@ -9,6 +9,7 @@ import {
   type Proposal,
   type ProposalState,
 } from "../../../types/proposal.js";
+import { postWithRetry } from "../../axiosWithRetry.js";
 import type { ApiProposal } from "../governor-api-client.js";
 
 export const WORMHOLE_CONTRACT = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
@@ -656,7 +657,7 @@ export const getExtendedProposalData = async (params: {
   try {
     while (shouldContinue && page < MAX_PAGES) {
       page++;
-      const response = await axios.post<{
+      const response = await postWithRetry<{
         data: {
           proposals: {
             items: {

@@ -1,9 +1,9 @@
-import axios from "axios";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { getEnvironmentFromArgs } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain, Environment } from "../../environments/index.js";
 import type { CirculatingSupplySnapshot } from "../../types/circulatingSupply.js";
+import { getWithRetry, postWithRetry } from "../axiosWithRetry.js";
 
 export type GetCirculatingSupplySnapshotsParameters<
   environments,
@@ -46,7 +46,7 @@ async function fetchCirculatingSupplyFromLunar(
       params.cursor = cursor;
     }
 
-    const response = await axios.get<
+    const response = await getWithRetry<
       LunarPaginatedResponse<LunarCirculatingSupplySnapshot>
     >(`${lunarIndexerUrl}/api/v1/staking/circulating-supply/${chainId}`, {
       params,
@@ -118,7 +118,7 @@ async function fetchCirculatingSupplyFromPonder(
 ): Promise<CirculatingSupplySnapshot[]> {
   if (!environment.indexerUrl) return [];
   try {
-    const response = await axios.post<{
+    const response = await postWithRetry<{
       data: {
         circulatingSupplyDailySnapshots: {
           items: {

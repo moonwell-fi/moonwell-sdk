@@ -8,7 +8,6 @@
  * @module morpho/markets/lunarIndexerTransform
  */
 
-import axios from "axios";
 import type { Address } from "viem";
 import { parseUnits } from "viem";
 import { Amount } from "../../../common/amount.js";
@@ -20,6 +19,7 @@ import type {
   PublicAllocatorSharedLiquidityType,
 } from "../../../types/morphoMarket.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
+import { getWithRetry } from "../../axiosWithRetry.js";
 
 /**
  * Lunar Indexer API Response Types
@@ -185,7 +185,7 @@ export async function fetchMarketsFromIndexer(
   }
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/isolated/markets/${chainId}${queryString ? `?${queryString}` : ""}`;
-  const response = await axios.get<LunarIndexerMarketsResponse>(url);
+  const response = await getWithRetry<LunarIndexerMarketsResponse>(url);
   return response.data;
 }
 
@@ -198,7 +198,7 @@ export async function fetchMarketFromIndexer(
   marketId: string,
 ): Promise<LunarIndexerMarket> {
   const url = `${lunarIndexerUrl}/api/v1/isolated/market/${chainId}/${marketId.toLowerCase()}`;
-  const response = await axios.get<LunarIndexerMarket>(url);
+  const response = await getWithRetry<LunarIndexerMarket>(url);
   return response.data;
 }
 
@@ -240,7 +240,7 @@ export async function fetchMarketSnapshotsFromIndexer(
     queryString ? `?${queryString}` : ""
   }`;
 
-  const response = await axios.get<LunarIndexerMarketSnapshotsResponse>(url);
+  const response = await getWithRetry<LunarIndexerMarketSnapshotsResponse>(url);
   return response.data;
 }
 
@@ -281,7 +281,8 @@ export async function fetchAccountMarketPortfolioFromIndexer(
     queryString ? `?${queryString}` : ""
   }`;
 
-  const response = await axios.get<LunarIndexerAccountPortfolioResponse>(url);
+  const response =
+    await getWithRetry<LunarIndexerAccountPortfolioResponse>(url);
   return response.data;
 }
 

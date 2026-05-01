@@ -1,10 +1,10 @@
-import axios from "axios";
 import { zeroAddress } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import type { HttpRequestError } from "../../common/index.js";
 import { getEnvironmentsFromArgs } from "../../common/index.js";
 import type { TokenConfig } from "../../environments/index.js";
 import type { BeamTokenInfo, BeamTokenRoutes } from "../../types/beam.js";
+import { getWithRetry } from "../axiosWithRetry.js";
 
 export type GetBeamTokenRoutesErrorType = HttpRequestError;
 
@@ -18,7 +18,7 @@ export async function getBeamTokenRoutes(
 ): GetBeamTokenRoutesReturnType {
   const environments = getEnvironmentsFromArgs(client, undefined, false);
 
-  const acrossRoutesResponse = await axios.get<
+  const acrossRoutesResponse = await getWithRetry<
     {
       originChainId: number;
       originToken: string;
@@ -30,7 +30,7 @@ export async function getBeamTokenRoutes(
     }[]
   >("https://across.to/api/available-routes");
 
-  const biconomyInfoResponse = await axios.get<{
+  const biconomyInfoResponse = await getWithRetry<{
     version: string;
     node: string;
     supportedChains: {

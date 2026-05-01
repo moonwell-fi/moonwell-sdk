@@ -1,4 +1,3 @@
-import axios from "axios";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type SnapshotPeriod,
@@ -10,6 +9,7 @@ import {
 import type { NetworkParameterType } from "../../common/types.js";
 import type { Chain } from "../../environments/index.js";
 import type { StakingSnapshot } from "../../types/staking.js";
+import { postWithRetry } from "../axiosWithRetry.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
@@ -129,7 +129,7 @@ async function fetchStakingSnapshotsFromPonder(
   startTime?: number,
 ): Promise<StakingSnapshot[]> {
   try {
-    const response = await axios.post<{
+    const response = await postWithRetry<{
       data: {
         stakingDailySnapshots: {
           items: StakingSnapshot[];

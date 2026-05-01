@@ -1,4 +1,3 @@
-import axios from "axios";
 import { isAddress } from "viem";
 import { base, moonbeam, optimism } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
@@ -8,6 +7,7 @@ import {
 } from "../../environments/index.js";
 import * as logger from "../../logger/console.js";
 import type { Delegate } from "../../types/delegate.js";
+import { getWithRetry } from "../axiosWithRetry.js";
 import { fetchAllVoters } from "./governor-api-client.js";
 
 export type GetDelegatesReturnType = Promise<Delegate[]>;
@@ -119,7 +119,7 @@ const getForumProfiles = async () => {
 
   const getUsersPaginated = async (page = 0) => {
     try {
-      const response = await axios.get<{
+      const response = await getWithRetry<{
         directory_items: {
           user: {
             id: number;

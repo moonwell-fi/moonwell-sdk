@@ -1,9 +1,9 @@
-import axios from "axios";
 import lodash from "lodash";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { HttpRequestError } from "../../common/index.js";
 import * as logger from "../../logger/console.js";
 import type { Discussion } from "../../types/discussion.js";
+import { getWithRetry } from "../axiosWithRetry.js";
 
 const { isEqual, uniqWith } = lodash;
 
@@ -43,7 +43,7 @@ export async function getDiscussions(
     "Starting to get discussions...",
   );
 
-  const moonwellProposalsResult = await axios.get<ForumTopicRequestResponse>(
+  const moonwellProposalsResult = await getWithRetry<ForumTopicRequestResponse>(
     "https://forum.moonwell.fi/c/proposals/moonwell-improvement-proposals/9/l/latest.json",
   );
 
@@ -51,9 +51,10 @@ export async function getDiscussions(
     throw new HttpRequestError(moonwellProposalsResult.statusText);
   }
 
-  const communityProposalsResult = await axios.get<ForumTopicRequestResponse>(
-    "https://forum.moonwell.fi/c/proposals/community-proposal/19/l/latest.json",
-  );
+  const communityProposalsResult =
+    await getWithRetry<ForumTopicRequestResponse>(
+      "https://forum.moonwell.fi/c/proposals/community-proposal/19/l/latest.json",
+    );
 
   if (
     communityProposalsResult.status !== 200 ||

@@ -1,4 +1,3 @@
-import axios from "axios";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
   type SnapshotPeriod,
@@ -12,6 +11,7 @@ import { buildMarketId } from "../../../common/lunar-indexer-helpers.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { MarketSnapshot } from "../../../types/market.js";
+import { postWithRetry } from "../../axiosWithRetry.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
@@ -203,7 +203,7 @@ async function fetchCoreMarketSnapshotsFromPonder(
   let endCursor: string | undefined;
 
   while (hasNextPage) {
-    const result = await axios.post<{
+    const result = await postWithRetry<{
       data: {
         marketDailySnapshots: {
           items: MarketDailyData[];

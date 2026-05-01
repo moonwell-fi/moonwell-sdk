@@ -1,7 +1,7 @@
-import axios from "axios";
 import type { HttpRequestError } from "../../common/index.js";
 import { Amount } from "../../common/index.js";
 import type { BeamTokenLimits, BeamTokenRoutes } from "../../types/beam.js";
+import { getWithRetry } from "../axiosWithRetry.js";
 
 export type GetBeamTokenLimitsErrorType = HttpRequestError;
 
@@ -36,7 +36,7 @@ export async function getBeamTokenLimits(
       direction === "withdraw" ? path.chainId : route.chainId;
 
     try {
-      const acrossLimitsResponse = await axios.get<{
+      const acrossLimitsResponse = await getWithRetry<{
         minDeposit: string;
         maxDeposit: string;
         maxDepositInstant: string;
