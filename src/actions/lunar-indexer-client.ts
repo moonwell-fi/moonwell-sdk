@@ -7,6 +7,8 @@
 
 import axios, { type AxiosInstance, type AxiosError } from "axios";
 
+import { attachRetryInterceptor } from "./retry.js";
+
 // ============================================================================
 // Type Definitions
 // ============================================================================
@@ -301,6 +303,12 @@ export class LunarIndexerClient {
         "Content-Type": "application/json",
       },
     });
+
+    // Retry transient failures (5xx, network errors, timeouts) silently before
+    // surfacing to callers. 4xx (incl. 404) bypasses retries — see ./retry.ts.
+    attachRetryInterceptor(this.client);
+    attachRetryInterceptor(this.stakingClient);
+    attachRetryInterceptor(this.vaultsClient);
   }
 
   /**

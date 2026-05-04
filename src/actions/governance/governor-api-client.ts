@@ -1,5 +1,5 @@
-import axios from "axios";
 import type { Environment } from "../../environments/index.js";
+import { getWithRetry } from "../axiosWithRetry.js";
 
 /**
  * Base configuration for Governor API requests
@@ -108,7 +108,7 @@ export async function fetchProposals(
   if (options?.cursor) params.append("cursor", options.cursor);
   if (options?.chainId) params.append("chainId", options.chainId.toString());
 
-  const response = await axios.get<PaginatedResponse<ApiProposal>>(
+  const response = await getWithRetry<PaginatedResponse<ApiProposal>>(
     `${baseUrl}/api/v1/governor/proposals?${params.toString()}`,
   );
 
@@ -152,7 +152,7 @@ export async function fetchProposal(
 ): Promise<ApiProposal> {
   const baseUrl = getGovernorApiUrl(environment);
 
-  const response = await axios.get<ApiProposal>(
+  const response = await getWithRetry<ApiProposal>(
     `${baseUrl}/api/v1/governor/proposals/${proposalId}`,
   );
 
@@ -177,7 +177,7 @@ export async function fetchProposalVotes(
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.cursor) params.append("cursor", options.cursor);
 
-  const response = await axios.get<PaginatedResponse<ApiVote>>(
+  const response = await getWithRetry<PaginatedResponse<ApiVote>>(
     `${baseUrl}/api/v1/governor/proposals/${proposalId}/votes?${params.toString()}`,
   );
 
@@ -225,7 +225,9 @@ export async function fetchProposalStateChanges(
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.cursor) params.append("cursor", options.cursor);
 
-  const response = await axios.get<PaginatedResponse<ApiProposalStateChange>>(
+  const response = await getWithRetry<
+    PaginatedResponse<ApiProposalStateChange>
+  >(
     `${baseUrl}/api/v1/governor/proposals/${proposalId}/state-changes?${params.toString()}`,
   );
 
@@ -277,7 +279,7 @@ export async function fetchVoters(
   const endpoint = `${baseUrl}/api/v1/governor/voters?${params.toString()}`;
 
   try {
-    const response = await axios.get<PaginatedResponse<ApiVoter>>(endpoint);
+    const response = await getWithRetry<PaginatedResponse<ApiVoter>>(endpoint);
 
     if (response.status !== 200 || !response.data) {
       throw new Error(`Failed to fetch voters: ${response.statusText}`);
@@ -328,7 +330,7 @@ export async function fetchVoter(
 ): Promise<ApiVoter> {
   const baseUrl = getGovernorApiUrl(environment);
 
-  const response = await axios.get<ApiVoter>(
+  const response = await getWithRetry<ApiVoter>(
     `${baseUrl}/api/v1/governor/voters/${address}`,
   );
 
@@ -359,7 +361,7 @@ export async function fetchVoterProposals(
 
   const endpoint = `${baseUrl}/api/v1/governor/voters/${address}/proposals?${params.toString()}`;
 
-  const response = await axios.get<PaginatedResponse<ApiProposal>>(endpoint);
+  const response = await getWithRetry<PaginatedResponse<ApiProposal>>(endpoint);
 
   if (response.status !== 200 || !response.data) {
     throw new Error(`Failed to fetch voter proposals: ${response.statusText}`);
@@ -407,7 +409,7 @@ export async function fetchVoterVotes(
 
   const endpoint = `${baseUrl}/api/v1/governor/voters/${address}/votes?${params.toString()}`;
 
-  const response = await axios.get<PaginatedResponse<ApiVote>>(endpoint);
+  const response = await getWithRetry<PaginatedResponse<ApiVote>>(endpoint);
 
   if (response.status !== 200 || !response.data) {
     throw new Error(`Failed to fetch voter votes: ${response.statusText}`);
@@ -450,7 +452,7 @@ export async function fetchUserVoteReceipt(
 ): Promise<ApiVoteReceipt[]> {
   const baseUrl = getGovernorApiUrl(environment);
 
-  const response = await axios.get<ApiVoteReceipt[]>(
+  const response = await getWithRetry<ApiVoteReceipt[]>(
     `${baseUrl}/api/v1/governor/proposals/${proposalId}/vote/${voterAddress}`,
   );
 

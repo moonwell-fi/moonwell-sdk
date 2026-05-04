@@ -1,4 +1,3 @@
-import axios from "axios";
 import type { Address } from "viem";
 import { Amount } from "../../../common/amount.js";
 import type { MultichainReturnType } from "../../../common/types.js";
@@ -8,6 +7,7 @@ import type {
   PublicAllocatorSharedLiquidityType,
 } from "../../../types/morphoMarket.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
+import { getWithRetry } from "../../axiosWithRetry.js";
 import { getGraphQL } from "../utils/graphql.js";
 import {
   type GetMorphoMarketsRewardsReturnType as LunarIndexerRewardsType,
@@ -49,7 +49,7 @@ async function fetchSharedLiquidityFromLunar(
   lunarIndexerUrl: string,
   chainId: number,
 ): Promise<LunarSharedLiquidityResponse> {
-  const response = await axios.get<LunarSharedLiquidityResponse>(
+  const response = await getWithRetry<LunarSharedLiquidityResponse>(
     `${lunarIndexerUrl}/api/v1/isolated/shared-liquidity/${chainId}`,
   );
   return response.data;

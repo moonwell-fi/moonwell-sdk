@@ -1,4 +1,3 @@
-import axios from "axios";
 import type { Address } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import {
@@ -12,6 +11,7 @@ import {
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { UserPositionSnapshot } from "../../../types/userPosition.js";
+import { postWithRetry } from "../../axiosWithRetry.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
@@ -205,7 +205,7 @@ async function fetchUserPositionSnapshotsFromPonder(
   let endCursor: string | undefined;
 
   while (hasNextPage) {
-    const result = await axios.post<{
+    const result = await postWithRetry<{
       data: {
         accountDailySnapshots: {
           items: UserDailyData[];

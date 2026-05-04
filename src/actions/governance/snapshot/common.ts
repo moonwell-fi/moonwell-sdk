@@ -1,4 +1,3 @@
-import axios from "axios";
 import {
   type Environment,
   base,
@@ -6,6 +5,7 @@ import {
   supportedChains,
 } from "../../../environments/index.js";
 import type { SnapshotProposal } from "../../../types/snapshotProposal.js";
+import { postWithRetry } from "../../axiosWithRetry.js";
 import type { GetSnapshotProposalsReturnType } from "./getSnapshotProposals.js";
 
 export const getSnapshotProposalData = async (params: {
@@ -32,7 +32,7 @@ export const getSnapshotProposalData = async (params: {
 
   const pageSize = params.pagination?.size ? params.pagination.size : 10;
 
-  const response = await axios.post<{
+  const response = await postWithRetry<{
     data: {
       spaces: {
         proposalsCount: number;
