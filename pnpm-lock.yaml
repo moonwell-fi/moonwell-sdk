@@ -109,7 +109,7 @@ importers:
         specifier: ^1.7.7
         version: 1.16.0
       dayjs:
-        specifier: ^1.11.13
+        specifier: ^1.11.20
         version: 1.11.20
       lodash:
         specifier: ^4.17.21
