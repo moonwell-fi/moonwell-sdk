@@ -136,6 +136,37 @@ export type ContractsConfigReturnType = {
   morphoPublicAllocator: MorphoPublicAllocatorContractReturnType;
 };
 
+type EnvironmentContractsReturnType = {
+  stakingToken: StakingTokenContractReturnType;
+  wrappedNativeToken: WrappedNativeTokenContractReturnType;
+  governanceToken: GovernanceTokenContractReturnType;
+  comptroller: ComptrollerContractReturnType;
+  maximillion: MaximillionContractReturnType;
+  views: CoreViewsContractReturnType;
+  tokenSale: TokenSaleContractReturnType;
+  morphoViews: MorphoViewsContractReturnType;
+  morphoViewsV2: MorphoViewsContractReturnType;
+  multiRewardDistributor: MultiRewardDistributorContractReturnType;
+  temporalGovernor: TemporalGovernorContractReturnType;
+  voteCollector: VoteCollectorContractReturnType;
+  governor: GovernorContractReturnType;
+  multichainGovernor: MultichainGovernorContractReturnType;
+  oracle: ChainLinkOracleContractReturnType;
+  router: CoreRouterContractReturnType;
+  morphoBlue: MorphoBlueContractReturnType;
+  morphoBundler: MorphoBundlerContractReturnType;
+  morphoBaseBundler: MorphoBundlerContractReturnType;
+  morphoPublicAllocator: MorphoPublicAllocatorContractReturnType;
+};
+
+type EnvironmentContracts<contracts> = {
+  [K in keyof contracts as K extends keyof EnvironmentContractsReturnType
+    ? K
+    : never]: K extends keyof EnvironmentContractsReturnType
+    ? EnvironmentContractsReturnType[K]
+    : never;
+};
+
 export type CustomConfigType = {
   morpho?: {
     minimalDeployment?: boolean;
@@ -242,7 +273,7 @@ export const createEnvironmentConfig = <
   contracts: ContractsConfig<contracts, tokens>;
   custom: CustomConfig<custom>;
 }) => {
-  const publicClient = createPublicClient({
+  const publicClient: PublicClient = createPublicClient({
     chain: config.chain,
     batch: {
       multicall: {
@@ -387,109 +418,7 @@ export const createEnvironmentConfig = <
       ...prev,
       [curr]: createContract(contractAddress, abi),
     };
-  }, {}) as Prettify<
-    {
-      [name in keyof contracts as Extract<
-        name,
-        "stakingToken"
-      >]: StakingTokenContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "wrappedNativeToken"
-      >]: WrappedNativeTokenContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "governanceToken"
-      >]: GovernanceTokenContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "comptroller"
-      >]: ComptrollerContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "maximillion"
-      >]: MaximillionContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "views"
-      >]: CoreViewsContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "tokenSale"
-      >]: TokenSaleContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoViews"
-      >]: MorphoViewsContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoViewsV2"
-      >]: MorphoViewsContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "multiRewardDistributor"
-      >]: MultiRewardDistributorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "temporalGovernor"
-      >]: TemporalGovernorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "voteCollector"
-      >]: VoteCollectorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "governor"
-      >]: GovernorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "multichainGovernor"
-      >]: MultichainGovernorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "oracle"
-      >]: ChainLinkOracleContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "router"
-      >]: CoreRouterContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoBlue"
-      >]: MorphoBlueContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoBundler"
-      >]: MorphoBundlerContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoBaseBundler"
-      >]: MorphoBundlerContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoPublicAllocator"
-      >]: MorphoPublicAllocatorContractReturnType;
-    }
-  >;
+  }, {}) as EnvironmentContracts<contracts>;
 
   return {
     key: config.key,
@@ -551,109 +480,7 @@ export type Environment<
   vaults: {
     [name in keyof vaults]: MorphoVaultContractReturnType;
   };
-  contracts: Prettify<
-    {
-      [name in keyof contracts as Extract<
-        name,
-        "stakingToken"
-      >]: StakingTokenContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "wrappedNativeToken"
-      >]: WrappedNativeTokenContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "governanceToken"
-      >]: GovernanceTokenContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "comptroller"
-      >]: ComptrollerContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "maximillion"
-      >]: MaximillionContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "views"
-      >]: CoreViewsContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "tokenSale"
-      >]: TokenSaleContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoViews"
-      >]: MorphoViewsContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoViewsV2"
-      >]: MorphoViewsContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "multiRewardDistributor"
-      >]: MultiRewardDistributorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "temporalGovernor"
-      >]: TemporalGovernorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "voteCollector"
-      >]: VoteCollectorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "governor"
-      >]: GovernorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "multichainGovernor"
-      >]: MultichainGovernorContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "oracle"
-      >]: ChainLinkOracleContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "router"
-      >]: CoreRouterContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoBlue"
-      >]: MorphoBlueContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoBundler"
-      >]: MorphoBundlerContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoBaseBundler"
-      >]: MorphoBundlerContractReturnType;
-    } & {
-      [name in keyof contracts as Extract<
-        name,
-        "morphoPublicAllocator"
-      >]: MorphoPublicAllocatorContractReturnType;
-    }
-  >;
+  contracts: EnvironmentContracts<contracts>;
   custom: custom;
   config: {
     tokens: {
