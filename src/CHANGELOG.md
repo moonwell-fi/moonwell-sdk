@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.12.1
+
+### Patch Changes
+
+- [#264](https://github.com/moonwell-fi/moonwell-sdk/pull/264) [`6d8ccab641cf5a3c082eb5d80b01d2ba4d06bd76`](https://github.com/moonwell-fi/moonwell-sdk/commit/6d8ccab641cf5a3c082eb5d80b01d2ba4d06bd76) Thanks [@bprofiro](https://github.com/bprofiro)! - Add `snapshotTimestamp` to `getUserVotingPowers` for correct per-chain snapshot blocks across multi-chain governance tokens.
+
+- [#264](https://github.com/moonwell-fi/moonwell-sdk/pull/264) [`9a7e0f5267cbda2f02beaf6016a5f55e214239ec`](https://github.com/moonwell-fi/moonwell-sdk/commit/9a7e0f5267cbda2f02beaf6016a5f55e214239ec) Thanks [@bprofiro](https://github.com/bprofiro)! - add fetch with retry util on api fetches
+
 ## 0.12.0
 
 ### Minor Changes
