@@ -1,4 +1,4 @@
-import { type Address, type PublicClient, zeroAddress } from "viem";
+import { type Address, zeroAddress } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   Amount,
@@ -58,7 +58,7 @@ export async function getUserVotingPowers<
       ? await Promise.all(
           tokenEnvironments.map((env) =>
             getBlockNumberAtTimestamp(
-              env.publicClient as PublicClient,
+              env.publicClient,
               BigInt(snapshotTimestamp),
             ),
           ),
