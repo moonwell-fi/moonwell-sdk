@@ -99,6 +99,24 @@ export const isMultichainProposal = (targets?: string[]): boolean => {
   );
 };
 
+/**
+ * Routes a proposal to the multichain governor when:
+ *   - its targets include the Wormhole bridge (legacy detection), OR
+ *   - its proposalId is past the legacy Artemis governor's `proposalCount`,
+ *     which means it could only have been created on the multichain governor
+ *     (proposals migrated to the multichain governor after the cutoff but
+ *     can have local-only targets, e.g. Moonbeam-internal contract calls).
+ *
+ * `legacyArtemisMaxId === 0` indicates the count read failed; in that case we
+ * fall back to the targets-only heuristic.
+ */
+export const isMultichainAware = (
+  proposal: { targets?: string[]; proposalId: number },
+  legacyArtemisMaxId: number,
+): boolean =>
+  isMultichainProposal(proposal.targets) ||
+  (legacyArtemisMaxId > 0 && proposal.proposalId > legacyArtemisMaxId);
+
 export type ApiProposalFormatted = {
   forVotes: Amount;
   againstVotes: Amount;
@@ -237,13 +255,9 @@ export const getProposalsOnChainData = async (
 
   const legacyArtemisMaxId = await getLegacyArtemisMaxId(governanceEnvironment);
 
-  const isMultichainAware = (p: ApiProposal): boolean =>
-    isMultichainProposal(p.targets) ||
-    (legacyArtemisMaxId > 0 && p.proposalId > legacyArtemisMaxId);
-
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
-      const isMultichain = isMultichainAware(p);
+      const isMultichain = isMultichainAware(p, legacyArtemisMaxId);
 
       const governorContract = isMultichain
         ? governanceEnvironment.contracts.multichainGovernor
@@ -282,7 +296,7 @@ export const getProposalsOnChainData = async (
 
   const votesCollectedList = await Promise.all(
     apiProposals.map(async (apiProposal) => {
-      const isMultichain = isMultichainAware(apiProposal);
+      const isMultichain = isMultichainAware(apiProposal, legacyArtemisMaxId);
 
       if (
         !isMultichain ||
