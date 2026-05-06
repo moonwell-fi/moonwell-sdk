@@ -181,6 +181,40 @@ export type ProposalOnChainData = {
   quorum: bigint;
 };
 
+// Cached per chain: highest proposalId held by the legacy Artemis governor.
+// Anything with a higher proposalId belongs to the multichain governor, even
+// if its targets don't include the Wormhole bridge. The legacy governor only
+// receives new proposals during chain migrations, so a 5-minute TTL is plenty.
+const LEGACY_ARTEMIS_MAX_ID_TTL_MS = 5 * 60 * 1000;
+const legacyArtemisMaxIdCache = new Map<
+  number,
+  { value: number; fetchedAt: number }
+>();
+
+const getLegacyArtemisMaxId = async (
+  governanceEnvironment: Environment,
+): Promise<number> => {
+  const governor = governanceEnvironment.contracts.governor;
+  if (!governor) return 0;
+
+  const cached = legacyArtemisMaxIdCache.get(governanceEnvironment.chainId);
+  if (cached && Date.now() - cached.fetchedAt < LEGACY_ARTEMIS_MAX_ID_TTL_MS) {
+    return cached.value;
+  }
+
+  try {
+    const value = Number(await governor.read.proposalCount());
+    legacyArtemisMaxIdCache.set(governanceEnvironment.chainId, {
+      value,
+      fetchedAt: Date.now(),
+    });
+    return value;
+  } catch (error) {
+    console.warn("Failed to fetch legacy governor proposalCount:", error);
+    return cached?.value ?? 0;
+  }
+};
+
 /**
  * Fetches on-chain data for multiple proposals
  */
@@ -201,20 +235,7 @@ export const getProposalsOnChainData = async (
     }
   }
 
-  // Read once: highest proposalId held by the legacy Artemis governor.
-  // Anything with a higher proposalId belongs to the multichain governor,
-  // even if its targets don't include the Wormhole bridge (e.g., proposals
-  // that only touch contracts on the home chain).
-  let legacyArtemisMaxId = 0;
-  if (governanceEnvironment.contracts.governor) {
-    try {
-      const count =
-        await governanceEnvironment.contracts.governor.read.proposalCount();
-      legacyArtemisMaxId = Number(count);
-    } catch (error) {
-      console.warn("Failed to fetch legacy governor proposalCount:", error);
-    }
-  }
+  const legacyArtemisMaxId = await getLegacyArtemisMaxId(governanceEnvironment);
 
   const isMultichainAware = (p: ApiProposal): boolean =>
     isMultichainProposal(p.targets) ||
