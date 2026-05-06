@@ -201,9 +201,28 @@ export const getProposalsOnChainData = async (
     }
   }
 
+  // Read once: highest proposalId held by the legacy Artemis governor.
+  // Anything with a higher proposalId belongs to the multichain governor,
+  // even if its targets don't include the Wormhole bridge (e.g., proposals
+  // that only touch contracts on the home chain).
+  let legacyArtemisMaxId = 0;
+  if (governanceEnvironment.contracts.governor) {
+    try {
+      const count =
+        await governanceEnvironment.contracts.governor.read.proposalCount();
+      legacyArtemisMaxId = Number(count);
+    } catch (error) {
+      console.warn("Failed to fetch legacy governor proposalCount:", error);
+    }
+  }
+
+  const isMultichainAware = (p: ApiProposal): boolean =>
+    isMultichainProposal(p.targets) ||
+    (legacyArtemisMaxId > 0 && p.proposalId > legacyArtemisMaxId);
+
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
-      const isMultichain = isMultichainProposal(p.targets);
+      const isMultichain = isMultichainAware(p);
 
       const governorContract = isMultichain
         ? governanceEnvironment.contracts.multichainGovernor
@@ -242,7 +261,7 @@ export const getProposalsOnChainData = async (
 
   const votesCollectedList = await Promise.all(
     apiProposals.map(async (apiProposal) => {
-      const isMultichain = isMultichainProposal(apiProposal.targets);
+      const isMultichain = isMultichainAware(apiProposal);
 
       if (
         !isMultichain ||
