@@ -23,13 +23,14 @@ export async function getUserMorphoRewardsData(params: {
   const isFullDeployment =
     params.environment.custom.morpho?.minimalDeployment === false;
 
-  const emptyMorphoRewards: MorphoRewardsResponse[] = [];
-  const [merklRewards, morphoRewards] = await Promise.all([
-    getMerklRewardsData(params.environment, params.account),
-    isFullDeployment
-      ? getMorphoRewardsData(params.environment, params.account)
-      : Promise.resolve(emptyMorphoRewards),
-  ]);
+  // The Morpho URD distributions endpoint (rewards.morpho.org) was
+  // deprecated and now 301-redirects to a SPA, so JSON parsing fails.
+  // Skip it; surface only Merkl rewards.
+  const merklRewards = await getMerklRewardsData(
+    params.environment,
+    params.account,
+  );
+  const morphoRewards: MorphoRewardsResponse[] = [];
 
   if (isFullDeployment) {
     // Process Morpho rewards (GraphQL query depends on morphoRewards result)
@@ -495,22 +496,6 @@ type MorphoAssetResponse = {
   name: string;
   decimals: number;
 };
-
-async function getMorphoRewardsData(
-  environment: Environment,
-  account: Address,
-): Promise<MorphoRewardsResponse[]> {
-  const baseUrl =
-    environment.custom.morpho?.rewardsApiUrl || "https://rewards.morpho.org";
-  const rewardsRequest = await fetch(
-    `${baseUrl}/v1/users/${account}/rewards?chain_id=${environment.chainId}&trusted=true&exclude_merkl_programs=true`,
-    {
-      headers: MOONWELL_FETCH_JSON_HEADERS,
-    },
-  );
-  const rewards = await rewardsRequest.json();
-  return (rewards.data || []) as MorphoRewardsResponse[];
-}
 
 async function getMorphoAssetsData(
   environment: Environment,
