@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.12.2
+
+### Patch Changes
+
+- [#268](https://github.com/moonwell-fi/moonwell-sdk/pull/268) [`e2f61efd290ca5ecd78b18b48552d0db578b7868`](https://github.com/moonwell-fi/moonwell-sdk/commit/e2f61efd290ca5ecd78b18b48552d0db578b7868) Thanks [@bprofiro](https://github.com/bprofiro)! - Stop calling the deprecated Morpho URD endpoint and route post-Artemis Moonbeam proposals to the multichain governor
+
 ## 0.12.1
 
 ### Patch Changes
