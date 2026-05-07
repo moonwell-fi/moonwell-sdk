@@ -99,6 +99,24 @@ export const isMultichainProposal = (targets?: string[]): boolean => {
   );
 };
 
+/**
+ * Routes a proposal to the multichain governor when:
+ *   - its targets include the Wormhole bridge (legacy detection), OR
+ *   - its proposalId is past the legacy Artemis governor's `proposalCount`,
+ *     which means it could only have been created on the multichain governor
+ *     (proposals migrated to the multichain governor after the cutoff but
+ *     can have local-only targets, e.g. Moonbeam-internal contract calls).
+ *
+ * `legacyArtemisMaxId === 0` indicates the count read failed; in that case we
+ * fall back to the targets-only heuristic.
+ */
+export const isMultichainAware = (
+  proposal: { targets?: string[]; proposalId: number },
+  legacyArtemisMaxId: number,
+): boolean =>
+  isMultichainProposal(proposal.targets) ||
+  (legacyArtemisMaxId > 0 && proposal.proposalId > legacyArtemisMaxId);
+
 export type ApiProposalFormatted = {
   forVotes: Amount;
   againstVotes: Amount;
@@ -181,6 +199,40 @@ export type ProposalOnChainData = {
   quorum: bigint;
 };
 
+// Cached per chain: highest proposalId held by the legacy Artemis governor.
+// Anything with a higher proposalId belongs to the multichain governor, even
+// if its targets don't include the Wormhole bridge. The legacy governor only
+// receives new proposals during chain migrations, so a 5-minute TTL is plenty.
+const LEGACY_ARTEMIS_MAX_ID_TTL_MS = 5 * 60 * 1000;
+const legacyArtemisMaxIdCache = new Map<
+  number,
+  { value: number; fetchedAt: number }
+>();
+
+const getLegacyArtemisMaxId = async (
+  governanceEnvironment: Environment,
+): Promise<number> => {
+  const governor = governanceEnvironment.contracts.governor;
+  if (!governor) return 0;
+
+  const cached = legacyArtemisMaxIdCache.get(governanceEnvironment.chainId);
+  if (cached && Date.now() - cached.fetchedAt < LEGACY_ARTEMIS_MAX_ID_TTL_MS) {
+    return cached.value;
+  }
+
+  try {
+    const value = Number(await governor.read.proposalCount());
+    legacyArtemisMaxIdCache.set(governanceEnvironment.chainId, {
+      value,
+      fetchedAt: Date.now(),
+    });
+    return value;
+  } catch (error) {
+    console.warn("Failed to fetch legacy governor proposalCount:", error);
+    return cached?.value ?? 0;
+  }
+};
+
 /**
  * Fetches on-chain data for multiple proposals
  */
@@ -201,9 +253,11 @@ export const getProposalsOnChainData = async (
     }
   }
 
+  const legacyArtemisMaxId = await getLegacyArtemisMaxId(governanceEnvironment);
+
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
-      const isMultichain = isMultichainProposal(p.targets);
+      const isMultichain = isMultichainAware(p, legacyArtemisMaxId);
 
       const governorContract = isMultichain
         ? governanceEnvironment.contracts.multichainGovernor
@@ -242,7 +296,7 @@ export const getProposalsOnChainData = async (
 
   const votesCollectedList = await Promise.all(
     apiProposals.map(async (apiProposal) => {
-      const isMultichain = isMultichainProposal(apiProposal.targets);
+      const isMultichain = isMultichainAware(apiProposal, legacyArtemisMaxId);
 
       if (
         !isMultichain ||
