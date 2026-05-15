@@ -4,17 +4,21 @@ import {
   type Environment,
   createEnvironmentConfig,
 } from "../../types/config.js";
+import { custom } from "./custom.js";
 import { tokens } from "./tokens.js";
 
 const createEnvironment = (
   rpcUrls?: string[],
   governanceIndexerUrl?: string,
-): Environment<typeof tokens, {}, {}, {}, {}> =>
+): Environment<typeof tokens, {}, {}, {}, typeof custom> =>
   createEnvironmentConfig({
     key: "ethereum",
     name: "Ethereum",
     chain: {
       ...ethereum,
+      // viem's `mainnet` chain leaves `testnet` undefined; consumers
+      // (e.g. the bridge modal) check `env.chain.testnet === false` strictly.
+      testnet: false,
       rpcUrls: {
         default: { http: rpcUrls || ["https://rpc.moonwell.fi/main/evm/1"] },
       },
@@ -30,7 +34,7 @@ const createEnvironment = (
     vaults: {},
     morphoMarkets: {},
     contracts: {},
-    custom: {},
-  }) as Environment<typeof tokens, {}, {}, {}, {}>;
+    custom,
+  }) as Environment<typeof tokens, {}, {}, {}, typeof custom>;
 
 export { createEnvironment, ethereum, tokens };
