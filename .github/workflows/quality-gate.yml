@@ -1,0 +1,93 @@
+name: quality-gate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: Lint (JSON output)
+        run: pnpm lint:gate
+
+      - name: Tests with coverage
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Code duplication (jscpd)
+        run: pnpm gate:jscpd
+
+      - name: Security audit
+        run: pnpm gate:audit
+
+      - name: Run quality gate
+        id: gate
+        run: node scripts/quality-gate.mjs
+
+      - name: Read gate report
+        id: report
+        if: always()
+        run: |
+          if [ -f .gate/report.md ]; then
+            {
+              echo 'body<<__GATE_EOF__'
+              cat .gate/report.md
+              echo
+              echo '__GATE_EOF__'
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo 'body<<__GATE_EOF__'
+              echo '<!-- quality-gate -->'
+              echo '## Quality Gate: ⚠️ unable to run'
+              echo
+              echo 'The gate script did not produce a report. Check the workflow logs.'
+              echo '__GATE_EOF__'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upsert PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          BODY: ${{ steps.report.outputs.body }}
+        with:
+          script: |
+            const body = process.env.BODY;
+            const marker = '<!-- quality-gate -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Upload gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-report
+          path: |
+            .gate/
+            coverage/coverage-summary.json
+          retention-days: 14
+          if-no-files-found: warn

@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-05-14T12:50:28.961Z",
+  "coverage": {
+    "lines": 81.96,
+    "statements": 81.96,
+    "functions": 51.07,
+    "branches": 82.09
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "audit": {
+    "critical": 0,
+    "high": 6,
+    "moderate": 8,
+    "low": 1
+  },
+  "duplication": {
+    "percentage": 9.17,
+    "clones": 99,
+    "duplicatedLines": 1956
+  }
+}
