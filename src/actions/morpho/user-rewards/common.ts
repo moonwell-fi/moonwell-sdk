@@ -16,6 +16,13 @@ import type { MorphoUserStakingReward } from "../../../types/morphoUserStakingRe
 export async function getUserMorphoRewardsData(params: {
   environment: Environment;
   account: `0x${string}`;
+  /**
+   * When true, errors from the external Merkl API are propagated to the
+   * caller instead of being swallowed and returning `[]`. Default `false`
+   * preserves the historical behavior for existing consumers; the frontend
+   * sets it `true` so React Query can surface a degradation notice.
+   */
+  throwOnExternalApiError?: boolean;
 }): Promise<MorphoUserReward[]> {
   // The Morpho URD distributions endpoint (rewards.morpho.org) was
   // deprecated and now 301-redirects to a SPA, so JSON parsing fails.
@@ -23,6 +30,7 @@ export async function getUserMorphoRewardsData(params: {
   const merklRewards = await getMerklRewardsData(
     params.environment,
     params.account,
+    { throwOnError: params.throwOnExternalApiError ?? false },
   );
 
   const isFullDeployment =
@@ -294,29 +302,34 @@ type MerklRewardsResponse = {
 async function getMerklRewardsData(
   environment: Environment,
   account: Address,
+  options: { throwOnError: boolean } = { throwOnError: false },
 ): Promise<MerklRewardsResponse[]> {
+  const url = `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`;
+
   try {
     // Merkl campaigns always distribute rewards on the same chain as the
     // opportunity, so environment.chainId is the only chain we need to query.
     // The previous two-phase approach (fetch opportunities per vault → extract
     // chain IDs → fetch rewards per chain) made N+1 HTTP calls to discover
     // a chain ID we already know.
-    const response = await fetch(
-      `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`,
-      {
-        headers: MOONWELL_FETCH_JSON_HEADERS,
-      },
-    );
+    const response = await fetch(url, {
+      headers: MOONWELL_FETCH_JSON_HEADERS,
+    });
 
     if (!response.ok) {
-      console.warn(
-        `Merkl API request failed: ${response.status} ${response.statusText}`,
-      );
+      const message = `Merkl API request failed: ${response.status} ${response.statusText}`;
+      if (options.throwOnError) {
+        throw new Error(message);
+      }
+      console.warn(message);
       return [];
     }
 
     return (await response.json()) as MerklRewardsResponse[];
   } catch (error) {
+    if (options.throwOnError) {
+      throw error;
+    }
     console.error("Error in getMerklRewardsData:", error);
     return [];
   }

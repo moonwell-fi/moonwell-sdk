@@ -11,6 +11,13 @@ export type GetMorphoUserRewardsParameters<
   network extends Chain | undefined,
 > = OptionalNetworkParameterType<environments, network> & {
   userAddress: Address;
+  /**
+   * When true, errors from the external Merkl API are propagated to the
+   * caller instead of being swallowed and returning `[]`. Default `false`
+   * preserves the historical behavior for existing consumers; the frontend
+   * sets it `true` so React Query can surface a degradation notice.
+   */
+  throwOnExternalApiError?: boolean;
 };
 
 export type GetMorphoUserRewardsReturnType = Promise<MorphoUserReward[]>;
@@ -31,6 +38,9 @@ export async function getMorphoUserRewards<
         return getUserMorphoRewardsData({
           environment,
           account: args.userAddress,
+          ...(args.throwOnExternalApiError !== undefined && {
+            throwOnExternalApiError: args.throwOnExternalApiError,
+          }),
         });
       }),
   );

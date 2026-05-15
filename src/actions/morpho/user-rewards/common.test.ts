@@ -174,6 +174,43 @@ describe("getUserMorphoRewardsData", () => {
     expect(result).toEqual([]);
   });
 
+  test("with throwOnExternalApiError, propagates non-ok Merkl responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+        }),
+      ),
+    );
+
+    await expect(
+      getUserMorphoRewardsData({
+        environment: baseEnvironment,
+        account: ACCOUNT,
+        throwOnExternalApiError: true,
+      }),
+    ).rejects.toThrow(/Merkl API request failed: 500/);
+  });
+
+  test("with throwOnExternalApiError, propagates fetch rejections", async () => {
+    const networkError = new Error("network unreachable");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(networkError)),
+    );
+
+    await expect(
+      getUserMorphoRewardsData({
+        environment: baseEnvironment,
+        account: ACCOUNT,
+        throwOnExternalApiError: true,
+      }),
+    ).rejects.toBe(networkError);
+  });
+
   test("on full deployments, returns zero claimable when no breakdowns match Moonwell campaigns", async () => {
     mockFetchOnce(
       makeMerklResponse({ amount: "1000", claimed: "200", pending: "50" }, [
