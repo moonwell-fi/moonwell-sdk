@@ -46,6 +46,7 @@ Rules:
 - **Never edit `quality-gate/baseline.json` to bypass the gate.** The baseline is a human-approved snapshot; lowering it to make a PR pass is exactly the regression the gate exists to prevent.
 - Gate script chains use `;` (not `&&`) so a failing test doesn't block the other collectors. Test failures still show up in CI as a non-zero exit from `pnpm test:coverage`, but coverage is still recorded thanks to `reportOnFailure: true` in vitest config.
 - Tolerances absorb measurement noise: 0.5pp grace on coverage, 0.1pp on duplication %. Lint, audit counts, and clone counts are exact.
+- Audit gating covers `critical` and `high` advisories only — `moderate` and `low` counts are recorded in the baseline for visibility but are not enforced.
 
 ## Workflow Preferences
 

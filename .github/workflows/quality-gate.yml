@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
@@ -24,9 +28,17 @@ jobs:
       - name: Lint (JSON output)
         run: pnpm lint:gate
 
-      - name: Tests with coverage
+      - name: Tests with coverage (non-blocking)
         run: pnpm test:coverage
         continue-on-error: true
+
+      - name: Verify coverage summary
+        run: |
+          if [ ! -s coverage/coverage-summary.json ]; then
+            echo "::error::coverage/coverage-summary.json is missing or empty — vitest likely crashed before writing coverage."
+            exit 1
+          fi
+          node -e "JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8'))"
 
       - name: Code duplication (jscpd)
         run: pnpm gate:jscpd
@@ -42,21 +54,23 @@ jobs:
         id: report
         if: always()
         run: |
+          DELIM="GATE_$(uuidgen | tr -d -)"
           if [ -f .gate/report.md ]; then
             {
-              echo 'body<<__GATE_EOF__'
+              echo "body<<${DELIM}"
               cat .gate/report.md
               echo
-              echo '__GATE_EOF__'
+              echo "${DELIM}"
             } >> "$GITHUB_OUTPUT"
+            cat .gate/report.md >> "$GITHUB_STEP_SUMMARY"
           else
             {
-              echo 'body<<__GATE_EOF__'
+              echo "body<<${DELIM}"
               echo '<!-- quality-gate -->'
               echo '## Quality Gate: ⚠️ unable to run'
               echo
               echo 'The gate script did not produce a report. Check the workflow logs.'
-              echo '__GATE_EOF__'
+              echo "${DELIM}"
             } >> "$GITHUB_OUTPUT"
           fi
 
@@ -72,7 +86,12 @@ jobs:
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
 
-            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
             const existing = comments.find((c) => c.body && c.body.includes(marker));
 
             if (existing) {

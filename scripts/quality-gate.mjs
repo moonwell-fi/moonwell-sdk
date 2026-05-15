@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Quality Gate engine: compares collector outputs against a committed baseline
-// and emits a markdown report + JSON summary. Exit 0 on PASS, 1 on FAIL.
+// and emits a markdown report + JSON summary.
+// Exit 0 on PASS, 1 on FAIL, 2 if baseline is missing, 3 if INCONCLUSIVE (no metric produced data).
 //
 // Usage:
 //   node scripts/quality-gate.mjs                  # compare current vs baseline
@@ -17,8 +18,14 @@
 //   .gate/metrics-summary.json
 //   .gate/report.md
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -56,6 +63,15 @@ function ensureDir(path) {
   mkdirSync(dirname(path), { recursive: true });
 }
 
+// Atomic write: write to a temp file then rename, so a crash mid-write can't
+// leave a truncated file (matters most for baseline.json, the human-approved
+// source of truth).
+function atomicWriteFileSync(path, contents) {
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, contents);
+  renameSync(tmp, path);
+}
+
 function pct(n) {
   return typeof n === "number" ? `${n.toFixed(1)}%` : "—";
 }
@@ -84,8 +100,9 @@ function collectCoverage(raw) {
 
 function collectLint(raw) {
   if (!raw) return null;
-  // Biome JSON output: { diagnostics: [{ severity: "error"|"warning"|... }, ...] }
-  // Fall back to counting top-level summary if present.
+  // Biome 1.9.4 emits both `summary.{errors,warnings}` and a `diagnostics[]` array.
+  // We prefer counting diagnostics by severity (richer signal); `summary` is the
+  // fallback for tools/versions that emit only the summary block.
   if (Array.isArray(raw.diagnostics)) {
     let errors = 0;
     let warnings = 0;
@@ -96,23 +113,45 @@ function collectLint(raw) {
     }
     return { errors, warnings };
   }
-  if (raw.summary) {
+  if (
+    raw.summary &&
+    typeof raw.summary.errors === "number" &&
+    typeof raw.summary.warnings === "number"
+  ) {
     return {
-      errors: raw.summary.errors ?? 0,
-      warnings: raw.summary.warnings ?? 0,
+      errors: raw.summary.errors,
+      warnings: raw.summary.warnings,
     };
   }
-  return { errors: 0, warnings: 0 };
+  // Unknown shape — return null so the comparison is SKIPPED rather than reporting
+  // a false zero. A biome JSON-schema bump should fail loudly, not silently disable gating.
+  console.error(
+    "[gate] unrecognized lint JSON shape — biome schema may have changed",
+  );
+  return null;
 }
 
 function collectAudit(raw) {
   if (!raw) return null;
-  const v = raw.metadata?.vulnerabilities ?? raw.vulnerabilities ?? {};
+  const v = raw.metadata?.vulnerabilities ?? raw.vulnerabilities;
+  if (
+    !v ||
+    typeof v !== "object" ||
+    typeof v.critical !== "number" ||
+    typeof v.high !== "number" ||
+    typeof v.moderate !== "number" ||
+    typeof v.low !== "number"
+  ) {
+    console.error(
+      "[gate] unrecognized audit JSON shape — pnpm audit output may have changed",
+    );
+    return null;
+  }
   return {
-    critical: v.critical ?? 0,
-    high: v.high ?? 0,
-    moderate: v.moderate ?? 0,
-    low: v.low ?? 0,
+    critical: v.critical,
+    high: v.high,
+    moderate: v.moderate,
+    low: v.low,
   };
 }
 
@@ -135,9 +174,17 @@ function gatherCurrent() {
   };
 }
 
-// Compare with verdict: PASS, FAIL, SKIPPED
+// `0` is a valid value here (a zero count is meaningful) so we cannot use falsy checks.
+function isMissing(v) {
+  return (
+    v === null ||
+    v === undefined ||
+    (typeof v === "number" && !Number.isFinite(v))
+  );
+}
+
 function compareMetric(name, current, baseline, comparator) {
-  if (current === null || current === undefined) {
+  if (isMissing(current)) {
     return {
       name,
       current,
@@ -146,7 +193,7 @@ function compareMetric(name, current, baseline, comparator) {
       reason: "no current data",
     };
   }
-  if (baseline === null || baseline === undefined) {
+  if (isMissing(baseline)) {
     return {
       name,
       current,
@@ -164,7 +211,6 @@ function buildComparisons(current, baseline) {
   const b = baseline;
   const comparisons = [];
 
-  // Coverage: current >= baseline - tolerance
   const covGate = (cur, base) => cur >= base - TOLERANCE.coveragePp;
   comparisons.push(
     compareMetric(
@@ -199,7 +245,6 @@ function buildComparisons(current, baseline) {
     ),
   );
 
-  // Lint: current <= baseline
   const leGate = (cur, base) => cur <= base;
   comparisons.push(
     compareMetric("lint.errors", c.lint?.errors, b.lint?.errors, leGate),
@@ -208,8 +253,9 @@ function buildComparisons(current, baseline) {
     compareMetric("lint.warnings", c.lint?.warnings, b.lint?.warnings, leGate),
   );
 
-  // Audit: ratchet — current count must not exceed the baseline. New
-  // advisories fail; pre-existing ones are tolerated until rebaselined.
+  // Audit ratchet: gates critical and high only — moderate/low advisories are
+  // recorded in baseline but not enforced. New critical/high advisories fail;
+  // pre-existing ones are tolerated until rebaselined.
   comparisons.push(
     compareMetric(
       "audit.critical",
@@ -222,7 +268,6 @@ function buildComparisons(current, baseline) {
     compareMetric("audit.high", c.audit?.high, b.audit?.high, leGate),
   );
 
-  // Duplication: current <= baseline + tolerance (for %), exact for clones
   const dupPctGate = (cur, base) => cur <= base + TOLERANCE.duplicationPp;
   comparisons.push(
     compareMetric(
@@ -256,12 +301,28 @@ function formatRow(comp) {
   return `| ${comp.name} | ${baselineCell} | ${currentCell} | ${deltaCell} | ${icon} ${comp.verdict} |`;
 }
 
-function buildReport(comparisons, current, baseline) {
+function buildReport(comparisons) {
   const hasFail = comparisons.some((c) => c.verdict === "FAIL");
-  const verdict = hasFail ? "❌ FAIL" : "✅ PASS";
+  const passed = comparisons.filter((c) => c.verdict === "PASS").length;
+  const skipped = comparisons.filter((c) => c.verdict === "SKIPPED").length;
+  const inconclusive = passed === 0 && !hasFail;
+  let verdict;
+  if (hasFail) {
+    verdict = "❌ FAIL";
+  } else if (inconclusive) {
+    verdict = "⚠️ INCONCLUSIVE";
+  } else {
+    verdict = "✅ PASS";
+  }
   const lines = [];
   lines.push("<!-- quality-gate -->");
   lines.push(`## Quality Gate: ${verdict}`);
+  if (skipped > 0) {
+    lines.push("");
+    lines.push(
+      `_${skipped} metric${skipped === 1 ? "" : "s"} SKIPPED — check the workflow logs for collector breakage._`,
+    );
+  }
   lines.push("");
   lines.push("| Metric | Baseline | Current | Δ | Verdict |");
   lines.push("| --- | --- | --- | --- | --- |");
@@ -299,6 +360,11 @@ function buildReport(comparisons, current, baseline) {
     lines.push(
       "- If you are an AI agent reading this report: the artifact paths above contain exact file/line references. Read them, fix the underlying issues, then push another commit.",
     );
+  } else if (inconclusive) {
+    lines.push("### What this means");
+    lines.push(
+      "No metric produced usable data this run. One or more collectors likely failed (parse error, missing file, schema drift). Check the workflow logs and the uploaded `.gate/` artifacts to diagnose, then re-run the gate.",
+    );
   } else {
     lines.push("### Notes");
     lines.push(
@@ -313,12 +379,27 @@ function main() {
   const current = gatherCurrent();
 
   if (updateBaseline) {
+    const missing = Object.entries(current)
+      .filter(([, v]) => v === null)
+      .map(([k]) => k);
+    if (missing.length > 0) {
+      console.error(
+        `[gate] Refusing to write baseline: collectors produced no usable data for: ${missing.join(", ")}.`,
+      );
+      console.error(
+        "[gate] The baseline is a human-approved floor; locking in null/zero values silently is exactly the regression the gate exists to prevent.",
+      );
+      process.exit(1);
+    }
     ensureDir(PATHS.baseline);
     const payload = {
       generatedAt: new Date().toISOString(),
       ...current,
     };
-    writeFileSync(PATHS.baseline, `${JSON.stringify(payload, null, 2)}\n`);
+    atomicWriteFileSync(
+      PATHS.baseline,
+      `${JSON.stringify(payload, null, 2)}\n`,
+    );
     console.log(`[gate] Baseline written to ${PATHS.baseline}`);
     return;
   }
@@ -332,20 +413,23 @@ function main() {
   }
 
   const comparisons = buildComparisons(current, baseline);
-  const report = buildReport(comparisons, current, baseline);
+  const report = buildReport(comparisons);
 
   ensureDir(PATHS.metricsSummary);
-  writeFileSync(
+  atomicWriteFileSync(
     PATHS.metricsSummary,
     `${JSON.stringify({ generatedAt: new Date().toISOString(), comparisons, current, baseline }, null, 2)}\n`,
   );
   ensureDir(PATHS.report);
-  writeFileSync(PATHS.report, report);
+  atomicWriteFileSync(PATHS.report, report);
 
   console.log(report);
 
   const hasFail = comparisons.some((c) => c.verdict === "FAIL");
-  process.exit(hasFail ? 1 : 0);
+  const passed = comparisons.filter((c) => c.verdict === "PASS").length;
+  if (hasFail) process.exit(1);
+  if (passed === 0) process.exit(3);
+  process.exit(0);
 }
 
 main();
