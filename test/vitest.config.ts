@@ -14,7 +14,11 @@ export default defineConfig({
     coverage: {
       all: false,
       provider: "v8",
-      reporter: process.env.CI ? ["lcov"] : ["text", "json", "html"],
+      reporter: process.env.CI
+        ? ["lcov", "json-summary"]
+        : ["text", "json", "html", "json-summary"],
+      reportsDirectory: "./coverage",
+      reportOnFailure: true,
       exclude: [
         "**/errors/utils.ts",
         "**/_cjs/**",

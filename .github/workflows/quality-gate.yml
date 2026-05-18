@@ -1,0 +1,122 @@
+# This workflow is ADVISORY until the `gate` check is marked Required in branch
+# protection rules for `main`. See quality-gate/README.md for the full rollout
+# plan (collect baseline → run advisory → flip to required).
+name: quality-gate
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
+        with:
+          # Pinned explicitly so future bumps to the composite action's default
+          # don't silently shift collector output shapes (e.g., pnpm audit JSON).
+          node-version: 22.5.1
+
+      - name: Lint (JSON output)
+        run: pnpm lint:gate
+
+      - name: Tests with coverage (non-blocking)
+        run: pnpm test:coverage
+        continue-on-error: true
+
+      - name: Verify coverage summary
+        run: |
+          if [ ! -s coverage/coverage-summary.json ]; then
+            echo "::error::coverage/coverage-summary.json is missing or empty — vitest likely crashed before writing coverage."
+            exit 1
+          fi
+          # Assert structural shape: a malformed report (e.g., truncated mid-write,
+          # or a future istanbul change that drops total.lines.pct) must fail loudly
+          # here rather than producing a SKIPPED verdict downstream.
+          node -e "const r=JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8'));if(typeof r?.total?.lines?.pct!=='number'){console.error('::error::coverage-summary.json is missing total.lines.pct — coverage report is malformed.');process.exit(1)}"
+
+      - name: Code duplication (jscpd)
+        run: pnpm gate:jscpd
+
+      - name: Security audit
+        run: pnpm gate:audit
+
+      - name: Run quality gate
+        id: gate
+        run: node scripts/quality-gate.mjs
+
+      - name: Read gate report
+        id: report
+        if: always()
+        run: |
+          DELIM="GATE_$(uuidgen | tr -d -)"
+          if [ -f .gate/report.md ]; then
+            {
+              echo "body<<${DELIM}"
+              cat .gate/report.md
+              echo
+              echo "${DELIM}"
+            } >> "$GITHUB_OUTPUT"
+            cat .gate/report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "body<<${DELIM}"
+              echo '<!-- quality-gate -->'
+              echo '## Quality Gate: ⚠️ unable to run'
+              echo
+              echo 'The gate script did not produce a report. Check the workflow logs.'
+              echo "${DELIM}"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upsert PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          BODY: ${{ steps.report.outputs.body }}
+        with:
+          script: |
+            const body = process.env.BODY;
+            const marker = '<!-- quality-gate -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Upload gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-report
+          path: |
+            .gate/
+            coverage/coverage-summary.json
+          retention-days: 14
+          if-no-files-found: warn

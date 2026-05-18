@@ -16,6 +16,7 @@
       "test/kzg/*.json",
       "test/kzg/*.txt",
       "coverage",
+      ".gate",
       "tsconfig.json",
       "tsconfig.*.json",
       "generated.ts",

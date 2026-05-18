@@ -5,6 +5,7 @@ _types
 .DS_Store
 .attest
 .eslintcache
+.gate/
 .next
 bench
 cache
