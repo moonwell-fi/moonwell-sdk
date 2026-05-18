@@ -20,4 +20,10 @@ export const tokens = createTokenConfig({
     name: "Moonwell",
     symbol: "WELL",
   },
+  stkWELL: {
+    address: "0xb3a9E0DCf37658a48aa9f018C44f90378ddD4357",
+    decimals: 18,
+    name: "Moonwell Staked WELL",
+    symbol: "stkWELL",
+  },
 });

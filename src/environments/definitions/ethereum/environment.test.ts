@@ -1,11 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { custom } from "./custom.js";
 import { createEnvironment, ethereum } from "./environment.js";
-import { tokens } from "./tokens.js";
 
-// Locks the four invariants the WELL-to-Ethereum bridge relies on so silent
+// Locks the invariants the WELL-to-Ethereum bridge relies on so silent
 // regressions (e.g. someone bumping viem and `testnet` flipping back to
-// `undefined`) get caught at unit-test time rather than in the frontend.
+// `undefined`, or `custom: custom` being reset to `custom: {}` in
+// environment.ts) get caught at unit-test time rather than in the frontend.
 describe("ethereum environment invariants", () => {
   test("chain.testnet is strictly false", () => {
     expect(ethereum.testnet).toBe(false);
@@ -14,23 +13,24 @@ describe("ethereum environment invariants", () => {
     expect(env.chain.testnet).toBe(false);
   });
 
-  test("governance token is WELL", () => {
-    expect(custom.governance.token).toBe("WELL");
-  });
+  test("custom config flows through createEnvironment", () => {
+    const env = createEnvironment();
 
-  test("wormhole chainId is 2 (Ethereum mainnet)", () => {
-    expect(custom.wormhole.chainId).toBe(2);
-  });
-
-  test("WELL token address matches the canonical xWELL OFT", () => {
-    expect(tokens.WELL.address).toBe(
-      "0xA88594D404727625A9437C3f886C7643872296AE",
+    expect(env.custom.governance.token).toBe("WELL");
+    expect(env.custom.wormhole.chainId).toBe(2);
+    expect(env.custom.wormhole.tokenBridge.address).toBe(
+      "0x3ee18B2214AFF97000D974cf647E654bB5f1d8A8",
+    );
+    expect(env.custom.xWELL.bridgeAdapter.address).toBe(
+      "0x734AbBCe07679C9A6B4Fe3bC16325e028fA6DbB7",
     );
   });
 
-  test("xWELL bridge adapter matches MIP-X55", () => {
-    expect(custom.xWELL.bridgeAdapter.address).toBe(
-      "0x734AbBCe07679C9A6B4Fe3bC16325e028fA6DbB7",
+  test("WELL token address matches the canonical xWELL OFT", () => {
+    const env = createEnvironment();
+
+    expect(env.config.tokens.WELL.address).toBe(
+      "0xA88594D404727625A9437C3f886C7643872296AE",
     );
   });
 });

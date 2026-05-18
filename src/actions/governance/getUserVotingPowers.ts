@@ -49,16 +49,26 @@ export async function getUserVotingPowers<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const tokenEnvironments = environments.filter(
-    (env) =>
+  // Pair each governance-token-holding environment with its non-optional views
+  // contract. A chain may hold the governance token (e.g. Ethereum holds xWELL)
+  // but not have a views contract deployed; voting reads happen on the hub
+  // chain. Excluding the no-views case here lets downstream code call
+  // `views.read.getUserVotingPower` without optional chaining.
+  const tokenEnvironments = environments.flatMap((env) => {
+    const views = env.contracts.views;
+    if (
       env.custom?.governance?.token === governanceToken &&
-      env.contracts.views !== undefined,
-  );
+      views !== undefined
+    ) {
+      return [{ env, views }];
+    }
+    return [];
+  });
 
   const perChainBlockNumbers =
     snapshotTimestamp !== undefined
       ? await Promise.all(
-          tokenEnvironments.map((env) =>
+          tokenEnvironments.map(({ env }) =>
             getBlockNumberAtTimestamp(
               env.publicClient,
               BigInt(snapshotTimestamp),
@@ -67,23 +77,19 @@ export async function getUserVotingPowers<
         )
       : undefined;
 
-  const environmentsUserVotingPowers = await Promise.all(
-    tokenEnvironments.map((environment, index) => {
+  const resolvedVotingPowers = await Promise.all(
+    tokenEnvironments.map(async ({ env, views }, index) => {
       const blockForChain = perChainBlockNumbers
         ? perChainBlockNumbers[index]
         : blockNumber;
-      return environment.contracts.views?.read.getUserVotingPower(
-        [userAddress],
-        {
-          blockNumber: blockForChain,
-        },
-      );
+      const votingPowers = await views.read.getUserVotingPower([userAddress], {
+        blockNumber: blockForChain,
+      });
+      return { env, votingPowers };
     }),
   );
 
-  return tokenEnvironments.map((environment, index) => {
-    const votingPowers = environmentsUserVotingPowers[index]!;
-
+  return resolvedVotingPowers.map(({ env: environment, votingPowers }) => {
     return {
       chainId: environment.chainId,
 

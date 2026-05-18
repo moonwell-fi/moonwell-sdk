@@ -25,9 +25,9 @@ const mockedHelper = vi.mocked(getBlockNumberAtTimestamp);
 describe("Testing user voting powers", () => {
   // Only iterate environments where the queried governance token is configured
   // AND the governance views contract is deployed — calling
-  // getUserVotingPowers({governanceToken: "WELL"}) on a chain that holds WELL but
-  // has no views contract (e.g. Ethereum pre-MIP-X56) correctly returns [],
-  // which would fail the `length > 0` assertion.
+  // getUserVotingPowers({governanceToken: "WELL"}) on a chain that holds WELL
+  // but is not the governance hub (e.g. Ethereum) correctly returns [], which
+  // would fail the `length > 0` assertion.
   Object.entries(testClient.environments)
     .filter(([, environment]) => {
       const custom = environment.custom as
@@ -182,5 +182,37 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
     expect(mockedHelper).not.toHaveBeenCalled();
     expect(reads.chainA).toHaveBeenCalledWith([USER], { blockNumber: 42n });
     expect(reads.chainB).toHaveBeenCalledWith([USER], { blockNumber: 42n });
+  });
+
+  test("environments without a views contract are excluded from results", async () => {
+    const noViewsRead = vi.fn();
+    const validRead = vi.fn(async () => ZERO_USER_VOTES);
+
+    const client = {
+      environments: {
+        chainNoViews: {
+          chainId: 1,
+          custom: { governance: { token: "WELL" } },
+          contracts: {},
+        },
+        chainValid: {
+          chainId: 8453,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: validRead } },
+          },
+        },
+      },
+    } as unknown as MoonwellClient;
+
+    const result = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+      blockNumber: 42n,
+    });
+
+    expect(noViewsRead).not.toHaveBeenCalled();
+    expect(validRead).toHaveBeenCalledTimes(1);
+    expect(result.map((r) => r.chainId)).toEqual([8453]);
   });
 });
