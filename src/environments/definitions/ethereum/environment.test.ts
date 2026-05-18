@@ -27,4 +27,10 @@ describe("ethereum environment invariants", () => {
       "0xA88594D404727625A9437C3f886C7643872296AE",
     );
   });
+
+  test("xWELL bridge adapter matches MIP-X55", () => {
+    expect(custom.xWELL.bridgeAdapter.address).toBe(
+      "0x734AbBCe07679C9A6B4Fe3bC16325e028fA6DbB7",
+    );
+  });
 });
