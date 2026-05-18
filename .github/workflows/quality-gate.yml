@@ -1,3 +1,6 @@
+# This workflow is ADVISORY until the `gate` check is marked Required in branch
+# protection rules for `main`. See quality-gate/README.md for the full rollout
+# plan (collect baseline → run advisory → flip to required).
 name: quality-gate
 
 on:
@@ -24,6 +27,10 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/install-dependencies
+        with:
+          # Pinned explicitly so future bumps to the composite action's default
+          # don't silently shift collector output shapes (e.g., pnpm audit JSON).
+          node-version: 22.5.1
 
       - name: Lint (JSON output)
         run: pnpm lint:gate
@@ -38,7 +45,10 @@ jobs:
             echo "::error::coverage/coverage-summary.json is missing or empty — vitest likely crashed before writing coverage."
             exit 1
           fi
-          node -e "JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8'))"
+          # Assert structural shape: a malformed report (e.g., truncated mid-write,
+          # or a future istanbul change that drops total.lines.pct) must fail loudly
+          # here rather than producing a SKIPPED verdict downstream.
+          node -e "const r=JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8'));if(typeof r?.total?.lines?.pct!=='number'){console.error('::error::coverage-summary.json is missing total.lines.pct — coverage report is malformed.');process.exit(1)}"
 
       - name: Code duplication (jscpd)
         run: pnpm gate:jscpd

@@ -301,7 +301,43 @@ function formatRow(comp) {
   return `| ${comp.name} | ${baselineCell} | ${currentCell} | ${deltaCell} | ${icon} ${comp.verdict} |`;
 }
 
-function buildReport(comparisons) {
+// Build non-gating "Informational" rows. These don't affect the verdict; they
+// just keep lower-severity drift (moderate/low advisories, raw duplicated line
+// count) visible in the sticky PR comment instead of buried in artifacts.
+function buildInfoRows(current, baseline) {
+  const rows = [];
+  const push = (name, cur, base) => {
+    if (isMissing(cur) && isMissing(base)) return;
+    rows.push({ name, current: cur, baseline: base });
+  };
+  push("audit.moderate", current.audit?.moderate, baseline.audit?.moderate);
+  push("audit.low", current.audit?.low, baseline.audit?.low);
+  push(
+    "duplication.duplicatedLines",
+    current.duplication?.duplicatedLines,
+    baseline.duplication?.duplicatedLines,
+  );
+  return rows;
+}
+
+function formatInfoRow(row) {
+  const baselineCell = num(row.baseline);
+  const currentCell = num(row.current);
+  const deltaCell = delta(row.current, row.baseline);
+  return `| ${row.name} | ${baselineCell} | ${currentCell} | ${deltaCell} |`;
+}
+
+// 90 days as a soft drift signal — long enough to avoid nagging on healthy
+// projects, short enough to flag a baseline that's outlived its representativeness.
+const BASELINE_STALE_DAYS = 90;
+
+function baselineAgeDays(baseline) {
+  const ts = Date.parse(baseline?.generatedAt ?? "");
+  if (!Number.isFinite(ts)) return null;
+  return Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
+}
+
+function buildReport(comparisons, current, baseline) {
   const hasFail = comparisons.some((c) => c.verdict === "FAIL");
   const passed = comparisons.filter((c) => c.verdict === "PASS").length;
   const skipped = comparisons.filter((c) => c.verdict === "SKIPPED").length;
@@ -329,6 +365,15 @@ function buildReport(comparisons) {
   for (const comp of comparisons) lines.push(formatRow(comp));
   lines.push("");
 
+  const infoRows = buildInfoRows(current, baseline);
+  if (infoRows.length > 0) {
+    lines.push("### Informational (non-gating)");
+    lines.push("| Metric | Baseline | Current | Δ |");
+    lines.push("| --- | --- | --- | --- |");
+    for (const row of infoRows) lines.push(formatInfoRow(row));
+    lines.push("");
+  }
+
   const failures = comparisons.filter((c) => c.verdict === "FAIL");
   if (failures.length > 0) {
     lines.push("### What regressed");
@@ -349,7 +394,7 @@ function buildReport(comparisons) {
       "  - `.gate/lint.json` for new lint diagnostics (biome JSON output)",
     );
     lines.push(
-      "  - `.gate/audit.json` for new advisories (`npm audit --json`)",
+      "  - `.gate/audit.json` for new advisories (`pnpm audit --json`)",
     );
     lines.push(
       "  - `.gate/jscpd/jscpd-report.json` for new duplication clones",
@@ -368,7 +413,14 @@ function buildReport(comparisons) {
   } else {
     lines.push("### Notes");
     lines.push(
-      "All gated metrics held or improved. If this PR raised the floor (e.g., added tests), consider running `npm run gate:update-baseline` after merge to lock the new floor in.",
+      "All gated metrics held or improved. If this PR raised the floor (e.g., added tests), consider running `pnpm gate:update-baseline` after merge to lock the new floor in.",
+    );
+  }
+  const ageDays = baselineAgeDays(baseline);
+  if (typeof ageDays === "number" && ageDays > BASELINE_STALE_DAYS) {
+    lines.push("");
+    lines.push(
+      `_Baseline is ${ageDays} days old — consider rebaselining to keep the floor representative._`,
     );
   }
   lines.push("");
@@ -407,13 +459,13 @@ function main() {
   const baseline = readJsonOrNull(PATHS.baseline);
   if (!baseline) {
     console.error(
-      "[gate] No baseline found. Run `npm run gate:update-baseline` to seed one from the current checkout.",
+      "[gate] No baseline found. Run `pnpm gate:update-baseline` to seed one from the current checkout.",
     );
     process.exit(2);
   }
 
   const comparisons = buildComparisons(current, baseline);
-  const report = buildReport(comparisons);
+  const report = buildReport(comparisons, current, baseline);
 
   ensureDir(PATHS.metricsSummary);
   atomicWriteFileSync(
