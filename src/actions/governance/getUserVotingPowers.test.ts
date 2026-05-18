@@ -23,15 +23,20 @@ const mockedHelper = vi.mocked(getBlockNumberAtTimestamp);
 // ---------------------------------------------------------------------------
 
 describe("Testing user voting powers", () => {
-  // Only iterate environments where the queried governance token is configured —
-  // calling getUserVotingPowers({governanceToken: "WELL"}) on a chain without WELL
-  // governance correctly returns [], which would fail the `length > 0` assertion.
+  // Only iterate environments where the queried governance token is configured
+  // AND the governance views contract is deployed — calling
+  // getUserVotingPowers({governanceToken: "WELL"}) on a chain that holds WELL but
+  // has no views contract (e.g. Ethereum pre-MIP-X56) correctly returns [],
+  // which would fail the `length > 0` assertion.
   Object.entries(testClient.environments)
     .filter(([, environment]) => {
       const custom = environment.custom as
         | { governance?: { token?: string } }
         | undefined;
-      return custom?.governance?.token === "WELL";
+      const contracts = environment.contracts as { views?: unknown };
+      return (
+        custom?.governance?.token === "WELL" && contracts.views !== undefined
+      );
     })
     .forEach(([networkKey, environment]) => {
       const { chain } = environment;

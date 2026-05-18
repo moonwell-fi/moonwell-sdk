@@ -1,15 +1,15 @@
 import { createCustomConfig } from "../../types/config.js";
 
 export const custom = createCustomConfig({
-  // `governance.token: "WELL"` is what the frontend's xWELL bridge modal uses
-  // to discover Ethereum as a WELL-holding chain. `chainIds` is left empty
-  // because Ethereum is not yet the governance hub — that flip happens with
-  // MIP-X56 and is covered by the broader migration plan.
+  // chainIds: [] because Ethereum is currently a satellite (xWELL-holding only),
+  // not the governance hub. When the hub migration lands, populate with the
+  // satellite chain IDs (see moonbeam/custom.ts).
   governance: {
     token: "WELL",
     chainIds: [],
   },
   wormhole: {
     chainId: 2,
+    tokenBridge: { address: "0x3ee18B2214AFF97000D974cf647E654bB5f1d8A8" },
   },
 });

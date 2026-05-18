@@ -42,6 +42,7 @@ export default defineConfig({
       "src/actions/core/user-positions/getUserPositionSnapshots.test.ts",
       "src/client/createMoonwellClient.test.ts",
       "src/common/getBlockNumberAtTimestamp.test.ts",
+      "src/environments/definitions/ethereum/environment.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,

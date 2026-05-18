@@ -50,7 +50,9 @@ export async function getUserVotingPowers<
   const environments = getEnvironmentsFromArgs(client, args);
 
   const tokenEnvironments = environments.filter(
-    (env) => env.custom?.governance?.token === governanceToken,
+    (env) =>
+      env.custom?.governance?.token === governanceToken &&
+      env.contracts.views !== undefined,
   );
 
   const perChainBlockNumbers =
