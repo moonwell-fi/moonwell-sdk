@@ -15,6 +15,7 @@ const ethereum = defineChain({ ...mainnet, testnet: false });
 const createEnvironment = (
   rpcUrls?: string[],
   governanceIndexerUrl?: string,
+  lunarIndexerUrl?: string,
 ): Environment<typeof tokens, {}, {}, typeof contracts, typeof custom> =>
   createEnvironmentConfig({
     key: "ethereum",
@@ -31,6 +32,8 @@ const createEnvironment = (
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",
+    lunarIndexerUrl:
+      lunarIndexerUrl || "https://lunar-services-worker.moonwell.workers.dev",
     tokens,
     markets: {},
     vaults: {},
