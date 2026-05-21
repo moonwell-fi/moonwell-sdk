@@ -13,9 +13,44 @@ import {
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
 import type { MorphoUserStakingReward } from "../../../types/morphoUserStakingReward.js";
 
+/**
+ * Error thrown for any failure communicating with the Merkl API: non-ok HTTP
+ * responses, network rejections (fetch threw), and response-body parse errors.
+ *
+ * - HTTP failures populate `status` and `statusText`.
+ * - Network and parse failures leave `status`/`statusText` undefined and
+ *   carry the original error via `cause`.
+ */
+export class MerklApiError extends Error {
+  readonly status: number | undefined;
+  readonly statusText: string | undefined;
+  readonly url: string;
+  readonly chainId: number;
+
+  constructor(params: {
+    message: string;
+    url: string;
+    chainId: number;
+    status?: number | undefined;
+    statusText?: string | undefined;
+    cause?: unknown;
+  }) {
+    super(
+      params.message,
+      params.cause !== undefined ? { cause: params.cause } : undefined,
+    );
+    this.name = "MerklApiError";
+    this.url = params.url;
+    this.chainId = params.chainId;
+    this.status = params.status;
+    this.statusText = params.statusText;
+  }
+}
+
 export async function getUserMorphoRewardsData(params: {
   environment: Environment;
   account: `0x${string}`;
+  throwOnExternalApiError?: boolean;
 }): Promise<MorphoUserReward[]> {
   // The Morpho URD distributions endpoint (rewards.morpho.org) was
   // deprecated and now 301-redirects to a SPA, so JSON parsing fails.
@@ -23,6 +58,7 @@ export async function getUserMorphoRewardsData(params: {
   const merklRewards = await getMerklRewardsData(
     params.environment,
     params.account,
+    { throwOnError: params.throwOnExternalApiError ?? false },
   );
 
   const isFullDeployment =
@@ -294,30 +330,64 @@ type MerklRewardsResponse = {
 async function getMerklRewardsData(
   environment: Environment,
   account: Address,
+  options: { throwOnError: boolean } = { throwOnError: false },
 ): Promise<MerklRewardsResponse[]> {
+  const url = `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`;
+
+  let response: Response;
   try {
     // Merkl campaigns always distribute rewards on the same chain as the
     // opportunity, so environment.chainId is the only chain we need to query.
     // The previous two-phase approach (fetch opportunities per vault → extract
     // chain IDs → fetch rewards per chain) made N+1 HTTP calls to discover
     // a chain ID we already know.
-    const response = await fetch(
-      `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`,
-      {
-        headers: MOONWELL_FETCH_JSON_HEADERS,
-      },
-    );
-
-    if (!response.ok) {
-      console.warn(
-        `Merkl API request failed: ${response.status} ${response.statusText}`,
-      );
-      return [];
+    response = await fetch(url, { headers: MOONWELL_FETCH_JSON_HEADERS });
+  } catch (error) {
+    if (options.throwOnError) {
+      throw new MerklApiError({
+        message: `Merkl API network error for chain ${environment.chainId}`,
+        url,
+        chainId: environment.chainId,
+        cause: error,
+      });
     }
+    console.error(
+      `[getMerklRewardsData:network] chain=${environment.chainId} url=${url}`,
+      error,
+    );
+    return [];
+  }
 
+  if (!response.ok) {
+    const message = `Merkl API request failed for chain ${environment.chainId}: ${response.status} ${response.statusText}`;
+    if (options.throwOnError) {
+      throw new MerklApiError({
+        message,
+        url,
+        chainId: environment.chainId,
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
+    console.warn(`${message} (url=${url})`);
+    return [];
+  }
+
+  try {
     return (await response.json()) as MerklRewardsResponse[];
   } catch (error) {
-    console.error("Error in getMerklRewardsData:", error);
+    if (options.throwOnError) {
+      throw new MerklApiError({
+        message: `Merkl API response parse error for chain ${environment.chainId}`,
+        url,
+        chainId: environment.chainId,
+        cause: error,
+      });
+    }
+    console.error(
+      `[getMerklRewardsData:parse] chain=${environment.chainId} url=${url}`,
+      error,
+    );
     return [];
   }
 }
