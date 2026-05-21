@@ -221,12 +221,81 @@ describe("getUserMorphoRewardsData", () => {
     expect(merklError.message).toContain("500");
   });
 
-  test("with throwOnExternalApiError, propagates fetch rejections", async () => {
+  test("with throwOnExternalApiError, wraps fetch rejections in MerklApiError", async () => {
     const networkError = new Error("network unreachable");
     vi.stubGlobal(
       "fetch",
       vi.fn(() => Promise.reject(networkError)),
     );
+
+    let caught: unknown;
+    try {
+      await getUserMorphoRewardsData({
+        environment: baseEnvironment,
+        account: ACCOUNT,
+        throwOnExternalApiError: true,
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(MerklApiError);
+    const merklError = caught as MerklApiError;
+    expect(merklError.chainId).toBe(8453);
+    expect(merklError.status).toBeUndefined();
+    expect(merklError.statusText).toBeUndefined();
+    expect(merklError.url).toContain("api.merkl.xyz");
+    expect(merklError.message).toContain("network error");
+    expect(merklError.cause).toBe(networkError);
+  });
+
+  test("with throwOnExternalApiError, wraps response parse failures in MerklApiError", async () => {
+    const parseError = new SyntaxError("unexpected token");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.reject(parseError),
+        }),
+      ),
+    );
+
+    let caught: unknown;
+    try {
+      await getUserMorphoRewardsData({
+        environment: baseEnvironment,
+        account: ACCOUNT,
+        throwOnExternalApiError: true,
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(MerklApiError);
+    const merklError = caught as MerklApiError;
+    expect(merklError.chainId).toBe(8453);
+    expect(merklError.status).toBeUndefined();
+    expect(merklError.message).toContain("parse error");
+    expect(merklError.cause).toBe(parseError);
+  });
+
+  test("with throwOnExternalApiError, does not log on non-ok HTTP response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+        }),
+      ),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
     await expect(
       getUserMorphoRewardsData({
@@ -234,7 +303,32 @@ describe("getUserMorphoRewardsData", () => {
         account: ACCOUNT,
         throwOnExternalApiError: true,
       }),
-    ).rejects.toBe(networkError);
+    ).rejects.toBeInstanceOf(MerklApiError);
+
+    expect(warn).toHaveBeenCalledTimes(0);
+    expect(error).toHaveBeenCalledTimes(0);
+  });
+
+  test("with throwOnExternalApiError, does not log on fetch rejection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("network unreachable"))),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    await expect(
+      getUserMorphoRewardsData({
+        environment: baseEnvironment,
+        account: ACCOUNT,
+        throwOnExternalApiError: true,
+      }),
+    ).rejects.toBeInstanceOf(MerklApiError);
+
+    expect(warn).toHaveBeenCalledTimes(0);
+    expect(error).toHaveBeenCalledTimes(0);
   });
 
   test("on full deployments, returns zero claimable when no breakdowns match Moonwell campaigns", async () => {

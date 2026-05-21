@@ -13,6 +13,14 @@ import {
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
 import type { MorphoUserStakingReward } from "../../../types/morphoUserStakingReward.js";
 
+/**
+ * Error thrown for any failure communicating with the Merkl API: non-ok HTTP
+ * responses, network rejections (fetch threw), and response-body parse errors.
+ *
+ * - HTTP failures populate `status` and `statusText`.
+ * - Network and parse failures leave `status`/`statusText` undefined and
+ *   carry the original error via `cause`.
+ */
 export class MerklApiError extends Error {
   readonly status: number | undefined;
   readonly statusText: string | undefined;
@@ -25,8 +33,12 @@ export class MerklApiError extends Error {
     chainId: number;
     status?: number | undefined;
     statusText?: string | undefined;
+    cause?: unknown;
   }) {
-    super(params.message);
+    super(
+      params.message,
+      params.cause !== undefined ? { cause: params.cause } : undefined,
+    );
     this.name = "MerklApiError";
     this.url = params.url;
     this.chainId = params.chainId;
@@ -332,7 +344,12 @@ async function getMerklRewardsData(
     response = await fetch(url, { headers: MOONWELL_FETCH_JSON_HEADERS });
   } catch (error) {
     if (options.throwOnError) {
-      throw error;
+      throw new MerklApiError({
+        message: `Merkl API network error for chain ${environment.chainId}`,
+        url,
+        chainId: environment.chainId,
+        cause: error,
+      });
     }
     console.error(
       `[getMerklRewardsData:network] chain=${environment.chainId} url=${url}`,
@@ -360,7 +377,12 @@ async function getMerklRewardsData(
     return (await response.json()) as MerklRewardsResponse[];
   } catch (error) {
     if (options.throwOnError) {
-      throw error;
+      throw new MerklApiError({
+        message: `Merkl API response parse error for chain ${environment.chainId}`,
+        url,
+        chainId: environment.chainId,
+        cause: error,
+      });
     }
     console.error(
       `[getMerklRewardsData:parse] chain=${environment.chainId} url=${url}`,

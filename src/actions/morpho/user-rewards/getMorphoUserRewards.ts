@@ -4,7 +4,23 @@ import { getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { Chain } from "../../../environments/index.js";
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
-import { getUserMorphoRewardsData } from "./common.js";
+import { MerklApiError, getUserMorphoRewardsData } from "./common.js";
+
+/**
+ * AggregateError thrown by `getMorphoUserRewards` when one or more chains
+ * fail and `throwOnExternalApiError` is `true`. The `rewards` property
+ * carries the rewards from any chains that succeeded so callers can still
+ * surface partial results alongside the per-chain failures in `errors`.
+ */
+export class MorphoUserRewardsAggregateError extends AggregateError {
+  readonly rewards: MorphoUserReward[];
+
+  constructor(errors: Error[], message: string, rewards: MorphoUserReward[]) {
+    super(errors, message);
+    this.name = "MorphoUserRewardsAggregateError";
+    this.rewards = rewards;
+  }
+}
 
 export type GetMorphoUserRewardsParameters<
   environments,
@@ -17,10 +33,10 @@ export type GetMorphoUserRewardsParameters<
    * preserves the historical behavior for existing consumers.
    *
    * If multiple environments are queried and at least one fails while others
-   * succeed, this throws an `AggregateError` whose `errors` array contains
-   * the per-chain failures. Successful chains' rewards are not returned in
-   * the error path; callers wanting partial success should set this to
-   * `false` (the default) and inspect logs for per-chain failures.
+   * succeed, this throws a `MorphoUserRewardsAggregateError` whose `errors`
+   * array contains the per-chain failures and whose `rewards` property
+   * carries the successful chains' rewards so the caller can still display
+   * partial results.
    */
   throwOnExternalApiError?: boolean;
 };
@@ -53,31 +69,34 @@ export async function getMorphoUserRewards<
   const fulfilled: MorphoUserReward[] = [];
   const failures: Error[] = [];
   const failedChainIds: number[] = [];
-  for (let i = 0; i < settled.length; i++) {
-    const result = settled[i];
+  for (const [i, result] of settled.entries()) {
     const environment = targetEnvironments[i];
-    if (result === undefined || environment === undefined) continue;
     if (result.status === "fulfilled") {
       fulfilled.push(...result.value);
-    } else {
-      const baseError =
-        result.reason instanceof Error
-          ? result.reason
-          : new Error(String(result.reason));
-      failures.push(
-        new Error(
-          `getMorphoUserRewards failed for chain ${environment.chainId}: ${baseError.message}`,
-          { cause: baseError },
-        ),
-      );
-      failedChainIds.push(environment.chainId);
+      continue;
     }
+    const reason = result.reason;
+    if (reason instanceof MerklApiError) {
+      failures.push(reason);
+      failedChainIds.push(reason.chainId);
+      continue;
+    }
+    const baseError =
+      reason instanceof Error ? reason : new Error(String(reason));
+    failures.push(
+      new Error(
+        `getMorphoUserRewards failed for chain ${environment.chainId}: ${baseError.message}`,
+        { cause: baseError },
+      ),
+    );
+    failedChainIds.push(environment.chainId);
   }
 
   if (failures.length > 0 && args.throwOnExternalApiError === true) {
-    throw new AggregateError(
+    throw new MorphoUserRewardsAggregateError(
       failures,
       `getMorphoUserRewards failed for chains: ${failedChainIds.join(", ")}`,
+      fulfilled,
     );
   }
 
