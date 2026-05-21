@@ -1,9 +1,6 @@
 import { createCustomConfig } from "../../types/config.js";
 
 export const custom = createCustomConfig({
-  // chainIds: [] because Ethereum is currently a satellite (xWELL-holding only),
-  // not the governance hub. When the hub migration lands, populate with the
-  // satellite chain IDs (see moonbeam/custom.ts).
   governance: {
     token: "WELL",
     chainIds: [],

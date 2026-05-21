@@ -9,6 +9,8 @@ import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain, GovernanceToken } from "../../environments/index.js";
 import type { UserVotingPowers } from "../../types/userVotingPowers.js";
 
+const warnedNoViewsEnvs = new Set<string>();
+
 export type GetUserVotingPowersParameters<
   environments,
   network extends Chain | undefined,
@@ -49,20 +51,25 @@ export async function getUserVotingPowers<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  // Pair each governance-token-holding environment with its non-optional views
-  // contract. A chain may hold the governance token (e.g. Ethereum holds xWELL)
-  // but not have a views contract deployed; voting reads happen on the hub
-  // chain. Excluding the no-views case here lets downstream code call
-  // `views.read.getUserVotingPower` without optional chaining.
+  // A chain can hold a governance token without deploying a views contract
+  // (voting reads run on the hub). Skipping the no-views case here lets the
+  // read site below call views.read.getUserVotingPower directly.
   const tokenEnvironments = environments.flatMap((env) => {
-    const views = env.contracts.views;
-    if (
-      env.custom?.governance?.token === governanceToken &&
-      views !== undefined
-    ) {
-      return [{ env, views }];
+    if (env.custom?.governance?.token !== governanceToken) {
+      return [];
     }
-    return [];
+    const views = env.contracts.views;
+    if (views === undefined) {
+      const key = `${env.chainId}:${governanceToken}`;
+      if (!warnedNoViewsEnvs.has(key)) {
+        warnedNoViewsEnvs.add(key);
+        console.warn(
+          `[moonwell-sdk] getUserVotingPowers: skipping chainId=${env.chainId} for governanceToken=${governanceToken} — environment holds the token but has no views contract.`,
+        );
+      }
+      return [];
+    }
+    return [{ env, views }];
   });
 
   const perChainBlockNumbers =

@@ -1,4 +1,6 @@
+import { base, mainnet, moonbeam, optimism } from "viem/chains";
 import { describe, expect, test } from "vitest";
+import { GovernanceTokensConfig } from "../governance.js";
 import { createEnvironment, ethereum } from "./environment.js";
 
 // Locks the invariants the WELL-to-Ethereum bridge relies on so silent
@@ -31,6 +33,23 @@ describe("ethereum environment invariants", () => {
 
     expect(env.config.tokens.WELL.address).toBe(
       "0xA88594D404727625A9437C3f886C7643872296AE",
+    );
+  });
+
+  test("default indexer URLs are wired when createEnvironment is called with no args", () => {
+    const env = createEnvironment();
+
+    expect(env.lunarIndexerUrl).toBe(
+      "https://lunar-services-worker.moonwell.workers.dev",
+    );
+    expect(env.governanceIndexerUrl).toBe(
+      "https://lunar-services-worker.moonwell.workers.dev",
+    );
+  });
+
+  test("WELL governance token is registered on every chain that holds it", () => {
+    expect(GovernanceTokensConfig.WELL.chainIds).toEqual(
+      expect.arrayContaining([moonbeam.id, base.id, optimism.id, mainnet.id]),
     );
   });
 });

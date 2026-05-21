@@ -185,7 +185,6 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
   });
 
   test("environments without a views contract are excluded from results", async () => {
-    const noViewsRead = vi.fn();
     const validRead = vi.fn(async () => ZERO_USER_VOTES);
 
     const client = {
@@ -211,8 +210,60 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
       blockNumber: 42n,
     });
 
-    expect(noViewsRead).not.toHaveBeenCalled();
     expect(validRead).toHaveBeenCalledTimes(1);
     expect(result.map((r) => r.chainId)).toEqual([8453]);
+  });
+
+  test("snapshotTimestamp preserves index correlation across a mixed [noViews, valid, noViews, valid] env list", async () => {
+    const validReadB = vi.fn(async () => ZERO_USER_VOTES);
+    const validReadD = vi.fn(async () => ZERO_USER_VOTES);
+
+    const client = {
+      environments: {
+        chainA: {
+          chainId: 1,
+          custom: { governance: { token: "WELL" } },
+          contracts: {},
+          publicClient: {},
+        },
+        chainB: {
+          chainId: 8453,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: validReadB } },
+          },
+          publicClient: {},
+        },
+        chainC: {
+          chainId: 137,
+          custom: { governance: { token: "WELL" } },
+          contracts: {},
+          publicClient: {},
+        },
+        chainD: {
+          chainId: 10,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: validReadD } },
+          },
+          publicClient: {},
+        },
+      },
+    } as unknown as MoonwellClient;
+
+    // The helper is only called for envs with a views contract, so we resolve
+    // exactly two values — one for chainB, one for chainD.
+    mockedHelper.mockResolvedValueOnce(111n).mockResolvedValueOnce(222n);
+
+    const result = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+      snapshotTimestamp: 1_700_000_000,
+    });
+
+    expect(mockedHelper).toHaveBeenCalledTimes(2);
+    expect(validReadB).toHaveBeenCalledWith([USER], { blockNumber: 111n });
+    expect(validReadD).toHaveBeenCalledWith([USER], { blockNumber: 222n });
+    expect(result.map((r) => r.chainId)).toEqual([8453, 10]);
   });
 });
