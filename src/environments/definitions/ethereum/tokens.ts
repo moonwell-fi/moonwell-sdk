@@ -14,4 +14,16 @@ export const tokens = createTokenConfig({
     name: "USD Coin",
     symbol: "USDC",
   },
+  WELL: {
+    address: "0xA88594D404727625A9437C3f886C7643872296AE",
+    decimals: 18,
+    name: "Moonwell",
+    symbol: "WELL",
+  },
+  stkWELL: {
+    address: "0xb3a9E0DCf37658a48aa9f018C44f90378ddD4357",
+    decimals: 18,
+    name: "Moonwell Staked WELL",
+    symbol: "stkWELL",
+  },
 });

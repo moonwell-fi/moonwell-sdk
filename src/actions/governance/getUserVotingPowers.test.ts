@@ -23,15 +23,20 @@ const mockedHelper = vi.mocked(getBlockNumberAtTimestamp);
 // ---------------------------------------------------------------------------
 
 describe("Testing user voting powers", () => {
-  // Only iterate environments where the queried governance token is configured —
-  // calling getUserVotingPowers({governanceToken: "WELL"}) on a chain without WELL
-  // governance correctly returns [], which would fail the `length > 0` assertion.
+  // Only iterate environments where the queried governance token is configured
+  // AND the governance views contract is deployed — calling
+  // getUserVotingPowers({governanceToken: "WELL"}) on a chain that holds WELL
+  // but is not the governance hub (e.g. Ethereum) correctly returns [], which
+  // would fail the `length > 0` assertion.
   Object.entries(testClient.environments)
     .filter(([, environment]) => {
       const custom = environment.custom as
         | { governance?: { token?: string } }
         | undefined;
-      return custom?.governance?.token === "WELL";
+      const contracts = environment.contracts as { views?: unknown };
+      return (
+        custom?.governance?.token === "WELL" && contracts.views !== undefined
+      );
     })
     .forEach(([networkKey, environment]) => {
       const { chain } = environment;
@@ -177,5 +182,88 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
     expect(mockedHelper).not.toHaveBeenCalled();
     expect(reads.chainA).toHaveBeenCalledWith([USER], { blockNumber: 42n });
     expect(reads.chainB).toHaveBeenCalledWith([USER], { blockNumber: 42n });
+  });
+
+  test("environments without a views contract are excluded from results", async () => {
+    const validRead = vi.fn(async () => ZERO_USER_VOTES);
+
+    const client = {
+      environments: {
+        chainNoViews: {
+          chainId: 1,
+          custom: { governance: { token: "WELL" } },
+          contracts: {},
+        },
+        chainValid: {
+          chainId: 8453,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: validRead } },
+          },
+        },
+      },
+    } as unknown as MoonwellClient;
+
+    const result = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+      blockNumber: 42n,
+    });
+
+    expect(validRead).toHaveBeenCalledTimes(1);
+    expect(result.map((r) => r.chainId)).toEqual([8453]);
+  });
+
+  test("snapshotTimestamp preserves index correlation across a mixed [noViews, valid, noViews, valid] env list", async () => {
+    const validReadB = vi.fn(async () => ZERO_USER_VOTES);
+    const validReadD = vi.fn(async () => ZERO_USER_VOTES);
+
+    const client = {
+      environments: {
+        chainA: {
+          chainId: 1,
+          custom: { governance: { token: "WELL" } },
+          contracts: {},
+          publicClient: {},
+        },
+        chainB: {
+          chainId: 8453,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: validReadB } },
+          },
+          publicClient: {},
+        },
+        chainC: {
+          chainId: 137,
+          custom: { governance: { token: "WELL" } },
+          contracts: {},
+          publicClient: {},
+        },
+        chainD: {
+          chainId: 10,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: validReadD } },
+          },
+          publicClient: {},
+        },
+      },
+    } as unknown as MoonwellClient;
+
+    // The helper is only called for envs with a views contract, so we resolve
+    // exactly two values — one for chainB, one for chainD.
+    mockedHelper.mockResolvedValueOnce(111n).mockResolvedValueOnce(222n);
+
+    const result = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+      snapshotTimestamp: 1_700_000_000,
+    });
+
+    expect(mockedHelper).toHaveBeenCalledTimes(2);
+    expect(validReadB).toHaveBeenCalledWith([USER], { blockNumber: 111n });
+    expect(validReadD).toHaveBeenCalledWith([USER], { blockNumber: 222n });
+    expect(result.map((r) => r.chainId)).toEqual([8453, 10]);
   });
 });
