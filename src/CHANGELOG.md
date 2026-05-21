@@ -1,5 +1,17 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.13.0
+
+### Minor Changes
+
+- [#270](https://github.com/moonwell-fi/moonwell-sdk/pull/270) [`a0973bb66f4716accf4a3d3e5b09eb820ab1a0b8`](https://github.com/moonwell-fi/moonwell-sdk/commit/a0973bb66f4716accf4a3d3e5b09eb820ab1a0b8) Thanks [@bprofiro](https://github.com/bprofiro)! - Add Ethereum mainnet environment with xWELL token + Wormhole adapter for WELL→Ethereum transfers, voting-power reads, and circulating-supply snapshots via Lunar Indexer
+
+- [#272](https://github.com/moonwell-fi/moonwell-sdk/pull/272) [`6af7914f55e41e98849d661ae8bbbdbad917ce25`](https://github.com/moonwell-fi/moonwell-sdk/commit/6af7914f55e41e98849d661ae8bbbdbad917ce25) Thanks [@bprofiro](https://github.com/bprofiro)! - Add opt-in `throwOnExternalApiError` option to `getMorphoUserRewards`. When `true`, Merkl API failures (non-ok HTTP responses, network rejections, and response-body parse errors) propagate to the caller as `MerklApiError` instead of being swallowed and returning `[]`. Defaults to `false`, so existing consumers see no behavior change.
+
+  When multiple chains are queried and at least one fails while others succeed, the action throws a `MorphoUserRewardsAggregateError` whose `errors` array carries the per-chain failures and whose `rewards` property carries the rewards from chains that succeeded, so callers can surface partial results alongside the failures.
+
+  New public exports: `MerklApiError`, `MorphoUserRewardsAggregateError`.
+
 ## 0.12.2
 
 ### Patch Changes
