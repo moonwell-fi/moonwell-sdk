@@ -13,15 +13,31 @@ import {
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
 import type { MorphoUserStakingReward } from "../../../types/morphoUserStakingReward.js";
 
+export class MerklApiError extends Error {
+  readonly status: number | undefined;
+  readonly statusText: string | undefined;
+  readonly url: string;
+  readonly chainId: number;
+
+  constructor(params: {
+    message: string;
+    url: string;
+    chainId: number;
+    status?: number | undefined;
+    statusText?: string | undefined;
+  }) {
+    super(params.message);
+    this.name = "MerklApiError";
+    this.url = params.url;
+    this.chainId = params.chainId;
+    this.status = params.status;
+    this.statusText = params.statusText;
+  }
+}
+
 export async function getUserMorphoRewardsData(params: {
   environment: Environment;
   account: `0x${string}`;
-  /**
-   * When true, errors from the external Merkl API are propagated to the
-   * caller instead of being swallowed and returning `[]`. Default `false`
-   * preserves the historical behavior for existing consumers; the frontend
-   * sets it `true` so React Query can surface a degradation notice.
-   */
   throwOnExternalApiError?: boolean;
 }): Promise<MorphoUserReward[]> {
   // The Morpho URD distributions endpoint (rewards.morpho.org) was
@@ -306,31 +322,50 @@ async function getMerklRewardsData(
 ): Promise<MerklRewardsResponse[]> {
   const url = `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`;
 
+  let response: Response;
   try {
     // Merkl campaigns always distribute rewards on the same chain as the
     // opportunity, so environment.chainId is the only chain we need to query.
     // The previous two-phase approach (fetch opportunities per vault → extract
     // chain IDs → fetch rewards per chain) made N+1 HTTP calls to discover
     // a chain ID we already know.
-    const response = await fetch(url, {
-      headers: MOONWELL_FETCH_JSON_HEADERS,
-    });
-
-    if (!response.ok) {
-      const message = `Merkl API request failed: ${response.status} ${response.statusText}`;
-      if (options.throwOnError) {
-        throw new Error(message);
-      }
-      console.warn(message);
-      return [];
+    response = await fetch(url, { headers: MOONWELL_FETCH_JSON_HEADERS });
+  } catch (error) {
+    if (options.throwOnError) {
+      throw error;
     }
+    console.error(
+      `[getMerklRewardsData:network] chain=${environment.chainId} url=${url}`,
+      error,
+    );
+    return [];
+  }
 
+  if (!response.ok) {
+    const message = `Merkl API request failed for chain ${environment.chainId}: ${response.status} ${response.statusText}`;
+    if (options.throwOnError) {
+      throw new MerklApiError({
+        message,
+        url,
+        chainId: environment.chainId,
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
+    console.warn(`${message} (url=${url})`);
+    return [];
+  }
+
+  try {
     return (await response.json()) as MerklRewardsResponse[];
   } catch (error) {
     if (options.throwOnError) {
       throw error;
     }
-    console.error("Error in getMerklRewardsData:", error);
+    console.error(
+      `[getMerklRewardsData:parse] chain=${environment.chainId} url=${url}`,
+      error,
+    );
     return [];
   }
 }

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type { Environment } from "../../../environments/index.js";
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
-import { getUserMorphoRewardsData } from "./common.js";
+import { MerklApiError, getUserMorphoRewardsData } from "./common.js";
 
 type MerklReward = Extract<MorphoUserReward, { type: "merkl-reward" }>;
 
@@ -174,7 +174,21 @@ describe("getUserMorphoRewardsData", () => {
     expect(result).toEqual([]);
   });
 
-  test("with throwOnExternalApiError, propagates non-ok Merkl responses", async () => {
+  test("returns empty array when fetch rejects and throwOnExternalApiError is not set", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("network unreachable"))),
+    );
+
+    const result = await getUserMorphoRewardsData({
+      environment: baseEnvironment,
+      account: ACCOUNT,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test("with throwOnExternalApiError, propagates non-ok Merkl responses as MerklApiError", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() =>
@@ -186,13 +200,25 @@ describe("getUserMorphoRewardsData", () => {
       ),
     );
 
-    await expect(
-      getUserMorphoRewardsData({
+    let caught: unknown;
+    try {
+      await getUserMorphoRewardsData({
         environment: baseEnvironment,
         account: ACCOUNT,
         throwOnExternalApiError: true,
-      }),
-    ).rejects.toThrow(/Merkl API request failed: 500/);
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(MerklApiError);
+    const merklError = caught as MerklApiError;
+    expect(merklError.status).toBe(500);
+    expect(merklError.statusText).toBe("Internal Server Error");
+    expect(merklError.chainId).toBe(8453);
+    expect(merklError.url).toContain("api.merkl.xyz");
+    expect(merklError.message).toContain("chain 8453");
+    expect(merklError.message).toContain("500");
   });
 
   test("with throwOnExternalApiError, propagates fetch rejections", async () => {
