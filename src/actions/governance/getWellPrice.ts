@@ -1,4 +1,3 @@
-import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type Environment,
   publicEnvironments,
@@ -7,22 +6,51 @@ import {
 /**
  * Reads WELL/USD from Base's lending oracle via getUnderlyingPrice(mWELL).
  *
- * Authoritative across all chains: the per-chain views.getGovernanceTokenPrice()
- * is unreliable (Moonbeam returns stale data, Base returns 0). The Base oracle
- * is Chainlink-fed and shared by the lending markets, so this is the same
- * source the rest of the protocol uses for mWELL pricing.
+ * The Base oracle is Chainlink-fed and shared by the lending markets, so it's
+ * the authoritative WELL/USD source. Used in place of the per-chain
+ * views.getGovernanceTokenPrice() which is unreliable on Moonbeam (returns
+ * stale data) and Base (returns 0).
  *
- * Returns a uint256 already scaled to 18 decimals, matching the existing
- * Amount(_, 18) wrapping at call sites — no scaling change required downstream.
+ * Returns a uint256 already scaled to 18 decimals.
+ *
+ * @param baseEnvironment Pass the caller's Base environment when available so
+ *   user-configured RPCs / onError handlers are honored. Falls back to the
+ *   SDK's default public Base environment otherwise.
  */
-export async function getWellPriceFromBase(
-  client?: MoonwellClient,
+export async function getWellPriceFromBaseOracle(
+  baseEnvironment?: Environment,
 ): Promise<bigint> {
-  const baseEnv =
-    (client?.environments as { base?: Environment } | undefined)?.base ??
-    publicEnvironments.base;
-  const mWELL = baseEnv.config.tokens.MOONWELL_WELL?.address;
+  const baseEnv = baseEnvironment ?? publicEnvironments.base;
+  const tokens = baseEnv.config.tokens as Record<
+    string,
+    { address: `0x${string}` } | undefined
+  >;
+  const mWELL = tokens.MOONWELL_WELL?.address;
   const oracle = baseEnv.contracts.oracle;
   if (!mWELL || !oracle) return 0n;
-  return (await oracle.read.getUnderlyingPrice([mWELL])) as bigint;
+  return await oracle.read.getUnderlyingPrice([mWELL]);
+}
+
+/**
+ * Returns the governance-token-in-USD price for an environment.
+ *
+ * - For WELL-governed chains (Base, Optimism, Moonbeam), reads from the Base
+ *   lending oracle's mWELL underlying price (authoritative, Chainlink-fed).
+ * - For non-WELL chains (currently only Moonriver / MFAM), reads from the
+ *   env's own views.getGovernanceTokenPrice() — Moonriver has its own MFAM
+ *   oracle and isn't priced from Base.
+ *
+ * Returns 0n if the lookup fails.
+ */
+export async function getGovernanceTokenPriceFor(
+  environment: Environment,
+  baseEnvironment?: Environment,
+): Promise<bigint> {
+  if (environment.custom?.governance?.token === "WELL") {
+    return getWellPriceFromBaseOracle(baseEnvironment);
+  }
+  // Non-WELL (e.g. Moonriver / MFAM): the env itself is the governance "home".
+  const views = environment.contracts.views;
+  if (!views) return 0n;
+  return (await views.read.getGovernanceTokenPrice()) ?? 0n;
 }

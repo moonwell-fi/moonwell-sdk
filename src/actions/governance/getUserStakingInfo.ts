@@ -3,10 +3,10 @@ import { base } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
-import type { TokensType } from "../../environments/index.js";
+import type { Environment } from "../../environments/index.js";
 import type { UserStakingInfo } from "../../types/staking.js";
 import { getMerklCampaignIds, getMerklRewardsData } from "./common.js";
-import { getWellPriceFromBase } from "./getWellPrice.js";
+import { getGovernanceTokenPriceFor } from "./getWellPrice.js";
 
 export type GetUserStakingInfoParameters<
   environments,
@@ -17,6 +17,95 @@ export type GetUserStakingInfoParameters<
 };
 
 export type GetUserStakingInfoReturnType = Promise<UserStakingInfo[]>;
+
+type UserStakingFields = {
+  cooldown: bigint;
+  pendingRewards: bigint;
+  totalStaked: bigint;
+};
+
+type StakingScheduleFields = {
+  cooldown: bigint;
+  unstakeWindow: bigint;
+};
+
+/**
+ * Reads per-user staking fields directly from stkWELL when views.getUserStakingInfo()
+ * is unavailable (e.g. reverts on Moonbeam).
+ */
+async function readUserStakingFromStkWell(
+  environment: Environment,
+  userAddress: Address,
+): Promise<UserStakingFields | undefined> {
+  const stakingToken = environment.contracts.stakingToken;
+  if (!stakingToken) return undefined;
+
+  const [cooldownR, rewardsR, balanceR] = await Promise.allSettled([
+    stakingToken.read.stakersCooldowns([userAddress]),
+    stakingToken.read.getTotalRewardsBalance([userAddress]),
+    stakingToken.read.balanceOf([userAddress]),
+  ]);
+
+  if (
+    cooldownR.status === "rejected" &&
+    rewardsR.status === "rejected" &&
+    balanceR.status === "rejected"
+  ) {
+    environment.onError?.(cooldownR.reason, {
+      source: "user-staking-fallback",
+      chainId: environment.chainId,
+    });
+    return undefined;
+  }
+
+  return {
+    cooldown: cooldownR.status === "fulfilled" ? cooldownR.value : 0n,
+    pendingRewards: rewardsR.status === "fulfilled" ? rewardsR.value : 0n,
+    totalStaked: balanceR.status === "fulfilled" ? balanceR.value : 0n,
+  };
+}
+
+/**
+ * Reads global cooldown/unstakeWindow constants from stkWELL when
+ * views.getStakingInfo() is unavailable.
+ */
+async function readScheduleFromStkWell(
+  environment: Environment,
+): Promise<StakingScheduleFields | undefined> {
+  const stakingToken = environment.contracts.stakingToken;
+  if (!stakingToken) return undefined;
+
+  const [cooldownR, unstakeWindowR] = await Promise.allSettled([
+    stakingToken.read.COOLDOWN_SECONDS(),
+    stakingToken.read.UNSTAKE_WINDOW(),
+  ]);
+
+  if (cooldownR.status === "rejected" && unstakeWindowR.status === "rejected") {
+    return undefined;
+  }
+
+  return {
+    cooldown: cooldownR.status === "fulfilled" ? cooldownR.value : 0n,
+    unstakeWindow:
+      unstakeWindowR.status === "fulfilled" ? unstakeWindowR.value : 0n,
+  };
+}
+
+const isUserStakingShape = (value: unknown): value is UserStakingFields => {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.cooldown === "bigint" &&
+    typeof v.pendingRewards === "bigint" &&
+    typeof v.totalStaked === "bigint"
+  );
+};
+
+const isScheduleShape = (value: unknown): value is StakingScheduleFields => {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.cooldown === "bigint" && typeof v.unstakeWindow === "bigint";
+};
 
 export async function getUserStakingInfo<
   environments,
@@ -33,9 +122,9 @@ export async function getUserStakingInfo<
     (env) => env.contracts.stakingToken,
   );
 
-  const governanceTokenPrice = await getWellPriceFromBase(client).catch(
-    () => 0n,
-  );
+  const baseEnvironment = (
+    client.environments as { base?: Environment } | undefined
+  )?.base;
 
   const envStakingInfo = await Promise.all(
     envsWithStaking.map(async (environment) => {
@@ -43,11 +132,39 @@ export async function getUserStakingInfo<
         environment.contracts.views?.read.getUserStakingInfo([userAddress]),
         environment.contracts.governanceToken?.read.balanceOf([userAddress]),
         environment.contracts.views?.read.getStakingInfo(),
+        getGovernanceTokenPriceFor(environment, baseEnvironment),
       ]);
 
-      return settled.map((s) =>
-        s.status === "fulfilled" ? s.value : undefined,
-      );
+      const [userStakingR, balanceR, stakingScheduleR, priceR] = settled;
+
+      const viewsUserStaking =
+        userStakingR.status === "fulfilled" ? userStakingR.value : undefined;
+      const userStaking = isUserStakingShape(viewsUserStaking)
+        ? viewsUserStaking
+        : await readUserStakingFromStkWell(environment, userAddress);
+
+      const viewsSchedule =
+        stakingScheduleR.status === "fulfilled"
+          ? stakingScheduleR.value
+          : undefined;
+      const schedule = isScheduleShape(viewsSchedule)
+        ? viewsSchedule
+        : await readScheduleFromStkWell(environment);
+
+      const tokenBalance =
+        balanceR.status === "fulfilled" && balanceR.value !== undefined
+          ? balanceR.value
+          : 0n;
+
+      const price = priceR.status === "fulfilled" ? priceR.value : 0n;
+      if (priceR.status === "rejected") {
+        environment.onError?.(priceR.reason, {
+          source: "governance-token-price",
+          chainId: environment.chainId,
+        });
+      }
+
+      return { userStaking, schedule, tokenBalance, price };
     }),
   );
 
@@ -59,28 +176,26 @@ export async function getUserStakingInfo<
   );
 
   const result = envsWithStaking.flatMap((curr, index) => {
-    const token =
-      curr.config.tokens[
-        curr.config.contracts.governanceToken as keyof TokensType<typeof curr>
-      ]!;
-    const stakingToken =
-      curr.config.tokens[
-        curr.config.contracts.stakingToken as keyof TokensType<typeof curr>
-      ]!;
+    const govKey = curr.config.contracts.governanceToken;
+    const stkKey = curr.config.contracts.stakingToken;
+    const currTokens = curr.config.tokens as Record<
+      string,
+      { address: `0x${string}`; decimals: number; name: string; symbol: string }
+    >;
+    if (!govKey || !stkKey) return [];
+    const token = currTokens[govKey];
+    const stakingToken = currTokens[stkKey];
+    if (!token || !stakingToken) return [];
 
-    const userStakingInfoData = envStakingInfo[index]?.[0] as
-      | {
-          cooldown: bigint;
-          pendingRewards: bigint;
-          totalStaked: bigint;
-        }
-      | undefined;
+    const entry = envStakingInfo[index];
+    if (!entry) return [];
+    const { userStaking, schedule, tokenBalance, price } = entry;
 
-    if (!userStakingInfoData) return [];
+    if (!userStaking || !schedule) return [];
 
-    const { cooldown, pendingRewards, totalStaked } = userStakingInfoData;
+    const { cooldown, pendingRewards, totalStaked } = userStaking;
+    const { cooldown: cooldownSeconds, unstakeWindow } = schedule;
 
-    // merkl rewards (only for base)
     const isBase = curr.chainId === base.id;
     const merklReward = merklRewards.reduce((acc, r) => {
       if (r.chain === curr.chainId) {
@@ -90,24 +205,11 @@ export async function getUserStakingInfo<
     }, 0n);
     const merklPendingRewards = isBase ? merklReward : 0n;
 
-    const tokenBalance = (envStakingInfo[index]?.[1] ?? 0n) as bigint;
-
-    const stakingInfoData = envStakingInfo[index]?.[2] as
-      | {
-          cooldown: bigint;
-          unstakeWindow: bigint;
-        }
-      | undefined;
-
-    if (!stakingInfoData) return [];
-
-    const { cooldown: cooldownSeconds, unstakeWindow } = stakingInfoData;
-
     const cooldownEnding = cooldown > 0n ? cooldown + cooldownSeconds : 0n;
     const unstakingEnding =
       cooldown > 0n ? cooldown + cooldownSeconds + unstakeWindow : 0n;
 
-    const tokenPrice = new Amount(governanceTokenPrice, 18);
+    const tokenPrice = new Amount(price, 18);
 
     const userStakingInfo: UserStakingInfo = {
       chainId: curr.chainId,

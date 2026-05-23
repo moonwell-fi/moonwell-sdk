@@ -9,7 +9,7 @@ import {
   findTokenByAddress,
 } from "../../../environments/utils/index.js";
 import type { UserReward } from "../../../types/userReward.js";
-import { getWellPriceFromBase } from "../../governance/getWellPrice.js";
+import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
 
 export const getUserRewardsData = async (params: {
   environment: Environment;
@@ -28,7 +28,7 @@ export const getUserRewardsData = async (params: {
     viewsContract?.read.getAllMarketsInfo(),
     viewsContract?.read.getUserRewards([params.account]),
     homeViewsContract?.read.getNativeTokenPrice(),
-    getWellPriceFromBase(),
+    getGovernanceTokenPriceFor(params.environment),
   ] as const);
 
   // Narrow each one by status and coerce to undefined on failure:
@@ -44,14 +44,14 @@ export const getUserRewardsData = async (params: {
   if (
     !allMarkets ||
     !userRewards ||
-    !nativeTokenPriceRaw ||
-    !governanceTokenPriceRaw
+    nativeTokenPriceRaw === undefined ||
+    governanceTokenPriceRaw === undefined
   ) {
     return [];
   }
 
-  const governanceTokenPrice = new Amount(governanceTokenPriceRaw || 0n, 18);
-  const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+  const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
+  const nativeTokenPrice = new Amount(nativeTokenPriceRaw, 18);
 
   let tokenPrices =
     allMarkets

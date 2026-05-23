@@ -7,14 +7,10 @@ import {
   getEnvironmentsFromArgs,
 } from "../../common/index.js";
 import type { NetworkParameterType } from "../../common/types.js";
-import type {
-  Chain,
-  Environment,
-  TokensType,
-} from "../../environments/index.js";
+import type { Chain, Environment } from "../../environments/index.js";
 import type { StakingInfo } from "../../types/staking.js";
 import { getMerklStakingApr } from "./common.js";
-import { getWellPriceFromBase } from "./getWellPrice.js";
+import { getGovernanceTokenPriceFor } from "./getWellPrice.js";
 
 export type GetStakingInfoParameters<
   environments,
@@ -31,46 +27,96 @@ type StakingInfoStruct = {
   unstakeWindow: bigint;
 };
 
+const isStakingInfoStruct = (value: unknown): value is StakingInfoStruct => {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.cooldown === "bigint" &&
+    typeof v.distributionEnd === "bigint" &&
+    typeof v.emissionPerSecond === "bigint" &&
+    typeof v.totalSupply === "bigint" &&
+    typeof v.unstakeWindow === "bigint"
+  );
+};
+
 /**
  * Reads the staking fields directly from the stkWELL token contract when the
- * core views' getStakingInfo() is unavailable (e.g. reverts on Moonbeam).
- * Returns undefined if any required read fails.
+ * core views' getStakingInfo() is unavailable or returns zeroed data
+ * (e.g. reverts on Moonbeam). Reads each field independently so a single
+ * transient RPC failure doesn't erase the whole fallback.
+ *
+ * The `assets` mapping is keyed by the stkWELL contract's own address — that's
+ * the Aave-fork convention (`address(this)` in StakedAave._initialize), not
+ * the underlying staked token. Verified on Moonbeam: assets(stkWELL) returns
+ * non-zero emissionPerSecond; assets(WELL) returns zero.
  */
 async function getStakingInfoFromStkWell(
   environment: Environment,
 ): Promise<StakingInfoStruct | undefined> {
   const stakingToken = environment.contracts.stakingToken;
-  const governanceTokenKey = environment.config.contracts.governanceToken as
-    | keyof TokensType<typeof environment>
-    | undefined;
-  const governanceToken =
-    governanceTokenKey != null
-      ? environment.config.tokens[governanceTokenKey]
-      : undefined;
-  if (!stakingToken || !governanceToken) return undefined;
-
-  try {
-    const [cooldown, unstakeWindow, distributionEnd, totalSupply, assetData] =
-      await Promise.all([
-        stakingToken.read.COOLDOWN_SECONDS(),
-        stakingToken.read.UNSTAKE_WINDOW(),
-        stakingToken.read.DISTRIBUTION_END(),
-        stakingToken.read.totalSupply(),
-        stakingToken.read.assets([governanceToken.address]),
-      ]);
-
-    const [emissionPerSecond] = assetData as readonly [bigint, bigint, bigint];
-
-    return {
-      cooldown,
-      unstakeWindow,
-      distributionEnd,
-      totalSupply,
-      emissionPerSecond,
-    };
-  } catch {
+  const stakingTokenKey = environment.config.contracts.stakingToken;
+  const tokens = environment.config.tokens as Record<
+    string,
+    { address: `0x${string}` } | undefined
+  >;
+  const stakingTokenAddress = stakingTokenKey
+    ? tokens[stakingTokenKey]?.address
+    : undefined;
+  if (!stakingToken || !stakingTokenAddress) {
+    environment.onError?.(
+      new Error("getStakingInfoFromStkWell: missing stkWELL config"),
+      { source: "staking-fallback", chainId: environment.chainId },
+    );
     return undefined;
   }
+
+  const [
+    cooldownR,
+    unstakeWindowR,
+    distributionEndR,
+    totalSupplyR,
+    assetDataR,
+  ] = await Promise.allSettled([
+    stakingToken.read.COOLDOWN_SECONDS(),
+    stakingToken.read.UNSTAKE_WINDOW(),
+    stakingToken.read.DISTRIBUTION_END(),
+    stakingToken.read.totalSupply(),
+    stakingToken.read.assets([stakingTokenAddress]),
+  ]);
+
+  const rejections = [
+    cooldownR,
+    unstakeWindowR,
+    distributionEndR,
+    totalSupplyR,
+    assetDataR,
+  ].filter((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (rejections.length > 0) {
+    environment.onError?.(rejections[0].reason, {
+      source: "staking-fallback",
+      chainId: environment.chainId,
+    });
+  }
+
+  const totalSupply =
+    totalSupplyR.status === "fulfilled" ? totalSupplyR.value : 0n;
+  if (totalSupply === 0n) return undefined;
+
+  const assetData =
+    assetDataR.status === "fulfilled" ? assetDataR.value : undefined;
+  // viem returns multi-output reads as a tuple (Readonly<[bigint, bigint, bigint]>)
+  // even when the ABI names the outputs.
+  const emissionPerSecond = assetData ? assetData[0] : 0n;
+
+  return {
+    cooldown: cooldownR.status === "fulfilled" ? cooldownR.value : 0n,
+    unstakeWindow:
+      unstakeWindowR.status === "fulfilled" ? unstakeWindowR.value : 0n,
+    distributionEnd:
+      distributionEndR.status === "fulfilled" ? distributionEndR.value : 0n,
+    totalSupply,
+    emissionPerSecond,
+  };
 }
 
 export async function getStakingInfo<
@@ -86,15 +132,15 @@ export async function getStakingInfo<
     (env) => env.config.contracts.stakingToken,
   );
 
-  const governanceTokenPrice = await getWellPriceFromBase(client).catch(
-    () => 0n,
-  );
+  const baseEnvironment = (
+    client.environments as { base?: Environment } | undefined
+  )?.base;
 
   const envStakingInfoSettlements = await Promise.allSettled(
     envsWithStaking.map(async (environment) => {
       const isBase = environment.chainId === base.id;
 
-      const [viewsStakingResult, historicalStakingResult] =
+      const [viewsStakingResult, historicalStakingResult, priceResult] =
         await Promise.allSettled([
           environment.contracts.views?.read.getStakingInfo(),
           isBase
@@ -102,6 +148,7 @@ export async function getStakingInfo<
                 blockNumber: BigInt(34149943),
               })
             : Promise.resolve(undefined),
+          getGovernanceTokenPriceFor(environment, baseEnvironment),
         ]);
 
       const viewsStaking =
@@ -109,51 +156,68 @@ export async function getStakingInfo<
           ? viewsStakingResult.value
           : undefined;
 
-      const stakingInfo =
-        viewsStaking ?? (await getStakingInfoFromStkWell(environment));
+      // Fall back to direct stkWELL reads when the views call rejected OR
+      // returned a zeroed struct (Moonbeam's views can be stale).
+      const viewsValid =
+        isStakingInfoStruct(viewsStaking) && viewsStaking.totalSupply > 0n;
+      const stakingInfo: StakingInfoStruct | undefined = viewsValid
+        ? viewsStaking
+        : await getStakingInfoFromStkWell(environment);
 
       const historicalStaking =
         historicalStakingResult.status === "fulfilled"
           ? historicalStakingResult.value
           : undefined;
 
-      return [stakingInfo, historicalStaking];
+      const price = priceResult.status === "fulfilled" ? priceResult.value : 0n;
+
+      if (priceResult.status === "rejected") {
+        environment.onError?.(priceResult.reason, {
+          source: "governance-token-price",
+          chainId: environment.chainId,
+        });
+      }
+
+      return { stakingInfo, historicalStaking, price };
     }),
   );
 
   const envStakingInfo = envStakingInfoSettlements.map((s) =>
-    s.status === "fulfilled" ? s.value : [undefined, undefined],
+    s.status === "fulfilled"
+      ? s.value
+      : { stakingInfo: undefined, historicalStaking: undefined, price: 0n },
   );
 
   const baseEnv = envsWithStaking.find((env) => env.chainId === base.id);
-  const stakingTokenKey = baseEnv?.config.contracts.stakingToken;
-  const baseStkToken =
-    baseEnv != null && stakingTokenKey != null
-      ? baseEnv.config.tokens[stakingTokenKey]
-      : undefined;
-  const baseStakingApr =
-    baseStkToken != null ? await getMerklStakingApr(baseStkToken.address) : 0;
+  const baseStakingTokenKey = baseEnv?.config.contracts.stakingToken;
+  const baseTokens = baseEnv?.config.tokens as
+    | Record<string, { address: `0x${string}` } | undefined>
+    | undefined;
+  const baseStkTokenAddress = baseStakingTokenKey
+    ? baseTokens?.[baseStakingTokenKey]?.address
+    : undefined;
+  const baseStakingApr = baseStkTokenAddress
+    ? await getMerklStakingApr(baseStkTokenAddress)
+    : 0;
 
   const result = envsWithStaking.flatMap((curr, index) => {
-    const token =
-      curr.config.tokens[
-        curr.config.contracts.governanceToken as keyof TokensType<typeof curr>
-      ]!;
-    const stakingToken =
-      curr.config.tokens[
-        curr.config.contracts.stakingToken as keyof TokensType<typeof curr>
-      ]!;
+    const govKey = curr.config.contracts.governanceToken;
+    const stkKey = curr.config.contracts.stakingToken;
+    const currTokens = curr.config.tokens as Record<
+      string,
+      { address: `0x${string}`; decimals: number; name: string; symbol: string }
+    >;
+    if (!govKey || !stkKey) return [];
+    const token = currTokens[govKey];
+    const stakingToken = currTokens[stkKey];
+    if (!token || !stakingToken) return [];
 
-    const envStakingInfoData = envStakingInfo[index]![0] as
-      | StakingInfoStruct
-      | undefined;
-    const envStakingInfoDataAfterX28Proposal = envStakingInfo[index]![1];
+    const entry = envStakingInfo[index];
+    if (!entry) return [];
+    const { stakingInfo: envStakingInfoData, historicalStaking, price } = entry;
     const isBase = curr.chainId === base.id;
 
-    if (
-      !envStakingInfoData ||
-      (isBase && !envStakingInfoDataAfterX28Proposal)
-    ) {
+    if (!envStakingInfoData || (isBase && !historicalStaking)) {
       return [];
     }
 
@@ -165,8 +229,7 @@ export async function getStakingInfo<
       unstakeWindow,
     } = envStakingInfoData;
 
-    const tokenPrice = new Amount(governanceTokenPrice, 18);
-
+    const tokenPrice = new Amount(price, 18);
     const totalSupply = new Amount(totalSupplyRaw, 18);
     const emissionPerSecond = new Amount(emissionPerSecondRaw, 18);
 
@@ -174,7 +237,9 @@ export async function getStakingInfo<
       emissionPerSecond.value * SECONDS_PER_DAY * DAYS_PER_YEAR;
 
     const apr =
-      ((emissionPerYear + totalSupply.value) / totalSupply.value - 1) * 100;
+      totalSupply.value > 0
+        ? ((emissionPerYear + totalSupply.value) / totalSupply.value - 1) * 100
+        : 0;
 
     const stakingInfo: StakingInfo = {
       apr: isBase ? baseStakingApr : apr,

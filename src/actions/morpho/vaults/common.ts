@@ -19,7 +19,7 @@ import type {
   MorphoVault,
   MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
-import { getWellPriceFromBase } from "../../governance/getWellPrice.js";
+import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
 import { getGraphQL, getVaultV2Apy } from "../utils/graphql.js";
 import {
   SECONDS_PER_YEAR,
@@ -322,16 +322,16 @@ async function getMorphoVaultsDataFromIndexer(params: {
         const data = await Promise.all([
           viewsContract?.read.getAllMarketsInfo(),
           homeViewsContract?.read.getNativeTokenPrice(),
-          getWellPriceFromBase(),
+          getGovernanceTokenPriceFor(environment).catch(() => 0n),
         ]);
 
         const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
 
         const governanceTokenPrice = new Amount(
-          governanceTokenPriceRaw || 0n,
+          governanceTokenPriceRaw ?? 0n,
           18,
         );
-        const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+        const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
         let tokenPrices =
           allMarkets
@@ -1057,16 +1057,16 @@ async function getMorphoVaultsDataFromOnChain(params: {
       const data = await Promise.all([
         viewsContract?.read.getAllMarketsInfo(),
         homeViewsContract?.read.getNativeTokenPrice(),
-        getWellPriceFromBase(),
+        getGovernanceTokenPriceFor(environment).catch(() => 0n),
       ]);
 
       const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
 
       const governanceTokenPrice = new Amount(
-        governanceTokenPriceRaw || 0n,
+        governanceTokenPriceRaw ?? 0n,
         18,
       );
-      const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+      const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
       let tokenPrices =
         allMarkets
