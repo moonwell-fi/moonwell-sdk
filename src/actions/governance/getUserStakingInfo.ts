@@ -3,13 +3,10 @@ import { base } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
-import {
-  type Environment,
-  type TokensType,
-  publicEnvironments,
-} from "../../environments/index.js";
+import type { TokensType } from "../../environments/index.js";
 import type { UserStakingInfo } from "../../types/staking.js";
 import { getMerklCampaignIds, getMerklRewardsData } from "./common.js";
+import { getWellPriceFromBase } from "./getWellPrice.js";
 
 export type GetUserStakingInfoParameters<
   environments,
@@ -35,17 +32,16 @@ export async function getUserStakingInfo<
   const envsWithStaking = environments.filter(
     (env) => env.contracts.stakingToken,
   );
+
+  const governanceTokenPrice = await getWellPriceFromBase(client).catch(
+    () => 0n,
+  );
+
   const envStakingInfo = await Promise.all(
     envsWithStaking.map(async (environment) => {
-      const homeEnvironment =
-        (Object.values(publicEnvironments) as Environment[]).find((e) =>
-          e.custom?.governance?.chainIds?.includes(environment.chainId),
-        ) || environment;
-
       const settled = await Promise.allSettled([
         environment.contracts.views?.read.getUserStakingInfo([userAddress]),
         environment.contracts.governanceToken?.read.balanceOf([userAddress]),
-        homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
         environment.contracts.views?.read.getStakingInfo(),
       ]);
 
@@ -96,10 +92,7 @@ export async function getUserStakingInfo<
 
     const tokenBalance = (envStakingInfo[index]?.[1] ?? 0n) as bigint;
 
-    const governanceTokenPriceRaw = (envStakingInfo[index]?.[2] ??
-      0n) as bigint;
-
-    const stakingInfoData = envStakingInfo[index]?.[3] as
+    const stakingInfoData = envStakingInfo[index]?.[2] as
       | {
           cooldown: bigint;
           unstakeWindow: bigint;
@@ -114,7 +107,7 @@ export async function getUserStakingInfo<
     const unstakingEnding =
       cooldown > 0n ? cooldown + cooldownSeconds + unstakeWindow : 0n;
 
-    const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
+    const tokenPrice = new Amount(governanceTokenPrice, 18);
 
     const userStakingInfo: UserStakingInfo = {
       chainId: curr.chainId,
@@ -128,7 +121,7 @@ export async function getUserStakingInfo<
         : new Amount(pendingRewards, 18),
       token,
       tokenBalance: new Amount(tokenBalance, 18),
-      tokenPrice: governanceTokenPrice.value,
+      tokenPrice: tokenPrice.value,
       stakingToken,
       stakingTokenBalance: new Amount(totalStaked, 18),
     };

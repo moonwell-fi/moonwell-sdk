@@ -19,6 +19,7 @@ import type {
   MorphoVault,
   MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
+import { getWellPriceFromBase } from "../../governance/getWellPrice.js";
 import { getGraphQL, getVaultV2Apy } from "../utils/graphql.js";
 import {
   SECONDS_PER_YEAR,
@@ -321,7 +322,7 @@ async function getMorphoVaultsDataFromIndexer(params: {
         const data = await Promise.all([
           viewsContract?.read.getAllMarketsInfo(),
           homeViewsContract?.read.getNativeTokenPrice(),
-          homeViewsContract?.read.getGovernanceTokenPrice(),
+          getWellPriceFromBase(),
         ]);
 
         const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
@@ -1056,7 +1057,7 @@ async function getMorphoVaultsDataFromOnChain(params: {
       const data = await Promise.all([
         viewsContract?.read.getAllMarketsInfo(),
         homeViewsContract?.read.getNativeTokenPrice(),
-        homeViewsContract?.read.getGovernanceTokenPrice(),
+        getWellPriceFromBase(),
       ]);
 
       const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;

@@ -14,6 +14,7 @@ import {
 } from "../../../environments/utils/index.js";
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
 import type { MorphoUserStakingReward } from "../../../types/morphoUserStakingReward.js";
+import { getWellPriceFromBase } from "../../governance/getWellPrice.js";
 import { getGraphQL } from "../utils/graphql.js";
 
 export async function getUserMorphoRewardsData(params: {
@@ -332,7 +333,7 @@ export async function getUserMorphoStakingRewardsData(params: {
     await Promise.all([
       viewsContract?.read.getAllMarketsInfo(),
       homeViewsContract?.read.getNativeTokenPrice(),
-      homeViewsContract?.read.getGovernanceTokenPrice(),
+      getWellPriceFromBase(),
     ]);
 
   const governanceTokenPrice = new Amount(governanceTokenPriceRaw || 0n, 18);

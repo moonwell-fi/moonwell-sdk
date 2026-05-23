@@ -9,6 +9,7 @@ import {
   findTokenByAddress,
 } from "../../../environments/utils/index.js";
 import type { UserReward } from "../../../types/userReward.js";
+import { getWellPriceFromBase } from "../../governance/getWellPrice.js";
 
 export const getUserRewardsData = async (params: {
   environment: Environment;
@@ -27,7 +28,7 @@ export const getUserRewardsData = async (params: {
     viewsContract?.read.getAllMarketsInfo(),
     viewsContract?.read.getUserRewards([params.account]),
     homeViewsContract?.read.getNativeTokenPrice(),
-    homeViewsContract?.read.getGovernanceTokenPrice(),
+    getWellPriceFromBase(),
   ] as const);
 
   // Narrow each one by status and coerce to undefined on failure:

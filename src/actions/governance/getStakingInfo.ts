@@ -7,14 +7,14 @@ import {
   getEnvironmentsFromArgs,
 } from "../../common/index.js";
 import type { NetworkParameterType } from "../../common/types.js";
-import {
-  type Chain,
-  type Environment,
-  type TokensType,
-  publicEnvironments,
+import type {
+  Chain,
+  Environment,
+  TokensType,
 } from "../../environments/index.js";
 import type { StakingInfo } from "../../types/staking.js";
 import { getMerklStakingApr } from "./common.js";
+import { getWellPriceFromBase } from "./getWellPrice.js";
 
 export type GetStakingInfoParameters<
   environments,
@@ -22,6 +22,56 @@ export type GetStakingInfoParameters<
 > = NetworkParameterType<environments, network>;
 
 export type GetStakingInfoReturnType = Promise<StakingInfo[]>;
+
+type StakingInfoStruct = {
+  cooldown: bigint;
+  distributionEnd: bigint;
+  emissionPerSecond: bigint;
+  totalSupply: bigint;
+  unstakeWindow: bigint;
+};
+
+/**
+ * Reads the staking fields directly from the stkWELL token contract when the
+ * core views' getStakingInfo() is unavailable (e.g. reverts on Moonbeam).
+ * Returns undefined if any required read fails.
+ */
+async function getStakingInfoFromStkWell(
+  environment: Environment,
+): Promise<StakingInfoStruct | undefined> {
+  const stakingToken = environment.contracts.stakingToken;
+  const governanceTokenKey = environment.config.contracts.governanceToken as
+    | keyof TokensType<typeof environment>
+    | undefined;
+  const governanceToken =
+    governanceTokenKey != null
+      ? environment.config.tokens[governanceTokenKey]
+      : undefined;
+  if (!stakingToken || !governanceToken) return undefined;
+
+  try {
+    const [cooldown, unstakeWindow, distributionEnd, totalSupply, assetData] =
+      await Promise.all([
+        stakingToken.read.COOLDOWN_SECONDS(),
+        stakingToken.read.UNSTAKE_WINDOW(),
+        stakingToken.read.DISTRIBUTION_END(),
+        stakingToken.read.totalSupply(),
+        stakingToken.read.assets([governanceToken.address]),
+      ]);
+
+    const [emissionPerSecond] = assetData as readonly [bigint, bigint, bigint];
+
+    return {
+      cooldown,
+      unstakeWindow,
+      distributionEnd,
+      totalSupply,
+      emissionPerSecond,
+    };
+  } catch {
+    return undefined;
+  }
+}
 
 export async function getStakingInfo<
   environments,
@@ -36,56 +86,44 @@ export async function getStakingInfo<
     (env) => env.config.contracts.stakingToken,
   );
 
+  const governanceTokenPrice = await getWellPriceFromBase(client).catch(
+    () => 0n,
+  );
+
   const envStakingInfoSettlements = await Promise.allSettled(
     envsWithStaking.map(async (environment) => {
-      const homeEnvironment =
-        (Object.values(publicEnvironments) as Environment[]).find((e) =>
-          e.custom?.governance?.chainIds?.includes(environment.chainId),
-        ) || environment;
-
       const isBase = environment.chainId === base.id;
 
-      const settlements = await Promise.allSettled([
-        environment.contracts.views?.read.getStakingInfo(),
-        homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
-        ...(isBase
-          ? [
-              environment.contracts.views?.read.getStakingInfo({
+      const [viewsStakingResult, historicalStakingResult] =
+        await Promise.allSettled([
+          environment.contracts.views?.read.getStakingInfo(),
+          isBase
+            ? environment.contracts.views?.read.getStakingInfo({
                 blockNumber: BigInt(34149943),
-              }),
-            ]
-          : []),
-      ]);
+              })
+            : Promise.resolve(undefined),
+        ]);
 
-      return settlements.map((s) =>
-        s.status === "fulfilled" ? s.value : undefined,
-      );
+      const viewsStaking =
+        viewsStakingResult.status === "fulfilled"
+          ? viewsStakingResult.value
+          : undefined;
+
+      const stakingInfo =
+        viewsStaking ?? (await getStakingInfoFromStkWell(environment));
+
+      const historicalStaking =
+        historicalStakingResult.status === "fulfilled"
+          ? historicalStakingResult.value
+          : undefined;
+
+      return [stakingInfo, historicalStaking];
     }),
   );
 
-  const envStakingInfo = envStakingInfoSettlements
-    .filter((s) => s.status === "fulfilled")
-    .map(
-      (s) =>
-        (
-          s as PromiseFulfilledResult<
-            (
-              | bigint
-              | {
-                  cooldown: bigint;
-                  unstakeWindow: bigint;
-                  distributionEnd: bigint;
-                  totalSupply: bigint;
-                  emissionPerSecond: bigint;
-                  lastUpdateTimestamp: bigint;
-                  index: bigint;
-                }
-              | undefined
-            )[]
-          >
-        ).value,
-    )
-    .filter((val) => val !== undefined);
+  const envStakingInfo = envStakingInfoSettlements.map((s) =>
+    s.status === "fulfilled" ? s.value : [undefined, undefined],
+  );
 
   const baseEnv = envsWithStaking.find((env) => env.chainId === base.id);
   const stakingTokenKey = baseEnv?.config.contracts.stakingToken;
@@ -106,9 +144,10 @@ export async function getStakingInfo<
         curr.config.contracts.stakingToken as keyof TokensType<typeof curr>
       ]!;
 
-    const envStakingInfoData = envStakingInfo[index]![0]!;
-    const envGovernanceTokenPriceData = envStakingInfo[index]![1];
-    const envStakingInfoDataAfterX28Proposal = envStakingInfo[index]![2]!;
+    const envStakingInfoData = envStakingInfo[index]![0] as
+      | StakingInfoStruct
+      | undefined;
+    const envStakingInfoDataAfterX28Proposal = envStakingInfo[index]![1];
     const isBase = curr.chainId === base.id;
 
     if (
@@ -124,19 +163,9 @@ export async function getStakingInfo<
       emissionPerSecond: emissionPerSecondRaw,
       totalSupply: totalSupplyRaw,
       unstakeWindow,
-    } = envStakingInfoData as {
-      cooldown: bigint;
-      distributionEnd: bigint;
-      emissionPerSecond: bigint;
-      totalSupply: bigint;
-      unstakeWindow: bigint;
-    };
+    } = envStakingInfoData;
 
-    //Quick workaround to get governance token price from some other environment
-    const governanceTokenPrice = new Amount(
-      (envGovernanceTokenPriceData ?? 0n) as bigint,
-      18,
-    );
+    const tokenPrice = new Amount(governanceTokenPrice, 18);
 
     const totalSupply = new Amount(totalSupplyRaw, 18);
     const emissionPerSecond = new Amount(emissionPerSecondRaw, 18);
@@ -153,10 +182,10 @@ export async function getStakingInfo<
       cooldown: Number(cooldown),
       distributionEnd: Number(distributionEnd),
       token,
-      tokenPrice: governanceTokenPrice.value,
+      tokenPrice: tokenPrice.value,
       stakingToken,
       totalSupply,
-      totalSupplyUSD: totalSupply.value * governanceTokenPrice.value,
+      totalSupplyUSD: totalSupply.value * tokenPrice.value,
       unstakeWindow: Number(unstakeWindow),
     };
 
