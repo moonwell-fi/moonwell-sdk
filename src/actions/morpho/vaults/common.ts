@@ -322,15 +322,18 @@ async function getMorphoVaultsDataFromIndexer(params: {
         const data = await Promise.all([
           viewsContract?.read.getAllMarketsInfo(),
           homeViewsContract?.read.getNativeTokenPrice(),
-          getGovernanceTokenPriceFor(environment).catch(() => 0n),
+          getGovernanceTokenPriceFor(environment).catch((err) => {
+            environment.onError?.(err, {
+              source: "governance-token-price",
+              chainId: environment.chainId,
+            });
+            return 0n;
+          }),
         ]);
 
         const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
 
-        const governanceTokenPrice = new Amount(
-          governanceTokenPriceRaw ?? 0n,
-          18,
-        );
+        const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
         const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
         let tokenPrices =
@@ -1057,15 +1060,18 @@ async function getMorphoVaultsDataFromOnChain(params: {
       const data = await Promise.all([
         viewsContract?.read.getAllMarketsInfo(),
         homeViewsContract?.read.getNativeTokenPrice(),
-        getGovernanceTokenPriceFor(environment).catch(() => 0n),
+        getGovernanceTokenPriceFor(environment).catch((err) => {
+          environment.onError?.(err, {
+            source: "governance-token-price",
+            chainId: environment.chainId,
+          });
+          return 0n;
+        }),
       ]);
 
       const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
 
-      const governanceTokenPrice = new Amount(
-        governanceTokenPriceRaw ?? 0n,
-        18,
-      );
+      const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
       const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
       let tokenPrices =

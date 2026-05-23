@@ -46,15 +46,22 @@ async function readUserStakingFromStkWell(
     stakingToken.read.balanceOf([userAddress]),
   ]);
 
+  // Surface every rejection so a single failed read (e.g. balanceOf throttled)
+  // doesn't silently zero a field that the UI would then display as "no stake".
+  for (const r of [cooldownR, rewardsR, balanceR]) {
+    if (r.status === "rejected") {
+      environment.onError?.(r.reason, {
+        source: "user-staking-fallback",
+        chainId: environment.chainId,
+      });
+    }
+  }
+
   if (
     cooldownR.status === "rejected" &&
     rewardsR.status === "rejected" &&
     balanceR.status === "rejected"
   ) {
-    environment.onError?.(cooldownR.reason, {
-      source: "user-staking-fallback",
-      chainId: environment.chainId,
-    });
     return undefined;
   }
 
@@ -79,6 +86,17 @@ async function readScheduleFromStkWell(
     stakingToken.read.COOLDOWN_SECONDS(),
     stakingToken.read.UNSTAKE_WINDOW(),
   ]);
+
+  // Surface every rejection. A silent cooldown=0n would corrupt downstream
+  // cooldownEnding math even if the unstakeWindow read succeeded.
+  for (const r of [cooldownR, unstakeWindowR]) {
+    if (r.status === "rejected") {
+      environment.onError?.(r.reason, {
+        source: "user-staking-schedule-fallback",
+        chainId: environment.chainId,
+      });
+    }
+  }
 
   if (cooldownR.status === "rejected" && unstakeWindowR.status === "rejected") {
     return undefined;
@@ -187,9 +205,10 @@ export async function getUserStakingInfo<
     const stakingToken = currTokens[stkKey];
     if (!token || !stakingToken) return [];
 
-    const entry = envStakingInfo[index];
-    if (!entry) return [];
-    const { userStaking, schedule, tokenBalance, price } = entry;
+    // envStakingInfo is built via Promise.all over the same envsWithStaking
+    // array, so index access is always defined.
+    const { userStaking, schedule, tokenBalance, price } =
+      envStakingInfo[index];
 
     if (!userStaking || !schedule) return [];
 

@@ -27,7 +27,17 @@ export async function getWellPriceFromBaseOracle(
   >;
   const mWELL = tokens.MOONWELL_WELL?.address;
   const oracle = baseEnv.contracts.oracle;
-  if (!mWELL || !oracle) return 0n;
+  if (!mWELL || !oracle) {
+    // A custom Base env without MOONWELL_WELL or an oracle would silently
+    // zero out every WELL-priced read across the SDK. Surface it instead.
+    baseEnv.onError?.(
+      new Error(
+        `getWellPriceFromBaseOracle: missing ${!mWELL ? "MOONWELL_WELL token" : "oracle contract"} on Base env`,
+      ),
+      { source: "well-price", chainId: baseEnv.chainId },
+    );
+    return 0n;
+  }
   return await oracle.read.getUnderlyingPrice([mWELL]);
 }
 

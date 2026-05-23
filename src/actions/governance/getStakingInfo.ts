@@ -84,23 +84,25 @@ async function getStakingInfoFromStkWell(
     stakingToken.read.assets([stakingTokenAddress]),
   ]);
 
-  const rejections = [
+  // Surface every rejection so operators don't have to guess which read failed.
+  for (const r of [
     cooldownR,
     unstakeWindowR,
     distributionEndR,
     totalSupplyR,
     assetDataR,
-  ].filter((r): r is PromiseRejectedResult => r.status === "rejected");
-  if (rejections.length > 0) {
-    environment.onError?.(rejections[0].reason, {
-      source: "staking-fallback",
-      chainId: environment.chainId,
-    });
+  ]) {
+    if (r.status === "rejected") {
+      environment.onError?.(r.reason, {
+        source: "staking-fallback",
+        chainId: environment.chainId,
+      });
+    }
   }
 
-  const totalSupply =
-    totalSupplyR.status === "fulfilled" ? totalSupplyR.value : 0n;
-  if (totalSupply === 0n) return undefined;
+  // totalSupply is load-bearing for APR; if its read failed (vs. legitimately
+  // returning 0n on an empty new chain) we can't produce a sensible struct.
+  if (totalSupplyR.status === "rejected") return undefined;
 
   const assetData =
     assetDataR.status === "fulfilled" ? assetDataR.value : undefined;
@@ -114,7 +116,7 @@ async function getStakingInfoFromStkWell(
       unstakeWindowR.status === "fulfilled" ? unstakeWindowR.value : 0n,
     distributionEnd:
       distributionEndR.status === "fulfilled" ? distributionEndR.value : 0n,
-    totalSupply,
+    totalSupply: totalSupplyR.value,
     emissionPerSecond,
   };
 }
@@ -156,10 +158,18 @@ export async function getStakingInfo<
           ? viewsStakingResult.value
           : undefined;
 
-      // Fall back to direct stkWELL reads when the views call rejected OR
-      // returned a zeroed struct (Moonbeam's views can be stale).
-      const viewsValid =
-        isStakingInfoStruct(viewsStaking) && viewsStaking.totalSupply > 0n;
+      // Fall back to direct stkWELL reads when the views call rejected (the
+      // known Moonbeam failure mode) or returned a fully-zeroed struct
+      // (suspicious — a real deployment always has cooldown and unstake
+      // window configured > 0). A new chain with zero stakers but real
+      // schedule constants still goes through views.
+      const allZeroed =
+        isStakingInfoStruct(viewsStaking) &&
+        viewsStaking.cooldown === 0n &&
+        viewsStaking.unstakeWindow === 0n &&
+        viewsStaking.totalSupply === 0n &&
+        viewsStaking.emissionPerSecond === 0n;
+      const viewsValid = isStakingInfoStruct(viewsStaking) && !allZeroed;
       const stakingInfo: StakingInfoStruct | undefined = viewsValid
         ? viewsStaking
         : await getStakingInfoFromStkWell(environment);
@@ -212,9 +222,13 @@ export async function getStakingInfo<
     const stakingToken = currTokens[stkKey];
     if (!token || !stakingToken) return [];
 
-    const entry = envStakingInfo[index];
-    if (!entry) return [];
-    const { stakingInfo: envStakingInfoData, historicalStaking, price } = entry;
+    // envStakingInfo is built via Promise.allSettled with an explicit
+    // fallback object at the .map below, so entries are always defined here.
+    const {
+      stakingInfo: envStakingInfoData,
+      historicalStaking,
+      price,
+    } = envStakingInfo[index];
     const isBase = curr.chainId === base.id;
 
     if (!envStakingInfoData || (isBase && !historicalStaking)) {

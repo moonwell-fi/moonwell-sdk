@@ -507,16 +507,17 @@ async function fetchMarketsFromLunar(
 
     const [nativeTokenPriceRaw, governanceTokenPriceRaw] = await Promise.all([
       homeEnvironment.contracts.views?.read.getNativeTokenPrice(),
-      getGovernanceTokenPriceFor(environment).catch(() => 0n),
+      getGovernanceTokenPriceFor(environment).catch((err) => {
+        environment.onError?.(err, {
+          source: "governance-token-price",
+          chainId: environment.chainId,
+        });
+        return 0n;
+      }),
     ]);
 
-    if (
-      nativeTokenPriceRaw === undefined ||
-      governanceTokenPriceRaw === undefined
-    ) {
-      throw new Error(
-        "Failed to fetch native or governance token prices from home chain",
-      );
+    if (nativeTokenPriceRaw === undefined) {
+      throw new Error("Failed to fetch native token price from home chain");
     }
 
     governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);

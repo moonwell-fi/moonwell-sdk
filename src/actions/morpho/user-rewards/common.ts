@@ -165,10 +165,16 @@ export async function getUserMorphoStakingRewardsData(params: {
     await Promise.all([
       viewsContract?.read.getAllMarketsInfo(),
       homeViewsContract?.read.getNativeTokenPrice(),
-      getGovernanceTokenPriceFor(params.environment).catch(() => 0n),
+      getGovernanceTokenPriceFor(params.environment).catch((err) => {
+        params.environment.onError?.(err, {
+          source: "governance-token-price",
+          chainId: params.environment.chainId,
+        });
+        return 0n;
+      }),
     ]);
 
-  const governanceTokenPrice = new Amount(governanceTokenPriceRaw ?? 0n, 18);
+  const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
   const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
   let tokenPrices =
