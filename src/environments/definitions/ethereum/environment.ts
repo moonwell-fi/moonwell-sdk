@@ -1,15 +1,22 @@
-import { http, fallback } from "viem";
-import { mainnet as ethereum } from "viem/chains";
+import { http, defineChain, fallback } from "viem";
+import { mainnet } from "viem/chains";
 import {
   type Environment,
   createEnvironmentConfig,
 } from "../../types/config.js";
+import { contracts } from "./contracts.js";
+import { custom } from "./custom.js";
 import { tokens } from "./tokens.js";
+
+// viem's `mainnet` chain leaves `testnet` undefined; consumers
+// (e.g. the bridge modal) check `env.chain.testnet === false` strictly.
+const ethereum = defineChain({ ...mainnet, testnet: false });
 
 const createEnvironment = (
   rpcUrls?: string[],
   governanceIndexerUrl?: string,
-): Environment<typeof tokens, {}, {}, {}, {}> =>
+  lunarIndexerUrl?: string,
+): Environment<typeof tokens, {}, {}, typeof contracts, typeof custom> =>
   createEnvironmentConfig({
     key: "ethereum",
     name: "Ethereum",
@@ -25,12 +32,14 @@ const createEnvironment = (
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",
+    lunarIndexerUrl:
+      lunarIndexerUrl || "https://lunar-services-worker.moonwell.workers.dev",
     tokens,
     markets: {},
     vaults: {},
     morphoMarkets: {},
-    contracts: {},
-    custom: {},
-  }) as Environment<typeof tokens, {}, {}, {}, {}>;
+    contracts,
+    custom,
+  }) as Environment<typeof tokens, {}, {}, typeof contracts, typeof custom>;
 
 export { createEnvironment, ethereum, tokens };

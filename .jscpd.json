@@ -1,0 +1,21 @@
+{
+  "minLines": 5,
+  "minTokens": 50,
+  "reporters": ["json"],
+  "output": ".gate/jscpd",
+  "ignore": [
+    "**/node_modules/**",
+    "**/_cjs/**",
+    "**/_esm/**",
+    "**/_types/**",
+    "**/coverage/**",
+    "**/test/**",
+    "**/site/**",
+    "**/*.test.*",
+    "**/*.bench.*",
+    "**/*.bench-d.*",
+    "**/*.spec.*"
+  ],
+  "absolute": false,
+  "format": ["typescript", "tsx", "javascript", "jsx"]
+}

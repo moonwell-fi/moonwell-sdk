@@ -3,6 +3,9 @@ export {
   type MoonwellClient,
 } from "./client/createMoonwellClient.js";
 
+export { MerklApiError } from "./actions/morpho/user-rewards/common.js";
+export { MorphoUserRewardsAggregateError } from "./actions/morpho/user-rewards/getMorphoUserRewards.js";
+
 export type {
   MarketConfig,
   MorphoMarketConfig,

@@ -1,0 +1,5 @@
+# Run-time outputs from the quality gate. Keep baseline.json committed.
+*
+!.gitignore
+!baseline.json
+!README.md

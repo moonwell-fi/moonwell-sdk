@@ -9,6 +9,8 @@ import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain, GovernanceToken } from "../../environments/index.js";
 import type { UserVotingPowers } from "../../types/userVotingPowers.js";
 
+const warnedNoViewsEnvs = new Set<string>();
+
 export type GetUserVotingPowersParameters<
   environments,
   network extends Chain | undefined,
@@ -49,14 +51,31 @@ export async function getUserVotingPowers<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const tokenEnvironments = environments.filter(
-    (env) => env.custom?.governance?.token === governanceToken,
-  );
+  // A chain can hold a governance token without deploying a views contract
+  // (voting reads run on the hub). Skipping the no-views case here lets the
+  // read site below call views.read.getUserVotingPower directly.
+  const tokenEnvironments = environments.flatMap((env) => {
+    if (env.custom?.governance?.token !== governanceToken) {
+      return [];
+    }
+    const views = env.contracts.views;
+    if (views === undefined) {
+      const key = `${env.chainId}:${governanceToken}`;
+      if (!warnedNoViewsEnvs.has(key)) {
+        warnedNoViewsEnvs.add(key);
+        console.warn(
+          `[moonwell-sdk] getUserVotingPowers: skipping chainId=${env.chainId} for governanceToken=${governanceToken} — environment holds the token but has no views contract.`,
+        );
+      }
+      return [];
+    }
+    return [{ env, views }];
+  });
 
   const perChainBlockNumbers =
     snapshotTimestamp !== undefined
       ? await Promise.all(
-          tokenEnvironments.map((env) =>
+          tokenEnvironments.map(({ env }) =>
             getBlockNumberAtTimestamp(
               env.publicClient,
               BigInt(snapshotTimestamp),
@@ -65,23 +84,19 @@ export async function getUserVotingPowers<
         )
       : undefined;
 
-  const environmentsUserVotingPowers = await Promise.all(
-    tokenEnvironments.map((environment, index) => {
+  const resolvedVotingPowers = await Promise.all(
+    tokenEnvironments.map(async ({ env, views }, index) => {
       const blockForChain = perChainBlockNumbers
         ? perChainBlockNumbers[index]
         : blockNumber;
-      return environment.contracts.views?.read.getUserVotingPower(
-        [userAddress],
-        {
-          blockNumber: blockForChain,
-        },
-      );
+      const votingPowers = await views.read.getUserVotingPower([userAddress], {
+        blockNumber: blockForChain,
+      });
+      return { env, votingPowers };
     }),
   );
 
-  return tokenEnvironments.map((environment, index) => {
-    const votingPowers = environmentsUserVotingPowers[index]!;
-
+  return resolvedVotingPowers.map(({ env: environment, votingPowers }) => {
     return {
       chainId: environment.chainId,
 

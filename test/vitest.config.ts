@@ -14,7 +14,11 @@ export default defineConfig({
     coverage: {
       all: false,
       provider: "v8",
-      reporter: process.env.CI ? ["lcov"] : ["text", "json", "html"],
+      reporter: process.env.CI
+        ? ["lcov", "json-summary"]
+        : ["text", "json", "html", "json-summary"],
+      reportsDirectory: "./coverage",
+      reportOnFailure: true,
       exclude: [
         "**/errors/utils.ts",
         "**/_cjs/**",
@@ -42,6 +46,7 @@ export default defineConfig({
       "src/actions/core/user-positions/getUserPositionSnapshots.test.ts",
       "src/client/createMoonwellClient.test.ts",
       "src/common/getBlockNumberAtTimestamp.test.ts",
+      "src/environments/definitions/ethereum/environment.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,
