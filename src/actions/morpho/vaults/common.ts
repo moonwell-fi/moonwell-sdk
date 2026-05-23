@@ -19,6 +19,7 @@ import type {
   MorphoVault,
   MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
+import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
 import { getGraphQL, getVaultV2Apy } from "../utils/graphql.js";
 import {
   SECONDS_PER_YEAR,
@@ -321,16 +322,19 @@ async function getMorphoVaultsDataFromIndexer(params: {
         const data = await Promise.all([
           viewsContract?.read.getAllMarketsInfo(),
           homeViewsContract?.read.getNativeTokenPrice(),
-          homeViewsContract?.read.getGovernanceTokenPrice(),
+          getGovernanceTokenPriceFor(environment).catch((err) => {
+            environment.onError?.(err, {
+              source: "governance-token-price",
+              chainId: environment.chainId,
+            });
+            return 0n;
+          }),
         ]);
 
         const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
 
-        const governanceTokenPrice = new Amount(
-          governanceTokenPriceRaw || 0n,
-          18,
-        );
-        const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+        const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
+        const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
         let tokenPrices =
           allMarkets
@@ -1056,16 +1060,19 @@ async function getMorphoVaultsDataFromOnChain(params: {
       const data = await Promise.all([
         viewsContract?.read.getAllMarketsInfo(),
         homeViewsContract?.read.getNativeTokenPrice(),
-        homeViewsContract?.read.getGovernanceTokenPrice(),
+        getGovernanceTokenPriceFor(environment).catch((err) => {
+          environment.onError?.(err, {
+            source: "governance-token-price",
+            chainId: environment.chainId,
+          });
+          return 0n;
+        }),
       ]);
 
       const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
 
-      const governanceTokenPrice = new Amount(
-        governanceTokenPriceRaw || 0n,
-        18,
-      );
-      const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+      const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
+      const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
       let tokenPrices =
         allMarkets

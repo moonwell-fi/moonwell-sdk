@@ -12,6 +12,7 @@ import {
 } from "../../../environments/utils/index.js";
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
 import type { MorphoUserStakingReward } from "../../../types/morphoUserStakingReward.js";
+import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
 
 /**
  * Error thrown for any failure communicating with the Merkl API: non-ok HTTP
@@ -164,11 +165,17 @@ export async function getUserMorphoStakingRewardsData(params: {
     await Promise.all([
       viewsContract?.read.getAllMarketsInfo(),
       homeViewsContract?.read.getNativeTokenPrice(),
-      homeViewsContract?.read.getGovernanceTokenPrice(),
+      getGovernanceTokenPriceFor(params.environment).catch((err) => {
+        params.environment.onError?.(err, {
+          source: "governance-token-price",
+          chainId: params.environment.chainId,
+        });
+        return 0n;
+      }),
     ]);
 
-  const governanceTokenPrice = new Amount(governanceTokenPriceRaw || 0n, 18);
-  const nativeTokenPrice = new Amount(nativeTokenPriceRaw || 0n, 18);
+  const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
+  const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
 
   let tokenPrices =
     allMarkets

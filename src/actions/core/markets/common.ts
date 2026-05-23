@@ -17,6 +17,7 @@ import {
   findTokenByAddress,
 } from "../../../environments/utils/index.js";
 import type { Market } from "../../../types/market.js";
+import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
 
 export const getMarketsData = async (environment: Environment) => {
   // Moonriver (chainId 1285) should always use on-chain data
@@ -54,7 +55,7 @@ export const getMarketsData = async (environment: Environment) => {
     viewsContract?.read.getProtocolInfo(),
     viewsContract?.read.getAllMarketsInfo(),
     homeViewsContract?.read.getNativeTokenPrice(),
-    homeViewsContract?.read.getGovernanceTokenPrice(),
+    getGovernanceTokenPriceFor(environment),
   ]);
 
   // If getAllMarketsInfo failed (e.g. broken on-chain oracle), fall back to
@@ -506,13 +507,17 @@ async function fetchMarketsFromLunar(
 
     const [nativeTokenPriceRaw, governanceTokenPriceRaw] = await Promise.all([
       homeEnvironment.contracts.views?.read.getNativeTokenPrice(),
-      homeEnvironment.contracts.views?.read.getGovernanceTokenPrice(),
+      getGovernanceTokenPriceFor(environment).catch((err) => {
+        environment.onError?.(err, {
+          source: "governance-token-price",
+          chainId: environment.chainId,
+        });
+        return 0n;
+      }),
     ]);
 
-    if (!nativeTokenPriceRaw || !governanceTokenPriceRaw) {
-      throw new Error(
-        "Failed to fetch native or governance token prices from home chain",
-      );
+    if (nativeTokenPriceRaw === undefined) {
+      throw new Error("Failed to fetch native token price from home chain");
     }
 
     governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
