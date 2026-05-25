@@ -72,9 +72,12 @@ export async function getUserVotingPowers<
     return [{ env, views }];
   });
 
+  // Resolve per-chain block numbers independently — a single chain RPC failure
+  // should not abort the whole call. Fulfilled entries keep their index so the
+  // index still aligns with tokenEnvironments below.
   const perChainBlockNumbers =
     snapshotTimestamp !== undefined
-      ? await Promise.all(
+      ? await Promise.allSettled(
           tokenEnvironments.map(({ env }) =>
             getBlockNumberAtTimestamp(
               env.publicClient,
@@ -84,17 +87,52 @@ export async function getUserVotingPowers<
         )
       : undefined;
 
-  const resolvedVotingPowers = await Promise.all(
+  // Resolve voting powers per chain using allSettled so that a reverted views
+  // contract on one chain (e.g. Moonbeam's getUserVotingPower revert) does not
+  // cascade and kill the whole call for all chains.
+  const settledVotingPowers = await Promise.allSettled(
     tokenEnvironments.map(async ({ env, views }, index) => {
-      const blockForChain = perChainBlockNumbers
-        ? perChainBlockNumbers[index]
-        : blockNumber;
+      let blockForChain: bigint | undefined;
+      if (perChainBlockNumbers !== undefined) {
+        const blockResult = perChainBlockNumbers[index];
+        if (blockResult === undefined || blockResult.status === "rejected") {
+          // Throw so this chain lands in "rejected" in settledVotingPowers.
+          // onError is fired once in the flatMap loop below — not here — to
+          // avoid double-calling when both the block-lookup and the allSettled
+          // handler would otherwise report the same failure.
+          throw blockResult?.reason ?? new Error("block-number lookup failed");
+        }
+        blockForChain = blockResult.value;
+      } else {
+        blockForChain = blockNumber;
+      }
       const votingPowers = await views.read.getUserVotingPower([userAddress], {
         blockNumber: blockForChain,
       });
       return { env, votingPowers };
     }),
   );
+
+  const resolvedVotingPowers = settledVotingPowers.flatMap((result, index) => {
+    if (result.status === "fulfilled") {
+      return [result.value];
+    }
+    const entry = tokenEnvironments[index];
+    if (entry !== undefined) {
+      // Determine whether the failure came from block-number resolution or from
+      // the views contract read, so the onError source is actionable.
+      const blockFailed =
+        perChainBlockNumbers !== undefined &&
+        perChainBlockNumbers[index]?.status === "rejected";
+      entry.env.onError?.(result.reason, {
+        source: blockFailed
+          ? "getUserVotingPower-block-lookup"
+          : "getUserVotingPower",
+        chainId: entry.env.chainId,
+      });
+    }
+    return [];
+  });
 
   return resolvedVotingPowers.map(({ env: environment, votingPowers }) => {
     return {
