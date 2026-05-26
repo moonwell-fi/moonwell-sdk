@@ -5,6 +5,10 @@ describe("Testing user staking info", () => {
   Object.entries(testClient.environments).forEach(
     ([networkKey, environment]) => {
       const { chain } = environment;
+      // Some chains in the test client (Arbitrum, Avalanche, Polygon) host no
+      // staking contracts — getUserStakingInfo correctly returns [] for them,
+      // so gate the strict assertion the same way getStakingSnapshots.test.ts does.
+      const hasStaking = "stakingToken" in environment.config.contracts;
 
       test(`Get user staking info on ${chain.name}`, async () => {
         const userStakingInfo = await testClient.getUserStakingInfo<
@@ -14,7 +18,11 @@ describe("Testing user staking info", () => {
           userAddress: "0x0000000000000000000000000000000000000000",
         });
         expect(userStakingInfo).toBeDefined();
-        expect(userStakingInfo.length).toBeGreaterThan(0);
+        if (hasStaking) {
+          expect(userStakingInfo.length).toBeGreaterThan(0);
+        } else {
+          expect(userStakingInfo).toHaveLength(0);
+        }
       });
       test(`Get user staking info by chain id on ${chain.name}`, async () => {
         const userStakingInfo = await testClient.getUserStakingInfo({
@@ -22,7 +30,11 @@ describe("Testing user staking info", () => {
           userAddress: "0x0000000000000000000000000000000000000000",
         });
         expect(userStakingInfo).toBeDefined();
-        expect(userStakingInfo.length).toBeGreaterThan(0);
+        if (hasStaking) {
+          expect(userStakingInfo.length).toBeGreaterThan(0);
+        } else {
+          expect(userStakingInfo).toHaveLength(0);
+        }
       });
     },
   );
