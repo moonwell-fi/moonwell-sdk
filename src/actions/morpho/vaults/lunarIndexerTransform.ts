@@ -9,6 +9,7 @@
  */
 
 import { Amount } from "../../../common/amount.js";
+import { timeoutSignal } from "../../../common/abort-signal.js";
 import type { Environment, TokenConfig } from "../../../environments/index.js";
 import type {
   MorphoVault,
@@ -331,7 +332,7 @@ export async function fetchTokenMap(
 ): Promise<Map<string, LunarIndexerToken>> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/tokens/${chainId}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  const response = await fetch(url, { signal: timeoutSignal(10_000) });
 
   if (!response.ok) {
     throw new Error(
@@ -373,7 +374,7 @@ export async function fetchVaultsFromIndexer(
 
   const url = `${lunarIndexerUrl}/api/v1/vaults/vaults/${chainId}${params.toString() ? `?${params.toString()}` : ""}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  const response = await fetch(url, { signal: timeoutSignal(10_000) });
 
   if (!response.ok) {
     throw new Error(
@@ -397,7 +398,7 @@ export async function fetchVaultFromIndexer(
 ): Promise<LunarIndexerVault> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  const response = await fetch(url, { signal: timeoutSignal(10_000) });
 
   if (!response.ok) {
     throw new Error(
@@ -464,7 +465,7 @@ export async function fetchVaultSnapshotsFromIndexer(
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  const response = await fetch(url, { signal: timeoutSignal(10_000) });
 
   if (!response.ok) {
     throw new Error(

@@ -1,4 +1,5 @@
 import { MOONWELL_FETCH_JSON_HEADERS } from "../../../common/fetch-headers.js";
+import { timeoutSignal } from "../../../common/abort-signal.js";
 import type { Environment } from "../../../environments/index.js";
 import type { MorphoVaultV2ApyResponse } from "../../../types/morphoVault.js";
 
@@ -15,7 +16,7 @@ export async function getGraphQL<T>(
       method: "POST",
       headers: MOONWELL_FETCH_JSON_HEADERS,
       body: JSON.stringify({ query: query, operationName, variables }),
-      signal: AbortSignal.timeout(10000),
+      signal: timeoutSignal(10000),
     });
 
     const json = await response.json();
@@ -89,7 +90,7 @@ export async function getVaultV2Apy(
           chainId,
         },
       }),
-      signal: AbortSignal.timeout(10000),
+      signal: timeoutSignal(10000),
     });
 
     const json = await response.json();
