@@ -3,8 +3,13 @@ import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
-import type { Proposal } from "../../../types/proposal.js";
-import { fetchProposal } from "../governor-api-client.js";
+import { type Proposal, ProposalState } from "../../../types/proposal.js";
+import {
+  type ApiProposal,
+  SUPPORTED_GOVERNOR_CHAIN_IDS,
+  fetchProposal,
+  isNotFoundError,
+} from "../governor-api-client.js";
 import {
   appendProposalExtendedData,
   formatApiProposalData,
@@ -20,6 +25,11 @@ export type GetProposalParameters<
   network extends Chain | undefined,
 > = NetworkParameterType<environments, network> & {
   proposalId: number;
+  /**
+   * The chain the proposal lives on (1 = Ethereum multigov,
+   * 1284 = Moonbeam historical). When omitted, both are tried in turn.
+   */
+  chainId?: number;
 };
 
 export type GetProposalReturnType = Promise<Proposal | undefined>;
@@ -45,33 +55,41 @@ export async function getProposal<
     return undefined;
   }
 
-  try {
-    if (environment.chainId === moonbeam.id) {
-      // Moonbeam: Use new Governor API
-      return await getMoonbeamProposal(environment, proposalId);
-    } else {
-      // Moonriver: Use old Ponder approach
-      return await getMoonriverProposal(environment, proposalId);
-    }
-  } catch (error) {
-    console.error(
-      `[getProposal] Error fetching proposal ${proposalId}:`,
-      error,
-    );
-    return undefined;
+  if (environment.chainId === moonbeam.id) {
+    return getMoonbeamProposal(environment, proposalId, args.chainId);
   }
+  return getMoonriverProposal(environment, proposalId);
 }
 
 /**
- * Fetch a single proposal for Moonbeam using the new Governor API
+ * Fetch a single proposal for Moonbeam using the Governor API.
+ *
+ * When `chainId` is provided we hit only that chain. When omitted we try the
+ * supported chains in order (Ethereum first since that's where active multigov
+ * proposals live) and fall back on `NotFoundError`. Real outages (5xx, network
+ * errors) propagate so callers can distinguish "missing" from "broken".
  */
 async function getMoonbeamProposal(
   governanceEnvironment: Environment,
   proposalId: number,
+  chainId?: number,
 ): Promise<Proposal | undefined> {
-  const apiProposalId = `${proposalId}`;
+  const tryChains = chainId ? [chainId] : SUPPORTED_GOVERNOR_CHAIN_IDS;
 
-  const apiProposal = await fetchProposal(governanceEnvironment, apiProposalId);
+  let apiProposal: ApiProposal | undefined;
+  for (const cid of tryChains) {
+    try {
+      apiProposal = await fetchProposal(governanceEnvironment, cid, proposalId);
+      break;
+    } catch (error) {
+      if (isNotFoundError(error)) continue;
+      throw error;
+    }
+  }
+
+  if (!apiProposal) {
+    return undefined;
+  }
 
   const formattedData = formatApiProposalData(apiProposal);
   const onChainDataList = await getProposalsOnChainData(
@@ -79,29 +97,31 @@ async function getMoonbeamProposal(
     governanceEnvironment,
   );
   const onChainData = onChainDataList[0]!;
-
   const isMultichain = isMultichainProposal(apiProposal.targets);
 
-  let proposalState = onChainData.state;
+  // For cross-chain proposals, onChainData.state is already API-derived inside
+  // getProposalsOnChainData, so the post-processing below acts as a no-op
+  // (votesCollected is false and the derived state is already terminal).
   const now = Math.floor(Date.now() / 1000);
+  let proposalState = onChainData.state;
 
   if (
-    proposalState === 0 &&
+    proposalState === ProposalState.Pending &&
     now >= apiProposal.votingStartTime &&
     now <= apiProposal.votingEndTime
   ) {
-    proposalState = 1; // Active
+    proposalState = ProposalState.Active;
   }
 
   if (formattedData.executed) {
-    proposalState = 7; // ProposalState.Executed
+    proposalState = ProposalState.Executed;
   } else if (
     isMultichain &&
     onChainData.votesCollected &&
     now > apiProposal.votingEndTime &&
-    proposalState < 5
+    proposalState < ProposalState.Queued
   ) {
-    proposalState = 5; // ProposalState.Queued
+    proposalState = ProposalState.Queued;
   }
 
   const proposal: Proposal = {

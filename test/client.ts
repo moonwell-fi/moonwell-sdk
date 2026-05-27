@@ -1,18 +1,17 @@
 import { createMoonwellClient } from "../src/client/createMoonwellClient.js";
 
-// Use the SDK's production default RPC endpoints (rpc.moonwell.fi) so tests
-// exercise the same infrastructure consumers actually use. Previously these
-// pointed at drpc.org with a hard-coded API key, which leaked the key in source
-// control and caused the suite to flake on drpc's intermittent 5xx spikes.
+const moonwellRpc = (chainId: number) =>
+  `https://rpc.moonwell.fi/main/evm/${chainId}`;
+
 export const testRpcUrls = {
-  ethereum: "https://rpc.moonwell.fi/main/evm/1",
-  base: "https://rpc.moonwell.fi/main/evm/8453",
-  optimism: "https://rpc.moonwell.fi/main/evm/10",
-  arbitrum: "https://rpc.moonwell.fi/main/evm/42161",
-  avalanche: "https://rpc.moonwell.fi/main/evm/43114",
-  polygon: "https://rpc.moonwell.fi/main/evm/137",
-  moonbeam: "https://rpc.moonwell.fi/main/evm/1284",
-  moonriver: "https://rpc.moonwell.fi/main/evm/1285",
+  ethereum: moonwellRpc(1),
+  base: moonwellRpc(8453),
+  optimism: moonwellRpc(10),
+  arbitrum: moonwellRpc(42161),
+  avalanche: moonwellRpc(43114),
+  polygon: moonwellRpc(137),
+  moonbeam: moonwellRpc(1284),
+  moonriver: moonwellRpc(1285),
 };
 
 export const testClient = createMoonwellClient({
