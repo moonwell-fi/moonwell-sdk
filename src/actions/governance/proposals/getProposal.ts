@@ -1,12 +1,14 @@
+import axios from "axios";
 import { moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { Proposal } from "../../../types/proposal.js";
-import { fetchProposal } from "../governor-api-client.js";
+import { type ApiProposal, fetchProposal } from "../governor-api-client.js";
 import {
   appendProposalExtendedData,
+  deriveProposalStateFromApi,
   formatApiProposalData,
   getCrossChainProposalData,
   getExtendedProposalData,
@@ -20,9 +22,21 @@ export type GetProposalParameters<
   network extends Chain | undefined,
 > = NetworkParameterType<environments, network> & {
   proposalId: number;
+  /**
+   * The chain the proposal lives on (1 = Ethereum multigov,
+   * 1284 = Moonbeam historical). When omitted, both are tried in turn.
+   */
+  chainId?: number;
 };
 
 export type GetProposalReturnType = Promise<Proposal | undefined>;
+
+// Chains tried (in order) when caller omits chainId. Ethereum first because
+// new multigov proposals live there; Moonbeam covers the historical archive.
+const FALLBACK_CHAIN_IDS = [1, 1284] as const;
+
+const is404 = (error: unknown): boolean =>
+  axios.isAxiosError(error) && error.response?.status === 404;
 
 export async function getProposal<
   environments,
@@ -48,7 +62,7 @@ export async function getProposal<
   try {
     if (environment.chainId === moonbeam.id) {
       // Moonbeam: Use new Governor API
-      return await getMoonbeamProposal(environment, proposalId);
+      return await getMoonbeamProposal(environment, proposalId, args.chainId);
     } else {
       // Moonriver: Use old Ponder approach
       return await getMoonriverProposal(environment, proposalId);
@@ -68,10 +82,27 @@ export async function getProposal<
 async function getMoonbeamProposal(
   governanceEnvironment: Environment,
   proposalId: number,
+  chainId?: number,
 ): Promise<Proposal | undefined> {
-  const apiProposalId = `${proposalId}`;
+  const tryChains = chainId ? [chainId] : FALLBACK_CHAIN_IDS;
 
-  const apiProposal = await fetchProposal(governanceEnvironment, apiProposalId);
+  let apiProposal: ApiProposal | undefined;
+  let lastError: unknown;
+  for (const cid of tryChains) {
+    try {
+      apiProposal = await fetchProposal(governanceEnvironment, cid, proposalId);
+      break;
+    } catch (error) {
+      lastError = error;
+      if (is404(error)) continue;
+      throw error;
+    }
+  }
+
+  if (!apiProposal) {
+    if (lastError && !is404(lastError)) throw lastError;
+    return undefined;
+  }
 
   const formattedData = formatApiProposalData(apiProposal);
   const onChainDataList = await getProposalsOnChainData(
@@ -80,28 +111,35 @@ async function getMoonbeamProposal(
   );
   const onChainData = onChainDataList[0]!;
 
+  const now = Math.floor(Date.now() / 1000);
+  const isCrossChainProposal =
+    apiProposal.chainId !== governanceEnvironment.chainId;
   const isMultichain = isMultichainProposal(apiProposal.targets);
 
-  let proposalState = onChainData.state;
-  const now = Math.floor(Date.now() / 1000);
+  let proposalState: number;
+  if (isCrossChainProposal) {
+    proposalState = deriveProposalStateFromApi(formattedData, apiProposal, now);
+  } else {
+    proposalState = onChainData.state;
 
-  if (
-    proposalState === 0 &&
-    now >= apiProposal.votingStartTime &&
-    now <= apiProposal.votingEndTime
-  ) {
-    proposalState = 1; // Active
-  }
+    if (
+      proposalState === 0 &&
+      now >= apiProposal.votingStartTime &&
+      now <= apiProposal.votingEndTime
+    ) {
+      proposalState = 1; // Active
+    }
 
-  if (formattedData.executed) {
-    proposalState = 7; // ProposalState.Executed
-  } else if (
-    isMultichain &&
-    onChainData.votesCollected &&
-    now > apiProposal.votingEndTime &&
-    proposalState < 5
-  ) {
-    proposalState = 5; // ProposalState.Queued
+    if (formattedData.executed) {
+      proposalState = 7; // ProposalState.Executed
+    } else if (
+      isMultichain &&
+      onChainData.votesCollected &&
+      now > apiProposal.votingEndTime &&
+      proposalState < 5
+    ) {
+      proposalState = 5; // ProposalState.Queued
+    }
   }
 
   const proposal: Proposal = {

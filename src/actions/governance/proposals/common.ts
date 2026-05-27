@@ -135,6 +135,31 @@ export type ApiProposalFormatted = {
 };
 
 /**
+ * Derive a ProposalState value from API data alone (no on-chain read).
+ *
+ * Used for proposals whose chainId doesn't match the governance environment's
+ * chainId — e.g. chainId=1 (Ethereum multigov) proposals reached through the
+ * Moonbeam governance environment, where on-chain reads against Moonbeam's
+ * governor would be meaningless.
+ */
+export const deriveProposalStateFromApi = (
+  formatted: ApiProposalFormatted,
+  apiProposal: ApiProposal,
+  now: number,
+): number => {
+  if (formatted.executed) return 7; // Executed
+  if (formatted.canceled) return 2; // Canceled
+  const hasQueued = apiProposal.stateChanges?.some(
+    (sc) => sc.state === "QUEUED",
+  );
+  if (hasQueued) return 5; // Queued
+  if (now >= apiProposal.votingStartTime && now <= apiProposal.votingEndTime) {
+    return 1; // Active
+  }
+  return 0; // Pending
+};
+
+/**
  * Parses and formats API proposal data
  */
 export const formatApiProposalData = (
@@ -257,6 +282,19 @@ export const getProposalsOnChainData = async (
 
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
+      // Proposals from a different chain than the governance env (e.g. chainId=1
+      // Ethereum proposals fetched through the Moonbeam env) can't be read from
+      // this env's contracts — return defaults; caller derives state from API.
+      if (p.chainId !== governanceEnvironment.chainId) {
+        return {
+          state: 0,
+          proposalData: null,
+          eta: 0,
+          votesCollected: false,
+          quorum: 0n,
+        };
+      }
+
       const isMultichain = isMultichainAware(p, legacyArtemisMaxId);
 
       const governorContract = isMultichain
@@ -296,6 +334,10 @@ export const getProposalsOnChainData = async (
 
   const votesCollectedList = await Promise.all(
     apiProposals.map(async (apiProposal) => {
+      if (apiProposal.chainId !== governanceEnvironment.chainId) {
+        return false;
+      }
+
       const isMultichain = isMultichainAware(apiProposal, legacyArtemisMaxId);
 
       if (

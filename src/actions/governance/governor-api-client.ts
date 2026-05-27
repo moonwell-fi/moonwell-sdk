@@ -10,6 +10,15 @@ const getGovernorApiUrl = (environment: Environment): string => {
 };
 
 /**
+ * Build the chain-prefixed proposal key the new indexer requires
+ * (e.g. chainId=1, proposalId=7 → "1-0000000007").
+ */
+export const buildProposalKey = (
+  chainId: number,
+  proposalId: number | string,
+): string => `${chainId}-${String(proposalId).padStart(10, "0")}`;
+
+/**
  * Paginated response type
  */
 export type PaginatedResponse<T> = {
@@ -94,19 +103,26 @@ export type ApiVoteReceipt = {
   timestamp: number;
 };
 
+export type FetchProposalsOptions = PaginationOptions & {
+  chainId: number;
+};
+
 /**
  * Fetch proposals from Governor API
+ *
+ * `chainId` is required by the indexer — 1 (Ethereum multigov) or
+ * 1284 (Moonbeam historical). Missing/unsupported chainId returns 400.
  */
 export async function fetchProposals(
   environment: Environment,
-  options?: PaginationOptions & { chainId?: number },
+  options: FetchProposalsOptions,
 ): Promise<PaginatedResponse<ApiProposal>> {
   const baseUrl = getGovernorApiUrl(environment);
   const params = new URLSearchParams();
 
-  if (options?.limit) params.append("limit", options.limit.toString());
-  if (options?.cursor) params.append("cursor", options.cursor);
-  if (options?.chainId) params.append("chainId", options.chainId.toString());
+  params.append("chainId", options.chainId.toString());
+  if (options.limit) params.append("limit", options.limit.toString());
+  if (options.cursor) params.append("cursor", options.cursor);
 
   const response = await getWithRetry<PaginatedResponse<ApiProposal>>(
     `${baseUrl}/api/v1/governor/proposals?${params.toString()}`,
@@ -120,20 +136,20 @@ export async function fetchProposals(
 }
 
 /**
- * Fetch all proposals (handles pagination internally)
+ * Fetch all proposals for a given chainId (handles pagination internally)
  */
 export async function fetchAllProposals(
   environment: Environment,
-  options?: { chainId?: number },
+  options: { chainId: number },
 ): Promise<ApiProposal[]> {
   const allProposals: ApiProposal[] = [];
   let cursor: string | undefined = undefined;
 
   do {
     const response = await fetchProposals(environment, {
+      chainId: options.chainId,
       limit: 1000,
       ...(cursor && { cursor }),
-      ...(options?.chainId && { chainId: options.chainId }),
     });
 
     allProposals.push(...response.results);
@@ -148,12 +164,14 @@ export async function fetchAllProposals(
  */
 export async function fetchProposal(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
 ): Promise<ApiProposal> {
   const baseUrl = getGovernorApiUrl(environment);
+  const key = buildProposalKey(chainId, proposalId);
 
   const response = await getWithRetry<ApiProposal>(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}`,
+    `${baseUrl}/api/v1/governor/proposals/${key}`,
   );
 
   if (response.status !== 200 || !response.data) {
@@ -168,17 +186,19 @@ export async function fetchProposal(
  */
 export async function fetchProposalVotes(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
   options?: PaginationOptions,
 ): Promise<PaginatedResponse<ApiVote>> {
   const baseUrl = getGovernorApiUrl(environment);
+  const key = buildProposalKey(chainId, proposalId);
   const params = new URLSearchParams();
 
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.cursor) params.append("cursor", options.cursor);
 
   const response = await getWithRetry<PaginatedResponse<ApiVote>>(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}/votes?${params.toString()}`,
+    `${baseUrl}/api/v1/governor/proposals/${key}/votes?${params.toString()}`,
   );
 
   if (response.status !== 200 || !response.data) {
@@ -193,16 +213,22 @@ export async function fetchProposalVotes(
  */
 export async function fetchAllProposalVotes(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
 ): Promise<ApiVote[]> {
   const allVotes: ApiVote[] = [];
   let cursor: string | undefined = undefined;
 
   do {
-    const response = await fetchProposalVotes(environment, proposalId, {
-      limit: 1000,
-      ...(cursor && { cursor }),
-    });
+    const response = await fetchProposalVotes(
+      environment,
+      chainId,
+      proposalId,
+      {
+        limit: 1000,
+        ...(cursor && { cursor }),
+      },
+    );
 
     allVotes.push(...response.results);
     cursor = response.nextCursor;
@@ -216,10 +242,12 @@ export async function fetchAllProposalVotes(
  */
 export async function fetchProposalStateChanges(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
   options?: PaginationOptions,
 ): Promise<PaginatedResponse<ApiProposalStateChange>> {
   const baseUrl = getGovernorApiUrl(environment);
+  const key = buildProposalKey(chainId, proposalId);
   const params = new URLSearchParams();
 
   if (options?.limit) params.append("limit", options.limit.toString());
@@ -228,7 +256,7 @@ export async function fetchProposalStateChanges(
   const response = await getWithRetry<
     PaginatedResponse<ApiProposalStateChange>
   >(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}/state-changes?${params.toString()}`,
+    `${baseUrl}/api/v1/governor/proposals/${key}/state-changes?${params.toString()}`,
   );
 
   if (response.status !== 200 || !response.data) {
@@ -245,16 +273,22 @@ export async function fetchProposalStateChanges(
  */
 export async function fetchAllProposalStateChanges(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
 ): Promise<ApiProposalStateChange[]> {
   const allStateChanges: ApiProposalStateChange[] = [];
   let cursor: string | undefined = undefined;
 
   do {
-    const response = await fetchProposalStateChanges(environment, proposalId, {
-      limit: 1000,
-      ...(cursor && { cursor }),
-    });
+    const response = await fetchProposalStateChanges(
+      environment,
+      chainId,
+      proposalId,
+      {
+        limit: 1000,
+        ...(cursor && { cursor }),
+      },
+    );
 
     allStateChanges.push(...response.results);
     cursor = response.nextCursor;
@@ -447,13 +481,15 @@ export async function fetchAllVoterVotes(
  */
 export async function fetchUserVoteReceipt(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
   voterAddress: string,
 ): Promise<ApiVoteReceipt[]> {
   const baseUrl = getGovernorApiUrl(environment);
+  const key = buildProposalKey(chainId, proposalId);
 
   const response = await getWithRetry<ApiVoteReceipt[]>(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}/vote/${voterAddress}`,
+    `${baseUrl}/api/v1/governor/proposals/${key}/vote/${voterAddress}`,
   );
 
   if (response.status !== 200 || !response.data) {

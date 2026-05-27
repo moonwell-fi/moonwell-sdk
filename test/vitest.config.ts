@@ -43,6 +43,7 @@ export default defineConfig({
       "src/actions/governance/getCirculatingSupplySnapshots.test.ts",
       "src/actions/governance/getStakingSnapshots.test.ts",
       "src/actions/governance/getUserVotingPowers.test.ts",
+      "src/actions/governance/governor-api-client.test.ts",
       "src/actions/core/user-positions/getUserPositionSnapshots.test.ts",
       "src/client/createMoonwellClient.test.ts",
       "src/common/getBlockNumberAtTimestamp.test.ts",

@@ -8,6 +8,7 @@ import type { Proposal } from "../../../types/proposal.js";
 import { fetchAllProposals } from "../governor-api-client.js";
 import {
   appendProposalExtendedData,
+  deriveProposalStateFromApi,
   formatApiProposalData,
   getCrossChainProposalData,
   getExtendedProposalData,
@@ -58,7 +59,14 @@ export async function getProposals<
   );
 
   const proposals = allProposals.flat();
-  const sortedProposals = proposals.sort((a, b) => b.proposalId - a.proposalId);
+  // Newer multigov-ethereum proposals (chainId=1) and historical Moonbeam
+  // proposals (chainId=1284) restart their proposalId counters from 1, so IDs
+  // may collide across chains. Sort by proposalId desc with chainId as a
+  // stable tiebreaker (smaller chainId — Ethereum — wins).
+  const sortedProposals = proposals.sort((a, b) => {
+    if (b.proposalId !== a.proposalId) return b.proposalId - a.proposalId;
+    return a.chainId - b.chainId;
+  });
 
   logger.end(logId);
 
@@ -67,11 +75,20 @@ export async function getProposals<
 
 /**
  * Fetch proposals for Moonbeam using the new Governor API
+ *
+ * The same indexer DO serves two chains:
+ *   - chainId=1 (Ethereum) — the new multigov contract
+ *   - chainId=1284 (Moonbeam) — historical proposals
+ * We fetch both in parallel and merge.
  */
 async function getMoonbeamProposals(
   governanceEnvironment: Environment,
 ): Promise<Proposal[]> {
-  const apiProposals = await fetchAllProposals(governanceEnvironment);
+  const [ethereumProposals, moonbeamHistoricalProposals] = await Promise.all([
+    fetchAllProposals(governanceEnvironment, { chainId: 1 }),
+    fetchAllProposals(governanceEnvironment, { chainId: 1284 }),
+  ]);
+  const apiProposals = [...ethereumProposals, ...moonbeamHistoricalProposals];
   const onChainDataList = await getProposalsOnChainData(
     apiProposals,
     governanceEnvironment,
@@ -82,28 +99,40 @@ async function getMoonbeamProposals(
 
     const formattedData = formatApiProposalData(apiProposal);
 
-    let proposalState = onChainData.state;
     const now = Math.floor(Date.now() / 1000);
-
-    if (
-      proposalState === 0 &&
-      now >= apiProposal.votingStartTime &&
-      now <= apiProposal.votingEndTime
-    ) {
-      proposalState = 1; // Active
-    }
-
+    const isCrossChainProposal =
+      apiProposal.chainId !== governanceEnvironment.chainId;
     const isMultichain = isMultichainProposal(apiProposal.targets);
 
-    if (formattedData.executed) {
-      proposalState = 7; // ProposalState.Executed
-    } else if (
-      isMultichain &&
-      onChainData.votesCollected &&
-      now > apiProposal.votingEndTime &&
-      proposalState < 5
-    ) {
-      proposalState = 5; // ProposalState.Queued
+    let proposalState: number;
+    if (isCrossChainProposal) {
+      // No on-chain governor read — derive state from API events alone.
+      proposalState = deriveProposalStateFromApi(
+        formattedData,
+        apiProposal,
+        now,
+      );
+    } else {
+      proposalState = onChainData.state;
+
+      if (
+        proposalState === 0 &&
+        now >= apiProposal.votingStartTime &&
+        now <= apiProposal.votingEndTime
+      ) {
+        proposalState = 1; // Active
+      }
+
+      if (formattedData.executed) {
+        proposalState = 7; // ProposalState.Executed
+      } else if (
+        isMultichain &&
+        onChainData.votesCollected &&
+        now > apiProposal.votingEndTime &&
+        proposalState < 5
+      ) {
+        proposalState = 5; // ProposalState.Queued
+      }
     }
 
     const proposal: Proposal = {
