@@ -14,6 +14,7 @@ import {
   getProposalData,
   getProposalsOnChainData,
   isMultichainProposal,
+  readCrossChainQuorums,
 } from "./common.js";
 
 export type GetProposalsParameters<
@@ -103,9 +104,14 @@ async function getMoonbeamProposals(
     }
   });
 
+  const crossChainQuorums = await readCrossChainQuorums(
+    apiProposals,
+    governanceEnvironment,
+  );
   const onChainDataList = await getProposalsOnChainData(
     apiProposals,
     governanceEnvironment,
+    { crossChainQuorums },
   );
 
   const proposals: Proposal[] = apiProposals.map((apiProposal, index) => {

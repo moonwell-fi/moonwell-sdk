@@ -1,5 +1,4 @@
 import type { Address } from "viem";
-import { mainnet } from "viem/chains";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../test/client.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
@@ -25,8 +24,7 @@ const mockedHelper = vi.mocked(getBlockNumberAtTimestamp);
 
 describe("Testing user voting powers", () => {
   // Only iterate environments where the queried governance token is configured
-  // AND a full governance views contract is deployed (must expose
-  // getUserVotingPower, not just the staking-only subset on Ethereum). Calling
+  // and a views contract is deployed. Calling
   // getUserVotingPowers({governanceToken: "WELL"}) on a chain that holds WELL
   // but is not the governance hub correctly returns [], which would fail the
   // `length > 0` assertion.
@@ -37,9 +35,7 @@ describe("Testing user voting powers", () => {
         | undefined;
       const contracts = environment.contracts as { views?: unknown };
       return (
-        custom?.governance?.token === "WELL" &&
-        contracts.views !== undefined &&
-        environment.chainId !== mainnet.id
+        custom?.governance?.token === "WELL" && contracts.views !== undefined
       );
     })
     .forEach(([networkKey, environment]) => {

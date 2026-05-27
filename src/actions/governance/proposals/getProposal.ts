@@ -18,6 +18,7 @@ import {
   getProposalData,
   getProposalsOnChainData,
   isMultichainProposal,
+  readCrossChainQuorums,
 } from "./common.js";
 
 export type GetProposalParameters<
@@ -92,9 +93,14 @@ async function getMoonbeamProposal(
   }
 
   const formattedData = formatApiProposalData(apiProposal);
+  const crossChainQuorums = await readCrossChainQuorums(
+    [apiProposal],
+    governanceEnvironment,
+  );
   const onChainDataList = await getProposalsOnChainData(
     [apiProposal],
     governanceEnvironment,
+    { crossChainQuorums },
   );
   const onChainData = onChainDataList[0]!;
   const isMultichain = isMultichainProposal(apiProposal.targets);
