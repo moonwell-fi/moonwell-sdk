@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.16.1
+
+### Patch Changes
+
+- [#286](https://github.com/moonwell-fi/moonwell-sdk/pull/286) [`d1b7d7b7e4b014d6d5aaea4a2f3eccf8428781db`](https://github.com/moonwell-fi/moonwell-sdk/commit/d1b7d7b7e4b014d6d5aaea4a2f3eccf8428781db) Thanks [@bprofiro](https://github.com/bprofiro)! - Update Ethereum mainnet `views` contract address to `0x2d85b9c48a8c582f0AA244e134e9C6f30Cf7786e`.
+
 ## 0.16.0
 
 ### Minor Changes
