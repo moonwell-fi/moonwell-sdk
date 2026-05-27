@@ -1,16 +1,17 @@
 import { createMoonwellClient } from "../src/client/createMoonwellClient.js";
 
-export const apiKey = "ArZpyASIn0ebhYYuxCc42yE2a4V5UDQR8JJvrqRhf0fE";
+const moonwellRpc = (chainId: number) =>
+  `https://rpc.moonwell.fi/main/evm/${chainId}`;
 
 export const testRpcUrls = {
-  ethereum: `https://lb.drpc.org/ogrpc?network=ethereum&dkey=${apiKey}`,
-  base: `https://lb.drpc.org/ogrpc?network=base&dkey=${apiKey}`,
-  optimism: `https://lb.drpc.org/ogrpc?network=optimism&dkey=${apiKey}`,
-  arbitrum: `https://lb.drpc.org/ogrpc?network=arbitrum&dkey=${apiKey}`,
-  avalanche: `https://lb.drpc.org/ogrpc?network=avalanche&dkey=${apiKey}`,
-  polygon: `https://lb.drpc.org/ogrpc?network=polygon&dkey=${apiKey}`,
-  moonbeam: `https://lb.drpc.org/ogrpc?network=moonbeam&dkey=${apiKey}`,
-  moonriver: `https://lb.drpc.org/ogrpc?network=moonriver&dkey=${apiKey}`,
+  ethereum: moonwellRpc(1),
+  base: moonwellRpc(8453),
+  optimism: moonwellRpc(10),
+  arbitrum: moonwellRpc(42161),
+  avalanche: moonwellRpc(43114),
+  polygon: moonwellRpc(137),
+  moonbeam: moonwellRpc(1284),
+  moonriver: moonwellRpc(1285),
 };
 
 export const testClient = createMoonwellClient({

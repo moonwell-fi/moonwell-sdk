@@ -1,13 +1,80 @@
+import axios from "axios";
 import type { Environment } from "../../environments/index.js";
 import { getWithRetry } from "../axiosWithRetry.js";
 
 /**
  * Base configuration for Governor API requests
- * The Governor API is the new governance indexer, accessed via governanceIndexerUrl
+ * The Governor API is the multigov governance indexer, accessed via governanceIndexerUrl
  */
 const getGovernorApiUrl = (environment: Environment): string => {
   return environment.governanceIndexerUrl;
 };
+
+/**
+ * Chains the governor indexer serves. Ethereum first because that's where the
+ * active multigov contract lives; Moonbeam follows for the historical archive.
+ */
+export const SUPPORTED_GOVERNOR_CHAIN_IDS = [1, 1284] as const;
+
+/**
+ * Build the chain-prefixed proposal key the indexer requires
+ * (e.g. chainId=1, proposalId=7 → "1-0000000007").
+ */
+export const buildProposalKey = (
+  chainId: number,
+  proposalId: number | string,
+): string => `${chainId}-${String(proposalId).padStart(10, "0")}`;
+
+/**
+ * Thrown by proposal-scoped fetchers when the indexer reports the proposal
+ * doesn't exist (HTTP 404). Callers use `isNotFoundError` to drive chainId
+ * fallback without misclassifying a real 5xx outage as "not found".
+ */
+export class GovernorNotFoundError extends Error {
+  public readonly chainId: number;
+  public readonly proposalId: number | string;
+  constructor(chainId: number, proposalId: number | string) {
+    super(
+      `Governor resource not found for chainId=${chainId}, proposalId=${proposalId}`,
+    );
+    this.name = "GovernorNotFoundError";
+    this.chainId = chainId;
+    this.proposalId = proposalId;
+  }
+}
+
+export const isNotFoundError = (error: unknown): boolean => {
+  if (error instanceof GovernorNotFoundError) return true;
+  return axios.isAxiosError(error) && error.response?.status === 404;
+};
+
+/**
+ * Wraps a proposal-scoped fetch: if the underlying axios call surfaces a 404,
+ * throws a typed `GovernorNotFoundError` so callers can distinguish missing
+ * resources from real outages. Other failures (5xx, non-200, network) propagate
+ * as-is.
+ */
+async function fetchProposalScoped<T>(
+  url: string,
+  chainId: number,
+  proposalId: number | string,
+  resourceLabel: string,
+): Promise<T> {
+  try {
+    const response = await getWithRetry<T>(url);
+    if (response.status !== 200 || !response.data) {
+      throw new Error(
+        `Failed to fetch ${resourceLabel}: ${response.statusText}`,
+      );
+    }
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      throw new GovernorNotFoundError(chainId, proposalId);
+    }
+    throw error;
+  }
+}
 
 /**
  * Paginated response type
@@ -94,19 +161,26 @@ export type ApiVoteReceipt = {
   timestamp: number;
 };
 
+export type FetchProposalsOptions = PaginationOptions & {
+  chainId: number;
+};
+
 /**
  * Fetch proposals from Governor API
+ *
+ * `chainId` is required by the indexer — 1 (Ethereum multigov) or
+ * 1284 (Moonbeam historical). Missing/unsupported chainId returns 400.
  */
 export async function fetchProposals(
   environment: Environment,
-  options?: PaginationOptions & { chainId?: number },
+  options: FetchProposalsOptions,
 ): Promise<PaginatedResponse<ApiProposal>> {
   const baseUrl = getGovernorApiUrl(environment);
   const params = new URLSearchParams();
 
-  if (options?.limit) params.append("limit", options.limit.toString());
-  if (options?.cursor) params.append("cursor", options.cursor);
-  if (options?.chainId) params.append("chainId", options.chainId.toString());
+  params.append("chainId", options.chainId.toString());
+  if (options.limit) params.append("limit", options.limit.toString());
+  if (options.cursor) params.append("cursor", options.cursor);
 
   const response = await getWithRetry<PaginatedResponse<ApiProposal>>(
     `${baseUrl}/api/v1/governor/proposals?${params.toString()}`,
@@ -120,20 +194,20 @@ export async function fetchProposals(
 }
 
 /**
- * Fetch all proposals (handles pagination internally)
+ * Fetch all proposals for a given chainId (handles pagination internally)
  */
 export async function fetchAllProposals(
   environment: Environment,
-  options?: { chainId?: number },
+  options: { chainId: number },
 ): Promise<ApiProposal[]> {
   const allProposals: ApiProposal[] = [];
   let cursor: string | undefined = undefined;
 
   do {
     const response = await fetchProposals(environment, {
+      chainId: options.chainId,
       limit: 1000,
       ...(cursor && { cursor }),
-      ...(options?.chainId && { chainId: options.chainId }),
     });
 
     allProposals.push(...response.results);
@@ -148,19 +222,17 @@ export async function fetchAllProposals(
  */
 export async function fetchProposal(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
 ): Promise<ApiProposal> {
   const baseUrl = getGovernorApiUrl(environment);
-
-  const response = await getWithRetry<ApiProposal>(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}`,
+  const key = buildProposalKey(chainId, proposalId);
+  return fetchProposalScoped<ApiProposal>(
+    `${baseUrl}/api/v1/governor/proposals/${key}`,
+    chainId,
+    proposalId,
+    "proposal",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(`Failed to fetch proposal: ${response.statusText}`);
-  }
-
-  return response.data;
 }
 
 /**
@@ -168,24 +240,23 @@ export async function fetchProposal(
  */
 export async function fetchProposalVotes(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
   options?: PaginationOptions,
 ): Promise<PaginatedResponse<ApiVote>> {
   const baseUrl = getGovernorApiUrl(environment);
+  const key = buildProposalKey(chainId, proposalId);
   const params = new URLSearchParams();
 
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.cursor) params.append("cursor", options.cursor);
 
-  const response = await getWithRetry<PaginatedResponse<ApiVote>>(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}/votes?${params.toString()}`,
+  return fetchProposalScoped<PaginatedResponse<ApiVote>>(
+    `${baseUrl}/api/v1/governor/proposals/${key}/votes?${params.toString()}`,
+    chainId,
+    proposalId,
+    "proposal votes",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(`Failed to fetch proposal votes: ${response.statusText}`);
-  }
-
-  return response.data;
 }
 
 /**
@@ -193,16 +264,22 @@ export async function fetchProposalVotes(
  */
 export async function fetchAllProposalVotes(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
 ): Promise<ApiVote[]> {
   const allVotes: ApiVote[] = [];
   let cursor: string | undefined = undefined;
 
   do {
-    const response = await fetchProposalVotes(environment, proposalId, {
-      limit: 1000,
-      ...(cursor && { cursor }),
-    });
+    const response = await fetchProposalVotes(
+      environment,
+      chainId,
+      proposalId,
+      {
+        limit: 1000,
+        ...(cursor && { cursor }),
+      },
+    );
 
     allVotes.push(...response.results);
     cursor = response.nextCursor;
@@ -216,28 +293,23 @@ export async function fetchAllProposalVotes(
  */
 export async function fetchProposalStateChanges(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
   options?: PaginationOptions,
 ): Promise<PaginatedResponse<ApiProposalStateChange>> {
   const baseUrl = getGovernorApiUrl(environment);
+  const key = buildProposalKey(chainId, proposalId);
   const params = new URLSearchParams();
 
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.cursor) params.append("cursor", options.cursor);
 
-  const response = await getWithRetry<
-    PaginatedResponse<ApiProposalStateChange>
-  >(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}/state-changes?${params.toString()}`,
+  return fetchProposalScoped<PaginatedResponse<ApiProposalStateChange>>(
+    `${baseUrl}/api/v1/governor/proposals/${key}/state-changes?${params.toString()}`,
+    chainId,
+    proposalId,
+    "proposal state changes",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(
-      `Failed to fetch proposal state changes: ${response.statusText}`,
-    );
-  }
-
-  return response.data;
 }
 
 /**
@@ -245,16 +317,22 @@ export async function fetchProposalStateChanges(
  */
 export async function fetchAllProposalStateChanges(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
 ): Promise<ApiProposalStateChange[]> {
   const allStateChanges: ApiProposalStateChange[] = [];
   let cursor: string | undefined = undefined;
 
   do {
-    const response = await fetchProposalStateChanges(environment, proposalId, {
-      limit: 1000,
-      ...(cursor && { cursor }),
-    });
+    const response = await fetchProposalStateChanges(
+      environment,
+      chainId,
+      proposalId,
+      {
+        limit: 1000,
+        ...(cursor && { cursor }),
+      },
+    );
 
     allStateChanges.push(...response.results);
     cursor = response.nextCursor;
@@ -447,20 +525,16 @@ export async function fetchAllVoterVotes(
  */
 export async function fetchUserVoteReceipt(
   environment: Environment,
-  proposalId: string,
+  chainId: number,
+  proposalId: number | string,
   voterAddress: string,
 ): Promise<ApiVoteReceipt[]> {
   const baseUrl = getGovernorApiUrl(environment);
-
-  const response = await getWithRetry<ApiVoteReceipt[]>(
-    `${baseUrl}/api/v1/governor/proposals/${proposalId}/vote/${voterAddress}`,
+  const key = buildProposalKey(chainId, proposalId);
+  return fetchProposalScoped<ApiVoteReceipt[]>(
+    `${baseUrl}/api/v1/governor/proposals/${key}/vote/${voterAddress}`,
+    chainId,
+    proposalId,
+    "user vote receipt",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(
-      `Failed to fetch user vote receipt: ${response.statusText}`,
-    );
-  }
-
-  return response.data;
 }
