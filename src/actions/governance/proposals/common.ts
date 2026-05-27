@@ -265,13 +265,14 @@ const getLegacyArtemisMaxId = async (
 /**
  * Reads the multichain governor's quorum on every chain that holds an active
  * proposal but isn't the one we'd normally read through. Returns a chainId →
- * quorum map; chains with no `multichainGovernor` wired are omitted (callers
- * fall back to 0n).
+ * quorum map; chains with no `multichainGovernor` wired are omitted, as are
+ * chains whose quorum read reverted. Callers substitute `0n` for misses via
+ * the `options.crossChainQuorums?.get(...) ?? 0n` pattern.
  *
- * Lives at the caller level (vs. inside `getProposalsOnChainData`) so the
- * `publicEnvironments` dependency stays explicit — tests that hand
- * `getProposalsOnChainData` a fake env don't accidentally trigger real RPC
- * reads against production contracts.
+ * Read failures are routed through `onError` so Sentry-wired consumers see
+ * them — matching `getProposalData` / `getCrossChainProposalData` /
+ * `getExtendedProposalData`. The caller's `governanceEnvironment` carries
+ * `onError` since we don't have one per foreign chain in scope.
  */
 export const readCrossChainQuorums = async (
   apiProposals: ApiProposal[],
@@ -299,6 +300,10 @@ export const readCrossChainQuorums = async (
           `[readCrossChainQuorums] quorum read failed for chainId=${chainId}:`,
           error,
         );
+        governanceEnvironment.onError?.(error, {
+          source: "governance-cross-chain-quorum",
+          chainId,
+        });
       }
     }),
   );

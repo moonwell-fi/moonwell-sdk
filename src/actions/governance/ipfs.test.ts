@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import type { Environment } from "../../environments/index.js";
 import type { ApiProposal } from "./governor-api-client.js";
+
+const ENV_NOOP = {
+  chainId: 1284,
+  onError: vi.fn(),
+} as unknown as Environment;
 
 // Mock axios so the gateway URL is asserted directly and no real HTTP fires.
 vi.mock("axios", () => {
@@ -97,7 +103,7 @@ describe("resolveIpfsDescriptions", () => {
     const proposals = [ipfsProposal, plainProposal];
 
     const { resolveIpfsDescriptions } = await importIpfsModule();
-    await resolveIpfsDescriptions(proposals);
+    await resolveIpfsDescriptions(proposals, ENV_NOOP);
 
     expect(ipfsProposal.description).toBe("# Resolved markdown");
     expect(plainProposal.description).toBe("# Already inlined");
@@ -107,14 +113,53 @@ describe("resolveIpfsDescriptions", () => {
   test("leaves the ipfs:// URI in place when the fetch fails and does not reject", async () => {
     mockedAxiosGet.mockRejectedValueOnce(new Error("gateway down"));
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onError = vi.fn();
+    const env = { chainId: 1284, onError } as unknown as Environment;
 
     const proposal = buildProposal(`ipfs://${HASH}`);
 
     const { resolveIpfsDescriptions } = await importIpfsModule();
-    await expect(resolveIpfsDescriptions([proposal])).resolves.toBeUndefined();
+    await expect(
+      resolveIpfsDescriptions([proposal], env),
+    ).resolves.toBeUndefined();
     expect(proposal.description).toBe(`ipfs://${HASH}`);
     expect(warnSpy).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      source: "governance-ipfs-description",
+      chainId: proposal.chainId,
+    });
 
     warnSpy.mockRestore();
   });
+
+  test.each([
+    ["object", { foo: "bar" }],
+    ["null", null],
+    ["undefined", undefined],
+  ])(
+    "non-string response body (%s) does not poison the cache — URI is preserved",
+    async (_label, badBody) => {
+      mockedAxiosGet.mockResolvedValueOnce({ data: badBody });
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const onError = vi.fn();
+      const env = { chainId: 1284, onError } as unknown as Environment;
+
+      const proposal = buildProposal(`ipfs://${HASH}`);
+      const ipfs = await importIpfsModule();
+      await ipfs.resolveIpfsDescriptions([proposal], env);
+
+      expect(proposal.description).toBe(`ipfs://${HASH}`);
+      expect(onError).toHaveBeenCalled();
+
+      // A second resolve must not return the bad body from cache —
+      // it should retry. Stub a good response and verify the URI is
+      // replaced this time.
+      mockedAxiosGet.mockResolvedValueOnce({ data: "# Good now" });
+      const retry = buildProposal(`ipfs://${HASH}`);
+      await ipfs.resolveIpfsDescriptions([retry], env);
+      expect(retry.description).toBe("# Good now");
+
+      warnSpy.mockRestore();
+    },
+  );
 });

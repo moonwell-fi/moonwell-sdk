@@ -93,13 +93,12 @@ async function getMoonbeamProposal(
     return undefined;
   }
 
-  await resolveIpfsDescriptions([apiProposal]);
+  const [, crossChainQuorums] = await Promise.all([
+    resolveIpfsDescriptions([apiProposal], governanceEnvironment),
+    readCrossChainQuorums([apiProposal], governanceEnvironment),
+  ]);
 
   const formattedData = formatApiProposalData(apiProposal);
-  const crossChainQuorums = await readCrossChainQuorums(
-    [apiProposal],
-    governanceEnvironment,
-  );
   const onChainDataList = await getProposalsOnChainData(
     [apiProposal],
     governanceEnvironment,

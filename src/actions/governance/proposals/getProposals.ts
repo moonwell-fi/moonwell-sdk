@@ -95,22 +95,27 @@ async function getMoonbeamProposals(
   const chainsAttempted: ReadonlyArray<1 | 1284> = [1, 1284];
   const apiProposals: ApiProposal[] = [];
   results.forEach((result, index) => {
+    const chainId = chainsAttempted[index];
     if (result.status === "fulfilled") {
       apiProposals.push(...result.value);
-    } else {
+    } else if (chainId !== undefined) {
       console.warn(
-        `[getProposals] Failed to fetch proposals for chainId=${chainsAttempted[index]}; continuing with remaining chains.`,
+        `[getProposals] Failed to fetch proposals for chainId=${chainId}; continuing with remaining chains.`,
         result.reason,
       );
+      governanceEnvironment.onError?.(result.reason, {
+        source: "governance-proposals",
+        chainId,
+      });
     }
   });
 
-  await resolveIpfsDescriptions(apiProposals);
-
-  const crossChainQuorums = await readCrossChainQuorums(
-    apiProposals,
-    governanceEnvironment,
-  );
+  // IPFS resolution and cross-chain quorum reads are independent — run them in
+  // parallel to save one network round-trip on the proposal list path.
+  const [, crossChainQuorums] = await Promise.all([
+    resolveIpfsDescriptions(apiProposals, governanceEnvironment),
+    readCrossChainQuorums(apiProposals, governanceEnvironment),
+  ]);
   const onChainDataList = await getProposalsOnChainData(
     apiProposals,
     governanceEnvironment,

@@ -1,3 +1,4 @@
+import type { Environment } from "../../environments/index.js";
 import { getWithRetry } from "../axiosWithRetry.js";
 import type { ApiProposal } from "./governor-api-client.js";
 
@@ -15,16 +16,17 @@ const ipfsContentCache = new Map<string, string>();
  */
 export const parseIpfsHash = (uri: string | undefined): string | null => {
   if (!uri) return null;
-  const match = uri.match(/^ipfs:\/\/(.+)$/);
-  return match ? match[1]! : null;
+  return uri.match(/^ipfs:\/\/(.+)$/)?.[1] ?? null;
 };
 
 /**
  * Fetch a single IPFS resource via the Pinata gateway. Cached by hash.
  *
- * `responseType: "text"` keeps axios from JSON-parsing the markdown body
- * (the body usually starts with `#` which isn't valid JSON anyway, but
- * being explicit avoids edge cases on content-type mismatch).
+ * `responseType: "text"` disables axios's default JSON auto-parse so we keep
+ * the markdown body verbatim. We additionally reject non-string responses so
+ * an HTML error page or JSON payload doesn't poison the cache as
+ * `"[object Object]"` — the caller's per-proposal catch keeps the `ipfs://`
+ * URI in place when that happens.
  */
 export const fetchIpfsContent = async (hash: string): Promise<string> => {
   const cached = ipfsContentCache.get(hash);
@@ -33,9 +35,13 @@ export const fetchIpfsContent = async (hash: string): Promise<string> => {
   const response = await getWithRetry<string>(`${PINATA_GATEWAY}/${hash}`, {
     responseType: "text",
   });
-  const body = String(response.data ?? "");
-  ipfsContentCache.set(hash, body);
-  return body;
+  if (typeof response.data !== "string") {
+    throw new Error(
+      `[fetchIpfsContent] non-string body for hash=${hash} (typeof=${typeof response.data})`,
+    );
+  }
+  ipfsContentCache.set(hash, response.data);
+  return response.data;
 };
 
 /**
@@ -43,13 +49,17 @@ export const fetchIpfsContent = async (hash: string): Promise<string> => {
  * underlying markdown from Pinata and replace `description` in place. All
  * fetches run in parallel.
  *
- * Failures are logged and swallowed per-proposal: the `ipfs://` URI is left
- * untouched so consumers can detect (e.g. via `description.startsWith("ipfs://")`)
- * and render a fallback. The bulk call never rejects, so a single bad pin
- * doesn't kill `getProposals()` for everyone.
+ * Failures are logged via console.warn AND surfaced through
+ * `env.onError` (matching the convention used by `getProposalData` /
+ * `getExtendedProposalData`), then swallowed per-proposal: the `ipfs://` URI
+ * is left untouched so consumers can detect (e.g. via
+ * `description.startsWith("ipfs://")`) and render a fallback. The bulk call
+ * never rejects, so a single bad pin doesn't kill `getProposals()` for
+ * everyone.
  */
 export const resolveIpfsDescriptions = async (
   proposals: ApiProposal[],
+  env: Environment,
 ): Promise<void> => {
   await Promise.all(
     proposals.map(async (proposal) => {
@@ -62,6 +72,10 @@ export const resolveIpfsDescriptions = async (
           `[resolveIpfsDescriptions] failed to fetch hash=${hash}:`,
           error,
         );
+        env.onError?.(error, {
+          source: "governance-ipfs-description",
+          chainId: proposal.chainId,
+        });
       }
     }),
   );

@@ -236,4 +236,31 @@ describe("getProposalsOnChainData cross-chain skip", () => {
     const [onChainData] = await getProposalsOnChainData([proposal], env);
     expect(onChainData?.state).toBe(ProposalState.Active);
   });
+
+  test("uses options.crossChainQuorums when supplied; falls back to 0n otherwise", async () => {
+    const env = {
+      chainId: 1284,
+      contracts: {},
+      custom: {},
+    } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+    const ethProposal: ApiProposal = {
+      ...baseApiProposal,
+      chainId: 1,
+      proposalId: 42,
+      stateChanges: [],
+    };
+
+    const [withMap] = await getProposalsOnChainData([ethProposal], env, {
+      crossChainQuorums: new Map([[1, 9_876n]]),
+    });
+    expect(withMap?.quorum).toBe(9_876n);
+
+    const [withoutMap] = await getProposalsOnChainData([ethProposal], env);
+    expect(withoutMap?.quorum).toBe(0n);
+
+    const [missingEntry] = await getProposalsOnChainData([ethProposal], env, {
+      crossChainQuorums: new Map([[42, 1n]]), // wrong chainId
+    });
+    expect(missingEntry?.quorum).toBe(0n);
+  });
 });
