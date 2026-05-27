@@ -10,6 +10,7 @@ import {
   fetchProposal,
   isNotFoundError,
 } from "../governor-api-client.js";
+import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
   appendProposalExtendedData,
   formatApiProposalData,
@@ -91,6 +92,8 @@ async function getMoonbeamProposal(
   if (!apiProposal) {
     return undefined;
   }
+
+  await resolveIpfsDescriptions([apiProposal]);
 
   const formattedData = formatApiProposalData(apiProposal);
   const crossChainQuorums = await readCrossChainQuorums(

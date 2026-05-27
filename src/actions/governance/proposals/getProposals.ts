@@ -6,6 +6,7 @@ import type { Chain, Environment } from "../../../environments/index.js";
 import * as logger from "../../../logger/console.js";
 import { type Proposal, ProposalState } from "../../../types/proposal.js";
 import { type ApiProposal, fetchAllProposals } from "../governor-api-client.js";
+import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
   appendProposalExtendedData,
   formatApiProposalData,
@@ -103,6 +104,8 @@ async function getMoonbeamProposals(
       );
     }
   });
+
+  await resolveIpfsDescriptions(apiProposals);
 
   const crossChainQuorums = await readCrossChainQuorums(
     apiProposals,

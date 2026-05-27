@@ -45,6 +45,7 @@ export default defineConfig({
       "src/actions/governance/getUserVotingPowers.test.ts",
       "src/actions/governance/getUserVoteReceipt.test.ts",
       "src/actions/governance/governor-api-client.test.ts",
+      "src/actions/governance/ipfs.test.ts",
       "src/actions/governance/proposals/common.test.ts",
       "src/actions/governance/proposals/getProposal.test.ts",
       "src/actions/governance/proposals/getProposals.test.ts",
