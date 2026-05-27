@@ -10,20 +10,32 @@ describe("Testing staking info", () => {
   Object.entries(testClient.environments).forEach(
     ([networkKey, environment]) => {
       const { chain } = environment;
+      // Some chains in the test client (Arbitrum, Avalanche, Polygon) host no
+      // staking contracts — getStakingInfo correctly returns [] for them, so
+      // gate the strict assertion the same way getStakingSnapshots.test.ts does.
+      const hasStaking = "stakingToken" in environment.config.contracts;
 
       test(`Get staking info on ${chain.name}`, async () => {
         const stakingInfo = await testClient.getStakingInfo<typeof chain>({
           network: networkKey as keyof typeof testClient.environments,
         });
         expect(stakingInfo).toBeDefined();
-        expect(stakingInfo.length).toBeGreaterThan(0);
+        if (hasStaking) {
+          expect(stakingInfo.length).toBeGreaterThan(0);
+        } else {
+          expect(stakingInfo).toHaveLength(0);
+        }
       });
       test(`Get staking info by chain id on ${chain.name}`, async () => {
         const stakingInfo = await testClient.getStakingInfo({
           chainId: chain.id,
         });
         expect(stakingInfo).toBeDefined();
-        expect(stakingInfo.length).toBeGreaterThan(0);
+        if (hasStaking) {
+          expect(stakingInfo.length).toBeGreaterThan(0);
+        } else {
+          expect(stakingInfo).toHaveLength(0);
+        }
       });
     },
   );

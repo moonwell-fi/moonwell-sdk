@@ -79,8 +79,12 @@ async function getTokenBalancesFromEnvironment(
   environment: Environment,
   userAddress: Address,
 ): Promise<{ amount: bigint; token: `0x${string}` }[]> {
-  try {
-    if (environment.contracts.views) {
+  // Try the views multicall first (single RPC for N tokens). Some chains ship a
+  // staking-only views contract (Ethereum's at the time of writing) that doesn't
+  // implement getTokensBalances and reverts on the call — in that case fall
+  // through to per-token balanceOf reads instead of returning empty balances.
+  if (environment.contracts.views) {
+    try {
       const tokenBalancesFromView =
         await environment.contracts.views.read.getTokensBalances([
           Object.values(environment.config.tokens).map(
@@ -90,22 +94,23 @@ async function getTokenBalancesFromEnvironment(
         ]);
 
       return [...tokenBalancesFromView];
+    } catch (error) {
+      environment.onError?.(error, {
+        source: "user-balances-views-fallback",
+        chainId: environment.chainId,
+      });
     }
-
-    const tokenBalancesSettled = await Promise.allSettled(
-      Object.values(environment.config.tokens).map((token) =>
-        getTokenBalance(environment, userAddress, token.address),
-      ),
-    );
-
-    const res = tokenBalancesSettled.flatMap((s) =>
-      s.status === "fulfilled" ? s.value : [],
-    );
-    return res;
-  } catch (error) {
-    console.error("getTokenBalancesFromEnvironment error", error);
-    return [];
   }
+
+  const tokenBalancesSettled = await Promise.allSettled(
+    Object.values(environment.config.tokens).map((token) =>
+      getTokenBalance(environment, userAddress, token.address),
+    ),
+  );
+
+  return tokenBalancesSettled.flatMap((s) =>
+    s.status === "fulfilled" ? s.value : [],
+  );
 }
 
 export async function getUserBalances<

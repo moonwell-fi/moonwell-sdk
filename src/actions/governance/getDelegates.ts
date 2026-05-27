@@ -28,8 +28,9 @@ export async function getDelegates(
   const apiVoters = await fetchAllVoters(governanceEnvironment);
   const forumProfiles = await getForumProfiles();
 
-  // TODO: include mainnet.id once Ethereum's views contract ships, to match
-  // WELL.chainIds in environments/definitions/governance.ts.
+  // Mainnet stays excluded: the Eth views contract is staking-only and does
+  // not expose getUserVotingPower. Add mainnet.id here when a full Eth views
+  // contract ships, to match WELL.chainIds in environments/definitions/governance.ts.
   const targetChainIds = [moonbeam.id, base.id, optimism.id] as const;
   const envs = Object.values(client.environments as Environment[]).filter(
     (env) =>
