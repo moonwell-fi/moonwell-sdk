@@ -15,17 +15,36 @@ import {
 } from "./common.js";
 
 const LOCAL_TARGET = "0xed301cd3eb27217bdb05c4e9b820a8a3c8b665f9";
+const ETHEREUM_WORMHOLE_BRIDGE = "0x98f3c9e6e3face36baad05fe09d375ef1464288b";
 
 describe("isMultichainProposal", () => {
-  test("matches when targets include the Wormhole bridge", () => {
+  test("matches when targets include the Moonbeam Wormhole bridge", () => {
     expect(isMultichainProposal([WORMHOLE_CONTRACT])).toBe(true);
+  });
+
+  test("matches when targets include the Ethereum Wormhole bridge", () => {
+    expect(isMultichainProposal([ETHEREUM_WORMHOLE_BRIDGE])).toBe(true);
   });
 
   test("matches when Wormhole address is uppercase", () => {
     expect(isMultichainProposal([WORMHOLE_CONTRACT.toUpperCase()])).toBe(true);
+    expect(isMultichainProposal([ETHEREUM_WORMHOLE_BRIDGE.toUpperCase()])).toBe(
+      true,
+    );
   });
 
-  test("returns false when targets don't include Wormhole", () => {
+  test("matches when Wormhole bridge is buried in a long targets list", () => {
+    expect(
+      isMultichainProposal([
+        LOCAL_TARGET,
+        LOCAL_TARGET,
+        ETHEREUM_WORMHOLE_BRIDGE,
+        LOCAL_TARGET,
+      ]),
+    ).toBe(true);
+  });
+
+  test("returns false when targets don't include any known Wormhole bridge", () => {
     expect(isMultichainProposal([LOCAL_TARGET])).toBe(false);
   });
 

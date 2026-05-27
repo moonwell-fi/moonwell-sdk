@@ -14,5 +14,6 @@ export const contracts = createContractsConfig({
     oracle: "0xED301cd3EB27217BDB05C4E9B820a8A3c8B665f9",
     governor: "0xfc4DFB17101A12C5CEc5eeDd8E92B5b16557666d",
     multichainGovernor: "0x9A8464C4C11CeA17e191653Deb7CdC1bE30F1Af4",
+    voteCollector: "0xB8A798a50a7274A13449B7f2Dd6Df22faF2d40E5",
   },
 });
