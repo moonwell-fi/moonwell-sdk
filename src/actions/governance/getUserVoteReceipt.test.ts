@@ -56,6 +56,19 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+describe("getUserVoteReceipt environment guards", () => {
+  test("returns [] when the requested env doesn't exist in the client (no fetcher call)", async () => {
+    const result = await getUserVoteReceipt(client, {
+      network: "polygon", // not in the mock client.environments
+      proposalId: 7,
+      userAddress: USER_ADDRESS,
+    } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
+
+    expect(result).toEqual([]);
+    expect(mockedFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe("getUserVoteReceipt", () => {
   test("returns receipts from chainId=1 when only that chain has votes", async () => {
     mockedFetch

@@ -82,6 +82,98 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+const WORMHOLE_TARGET = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+
+describe("getProposal environment guard", () => {
+  test("returns undefined when the requested env doesn't exist in the client", async () => {
+    const result = await getProposal(client, {
+      network: "polygon", // not in the mock client.environments
+      proposalId: 7,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result).toBeUndefined();
+    expect(mockedFetchProposal).not.toHaveBeenCalled();
+  });
+});
+
+describe("getProposal state post-processing", () => {
+  test("promotes Pending → Active when on-chain state is 0 and now is within voting window", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      chainId: MOONBEAM_CHAIN_ID,
+      votingStartTime: now - 100,
+      votingEndTime: now + 100,
+    });
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposal(client, {
+      network: "moonbeam",
+      proposalId: 7,
+      chainId: MOONBEAM_CHAIN_ID,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.state).toBe(1); // ProposalState.Active
+  });
+
+  test("EXECUTED state-change forces state=Executed regardless of on-chain state", async () => {
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      chainId: MOONBEAM_CHAIN_ID,
+      stateChanges: [
+        {
+          id: "sc-1",
+          proposalId: "1284-0000000007",
+          state: "EXECUTED",
+          blockNumber: "1",
+          timestamp: 1,
+          transactionHash: "0xexec",
+          forVotes: "0",
+          againstVotes: "0",
+          abstainVotes: "0",
+          chainId: MOONBEAM_CHAIN_ID,
+        },
+      ],
+    });
+    mockedOnChain.mockResolvedValueOnce([{ ...defaultOnChain, state: 5 }]);
+
+    const result = await getProposal(client, {
+      network: "moonbeam",
+      proposalId: 7,
+      chainId: MOONBEAM_CHAIN_ID,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.state).toBe(7); // ProposalState.Executed
+    expect(result?.executed).toBe(true);
+  });
+
+  test("multichain proposal with votesCollected past voting end → Queued + multichain block populated", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      chainId: MOONBEAM_CHAIN_ID,
+      targets: [WORMHOLE_TARGET],
+      votingStartTime: now - 200,
+      votingEndTime: now - 100,
+    });
+    mockedOnChain.mockResolvedValueOnce([
+      { ...defaultOnChain, state: 1, votesCollected: true },
+    ]);
+
+    const result = await getProposal(client, {
+      network: "moonbeam",
+      proposalId: 7,
+      chainId: MOONBEAM_CHAIN_ID,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.state).toBe(5); // ProposalState.Queued
+    expect(result?.multichain).toEqual({
+      id: 7,
+      votesCollected: true,
+    });
+  });
+});
+
 describe("getProposal fallback behavior", () => {
   test("uses chainId=1 first and short-circuits without trying 1284", async () => {
     mockedFetchProposal.mockResolvedValueOnce({

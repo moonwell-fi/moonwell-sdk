@@ -49,9 +49,10 @@ export const isNotFoundError = (error: unknown): boolean => {
 };
 
 /**
- * Wraps a proposal-scoped fetch: if the underlying axios call surfaces a 404
- * (either as AxiosError or as the upstream proposal-not-found shape), throws a
- * typed `GovernorNotFoundError` instead.
+ * Wraps a proposal-scoped fetch: if the underlying axios call surfaces a 404,
+ * throws a typed `GovernorNotFoundError` so callers can distinguish missing
+ * resources from real outages. Other failures (5xx, non-200, network) propagate
+ * as-is.
  */
 async function fetchProposalScoped<T>(
   url: string,
@@ -61,9 +62,6 @@ async function fetchProposalScoped<T>(
 ): Promise<T> {
   try {
     const response = await getWithRetry<T>(url);
-    if (response.status === 404) {
-      throw new GovernorNotFoundError(chainId, proposalId);
-    }
     if (response.status !== 200 || !response.data) {
       throw new Error(
         `Failed to fetch ${resourceLabel}: ${response.statusText}`,
@@ -71,7 +69,6 @@ async function fetchProposalScoped<T>(
     }
     return response.data;
   } catch (error) {
-    if (error instanceof GovernorNotFoundError) throw error;
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       throw new GovernorNotFoundError(chainId, proposalId);
     }

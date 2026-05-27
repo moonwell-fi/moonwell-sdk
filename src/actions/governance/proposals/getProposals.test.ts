@@ -68,6 +68,108 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const WORMHOLE_TARGET = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+
+const executedStateChange = {
+  id: "sc-1",
+  proposalId: "1284-0000000007",
+  state: "EXECUTED" as const,
+  blockNumber: "1",
+  timestamp: 1,
+  transactionHash: "0xexec",
+  forVotes: "0",
+  againstVotes: "0",
+  abstainVotes: "0",
+  chainId: MOONBEAM_CHAIN_ID,
+};
+
+describe("getProposals empty-env short-circuit", () => {
+  test("returns [] when no environment matches moonbeam/moonriver filter", async () => {
+    const baseEnv = {
+      key: "base",
+      chainId: 8453,
+      governanceIndexerUrl: "https://mock-indexer.test",
+      contracts: {},
+      custom: {},
+      config: {},
+    } as unknown as Record<string, unknown>;
+    const baseClient = {
+      environments: { base: baseEnv },
+    } as unknown as MoonwellClient;
+
+    const result = await getProposals(baseClient, {
+      network: "base",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result).toEqual([]);
+    expect(mockedFetchAll).not.toHaveBeenCalled();
+  });
+});
+
+describe("getProposals state post-processing", () => {
+  test("promotes Pending → Active when on-chain state is 0 and now is within voting window", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockedFetchAll.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        ...makeApiProposal(MOONBEAM_CHAIN_ID, 11),
+        votingStartTime: now - 100,
+        votingEndTime: now + 100,
+      },
+    ]);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]); // state: 0
+
+    const result = await getProposals(client, {
+      network: "moonbeam",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result[0]?.state).toBe(1); // ProposalState.Active
+  });
+
+  test("EXECUTED state-change forces state=Executed regardless of on-chain state", async () => {
+    mockedFetchAll.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        ...makeApiProposal(MOONBEAM_CHAIN_ID, 12),
+        stateChanges: [executedStateChange],
+      },
+    ]);
+    mockedOnChain.mockResolvedValueOnce([
+      { ...defaultOnChain, state: 5 }, // even Queued gets overridden
+    ]);
+
+    const result = await getProposals(client, {
+      network: "moonbeam",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result[0]?.state).toBe(7); // ProposalState.Executed
+    expect(result[0]?.executed).toBe(true);
+  });
+
+  test("multichain proposal with votesCollected past voting end gets Queued post-processing + multichain block populated", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockedFetchAll.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        ...makeApiProposal(MOONBEAM_CHAIN_ID, 13),
+        targets: [WORMHOLE_TARGET],
+        votingStartTime: now - 200,
+        votingEndTime: now - 100,
+      },
+    ]);
+    mockedOnChain.mockResolvedValueOnce([
+      { ...defaultOnChain, state: 1, votesCollected: true }, // < Queued, eligible for promotion
+    ]);
+
+    const result = await getProposals(client, {
+      network: "moonbeam",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result[0]?.state).toBe(5); // ProposalState.Queued
+    expect(result[0]?.multichain).toEqual({
+      id: 13,
+      votesCollected: true,
+    });
+  });
+});
+
 describe("getProposals sort + partial-failure behavior", () => {
   test("tiebreaker on proposalId puts smaller chainId (Ethereum) first", async () => {
     mockedFetchAll
