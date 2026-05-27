@@ -7,7 +7,7 @@ import { publicEnvironments } from "../../../environments/index.js";
 import {
   MultichainProposalStateMapping,
   type Proposal,
-  type ProposalState,
+  ProposalState,
 } from "../../../types/proposal.js";
 import { postWithRetry } from "../../axiosWithRetry.js";
 import type { ApiProposal } from "../governor-api-client.js";
@@ -141,22 +141,26 @@ export type ApiProposalFormatted = {
  * chainId — e.g. chainId=1 (Ethereum multigov) proposals reached through the
  * Moonbeam governance environment, where on-chain reads against Moonbeam's
  * governor would be meaningless.
+ *
+ * Precedence (highest wins): Executed → Canceled → Queued → Active → Pending.
+ * Executed wins over Canceled because the SDK treats EXECUTED state changes as
+ * the terminal truth even when an earlier CANCELED event is present.
  */
 export const deriveProposalStateFromApi = (
   formatted: ApiProposalFormatted,
   apiProposal: ApiProposal,
   now: number,
-): number => {
-  if (formatted.executed) return 7; // Executed
-  if (formatted.canceled) return 2; // Canceled
+): ProposalState => {
+  if (formatted.executed) return ProposalState.Executed;
+  if (formatted.canceled) return ProposalState.Canceled;
   const hasQueued = apiProposal.stateChanges?.some(
     (sc) => sc.state === "QUEUED",
   );
-  if (hasQueued) return 5; // Queued
+  if (hasQueued) return ProposalState.Queued;
   if (now >= apiProposal.votingStartTime && now <= apiProposal.votingEndTime) {
-    return 1; // Active
+    return ProposalState.Active;
   }
-  return 0; // Pending
+  return ProposalState.Pending;
 };
 
 /**
@@ -280,14 +284,18 @@ export const getProposalsOnChainData = async (
 
   const legacyArtemisMaxId = await getLegacyArtemisMaxId(governanceEnvironment);
 
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
       // Proposals from a different chain than the governance env (e.g. chainId=1
       // Ethereum proposals fetched through the Moonbeam env) can't be read from
-      // this env's contracts — return defaults; caller derives state from API.
+      // this env's contracts — derive state from API events here so callers
+      // never see a misleading `state: 0` default for finalized proposals.
       if (p.chainId !== governanceEnvironment.chainId) {
+        const formatted = formatApiProposalData(p);
         return {
-          state: 0,
+          state: deriveProposalStateFromApi(formatted, p, nowSeconds),
           proposalData: null,
           eta: 0,
           votesCollected: false,

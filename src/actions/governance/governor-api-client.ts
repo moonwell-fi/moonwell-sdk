@@ -1,22 +1,83 @@
+import axios from "axios";
 import type { Environment } from "../../environments/index.js";
 import { getWithRetry } from "../axiosWithRetry.js";
 
 /**
  * Base configuration for Governor API requests
- * The Governor API is the new governance indexer, accessed via governanceIndexerUrl
+ * The Governor API is the multigov governance indexer, accessed via governanceIndexerUrl
  */
 const getGovernorApiUrl = (environment: Environment): string => {
   return environment.governanceIndexerUrl;
 };
 
 /**
- * Build the chain-prefixed proposal key the new indexer requires
+ * Chains the governor indexer serves. Ethereum first because that's where the
+ * active multigov contract lives; Moonbeam follows for the historical archive.
+ */
+export const SUPPORTED_GOVERNOR_CHAIN_IDS = [1, 1284] as const;
+
+/**
+ * Build the chain-prefixed proposal key the indexer requires
  * (e.g. chainId=1, proposalId=7 → "1-0000000007").
  */
 export const buildProposalKey = (
   chainId: number,
   proposalId: number | string,
 ): string => `${chainId}-${String(proposalId).padStart(10, "0")}`;
+
+/**
+ * Thrown by proposal-scoped fetchers when the indexer reports the proposal
+ * doesn't exist (HTTP 404). Callers use `isNotFoundError` to drive chainId
+ * fallback without misclassifying a real 5xx outage as "not found".
+ */
+export class GovernorNotFoundError extends Error {
+  public readonly chainId: number;
+  public readonly proposalId: number | string;
+  constructor(chainId: number, proposalId: number | string) {
+    super(
+      `Governor resource not found for chainId=${chainId}, proposalId=${proposalId}`,
+    );
+    this.name = "GovernorNotFoundError";
+    this.chainId = chainId;
+    this.proposalId = proposalId;
+  }
+}
+
+export const isNotFoundError = (error: unknown): boolean => {
+  if (error instanceof GovernorNotFoundError) return true;
+  return axios.isAxiosError(error) && error.response?.status === 404;
+};
+
+/**
+ * Wraps a proposal-scoped fetch: if the underlying axios call surfaces a 404
+ * (either as AxiosError or as the upstream proposal-not-found shape), throws a
+ * typed `GovernorNotFoundError` instead.
+ */
+async function fetchProposalScoped<T>(
+  url: string,
+  chainId: number,
+  proposalId: number | string,
+  resourceLabel: string,
+): Promise<T> {
+  try {
+    const response = await getWithRetry<T>(url);
+    if (response.status === 404) {
+      throw new GovernorNotFoundError(chainId, proposalId);
+    }
+    if (response.status !== 200 || !response.data) {
+      throw new Error(
+        `Failed to fetch ${resourceLabel}: ${response.statusText}`,
+      );
+    }
+    return response.data;
+  } catch (error) {
+    if (error instanceof GovernorNotFoundError) throw error;
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      throw new GovernorNotFoundError(chainId, proposalId);
+    }
+    throw error;
+  }
+}
 
 /**
  * Paginated response type
@@ -169,16 +230,12 @@ export async function fetchProposal(
 ): Promise<ApiProposal> {
   const baseUrl = getGovernorApiUrl(environment);
   const key = buildProposalKey(chainId, proposalId);
-
-  const response = await getWithRetry<ApiProposal>(
+  return fetchProposalScoped<ApiProposal>(
     `${baseUrl}/api/v1/governor/proposals/${key}`,
+    chainId,
+    proposalId,
+    "proposal",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(`Failed to fetch proposal: ${response.statusText}`);
-  }
-
-  return response.data;
 }
 
 /**
@@ -197,15 +254,12 @@ export async function fetchProposalVotes(
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.cursor) params.append("cursor", options.cursor);
 
-  const response = await getWithRetry<PaginatedResponse<ApiVote>>(
+  return fetchProposalScoped<PaginatedResponse<ApiVote>>(
     `${baseUrl}/api/v1/governor/proposals/${key}/votes?${params.toString()}`,
+    chainId,
+    proposalId,
+    "proposal votes",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(`Failed to fetch proposal votes: ${response.statusText}`);
-  }
-
-  return response.data;
 }
 
 /**
@@ -253,19 +307,12 @@ export async function fetchProposalStateChanges(
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.cursor) params.append("cursor", options.cursor);
 
-  const response = await getWithRetry<
-    PaginatedResponse<ApiProposalStateChange>
-  >(
+  return fetchProposalScoped<PaginatedResponse<ApiProposalStateChange>>(
     `${baseUrl}/api/v1/governor/proposals/${key}/state-changes?${params.toString()}`,
+    chainId,
+    proposalId,
+    "proposal state changes",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(
-      `Failed to fetch proposal state changes: ${response.statusText}`,
-    );
-  }
-
-  return response.data;
 }
 
 /**
@@ -487,16 +534,10 @@ export async function fetchUserVoteReceipt(
 ): Promise<ApiVoteReceipt[]> {
   const baseUrl = getGovernorApiUrl(environment);
   const key = buildProposalKey(chainId, proposalId);
-
-  const response = await getWithRetry<ApiVoteReceipt[]>(
+  return fetchProposalScoped<ApiVoteReceipt[]>(
     `${baseUrl}/api/v1/governor/proposals/${key}/vote/${voterAddress}`,
+    chainId,
+    proposalId,
+    "user vote receipt",
   );
-
-  if (response.status !== 200 || !response.data) {
-    throw new Error(
-      `Failed to fetch user vote receipt: ${response.statusText}`,
-    );
-  }
-
-  return response.data;
 }

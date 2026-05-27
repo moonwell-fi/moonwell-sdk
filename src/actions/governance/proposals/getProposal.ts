@@ -1,14 +1,17 @@
-import axios from "axios";
 import { moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
-import type { Proposal } from "../../../types/proposal.js";
-import { type ApiProposal, fetchProposal } from "../governor-api-client.js";
+import { type Proposal, ProposalState } from "../../../types/proposal.js";
+import {
+  type ApiProposal,
+  SUPPORTED_GOVERNOR_CHAIN_IDS,
+  fetchProposal,
+  isNotFoundError,
+} from "../governor-api-client.js";
 import {
   appendProposalExtendedData,
-  deriveProposalStateFromApi,
   formatApiProposalData,
   getCrossChainProposalData,
   getExtendedProposalData,
@@ -31,13 +34,6 @@ export type GetProposalParameters<
 
 export type GetProposalReturnType = Promise<Proposal | undefined>;
 
-// Chains tried (in order) when caller omits chainId. Ethereum first because
-// new multigov proposals live there; Moonbeam covers the historical archive.
-const FALLBACK_CHAIN_IDS = [1, 1284] as const;
-
-const is404 = (error: unknown): boolean =>
-  axios.isAxiosError(error) && error.response?.status === 404;
-
 export async function getProposal<
   environments,
   Network extends Chain | undefined,
@@ -59,48 +55,39 @@ export async function getProposal<
     return undefined;
   }
 
-  try {
-    if (environment.chainId === moonbeam.id) {
-      // Moonbeam: Use new Governor API
-      return await getMoonbeamProposal(environment, proposalId, args.chainId);
-    } else {
-      // Moonriver: Use old Ponder approach
-      return await getMoonriverProposal(environment, proposalId);
-    }
-  } catch (error) {
-    console.error(
-      `[getProposal] Error fetching proposal ${proposalId}:`,
-      error,
-    );
-    return undefined;
+  if (environment.chainId === moonbeam.id) {
+    return getMoonbeamProposal(environment, proposalId, args.chainId);
   }
+  return getMoonriverProposal(environment, proposalId);
 }
 
 /**
- * Fetch a single proposal for Moonbeam using the new Governor API
+ * Fetch a single proposal for Moonbeam using the Governor API.
+ *
+ * When `chainId` is provided we hit only that chain. When omitted we try the
+ * supported chains in order (Ethereum first since that's where active multigov
+ * proposals live) and fall back on `NotFoundError`. Real outages (5xx, network
+ * errors) propagate so callers can distinguish "missing" from "broken".
  */
 async function getMoonbeamProposal(
   governanceEnvironment: Environment,
   proposalId: number,
   chainId?: number,
 ): Promise<Proposal | undefined> {
-  const tryChains = chainId ? [chainId] : FALLBACK_CHAIN_IDS;
+  const tryChains = chainId ? [chainId] : SUPPORTED_GOVERNOR_CHAIN_IDS;
 
   let apiProposal: ApiProposal | undefined;
-  let lastError: unknown;
   for (const cid of tryChains) {
     try {
       apiProposal = await fetchProposal(governanceEnvironment, cid, proposalId);
       break;
     } catch (error) {
-      lastError = error;
-      if (is404(error)) continue;
+      if (isNotFoundError(error)) continue;
       throw error;
     }
   }
 
   if (!apiProposal) {
-    if (lastError && !is404(lastError)) throw lastError;
     return undefined;
   }
 
@@ -110,36 +97,31 @@ async function getMoonbeamProposal(
     governanceEnvironment,
   );
   const onChainData = onChainDataList[0]!;
-
-  const now = Math.floor(Date.now() / 1000);
-  const isCrossChainProposal =
-    apiProposal.chainId !== governanceEnvironment.chainId;
   const isMultichain = isMultichainProposal(apiProposal.targets);
 
-  let proposalState: number;
-  if (isCrossChainProposal) {
-    proposalState = deriveProposalStateFromApi(formattedData, apiProposal, now);
-  } else {
-    proposalState = onChainData.state;
+  // For cross-chain proposals, onChainData.state is already API-derived inside
+  // getProposalsOnChainData, so the post-processing below acts as a no-op
+  // (votesCollected is false and the derived state is already terminal).
+  const now = Math.floor(Date.now() / 1000);
+  let proposalState = onChainData.state;
 
-    if (
-      proposalState === 0 &&
-      now >= apiProposal.votingStartTime &&
-      now <= apiProposal.votingEndTime
-    ) {
-      proposalState = 1; // Active
-    }
+  if (
+    proposalState === ProposalState.Pending &&
+    now >= apiProposal.votingStartTime &&
+    now <= apiProposal.votingEndTime
+  ) {
+    proposalState = ProposalState.Active;
+  }
 
-    if (formattedData.executed) {
-      proposalState = 7; // ProposalState.Executed
-    } else if (
-      isMultichain &&
-      onChainData.votesCollected &&
-      now > apiProposal.votingEndTime &&
-      proposalState < 5
-    ) {
-      proposalState = 5; // ProposalState.Queued
-    }
+  if (formattedData.executed) {
+    proposalState = ProposalState.Executed;
+  } else if (
+    isMultichain &&
+    onChainData.votesCollected &&
+    now > apiProposal.votingEndTime &&
+    proposalState < ProposalState.Queued
+  ) {
+    proposalState = ProposalState.Queued;
   }
 
   const proposal: Proposal = {

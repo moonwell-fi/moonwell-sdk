@@ -4,11 +4,10 @@ import { Amount, getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import * as logger from "../../../logger/console.js";
-import type { Proposal } from "../../../types/proposal.js";
-import { fetchAllProposals } from "../governor-api-client.js";
+import { type Proposal, ProposalState } from "../../../types/proposal.js";
+import { type ApiProposal, fetchAllProposals } from "../governor-api-client.js";
 import {
   appendProposalExtendedData,
-  deriveProposalStateFromApi,
   formatApiProposalData,
   getCrossChainProposalData,
   getExtendedProposalData,
@@ -74,21 +73,36 @@ export async function getProposals<
 }
 
 /**
- * Fetch proposals for Moonbeam using the new Governor API
+ * Fetch proposals for Moonbeam using the Governor API.
  *
  * The same indexer DO serves two chains:
- *   - chainId=1 (Ethereum) — the new multigov contract
+ *   - chainId=1 (Ethereum) — the active multigov contract
  *   - chainId=1284 (Moonbeam) — historical proposals
- * We fetch both in parallel and merge.
+ *
+ * Uses `Promise.allSettled` so a transient outage on one chain doesn't take
+ * down the other — partial results are preferred over a hard failure.
  */
 async function getMoonbeamProposals(
   governanceEnvironment: Environment,
 ): Promise<Proposal[]> {
-  const [ethereumProposals, moonbeamHistoricalProposals] = await Promise.all([
+  const results = await Promise.allSettled([
     fetchAllProposals(governanceEnvironment, { chainId: 1 }),
     fetchAllProposals(governanceEnvironment, { chainId: 1284 }),
   ]);
-  const apiProposals = [...ethereumProposals, ...moonbeamHistoricalProposals];
+
+  const chainsAttempted: ReadonlyArray<1 | 1284> = [1, 1284];
+  const apiProposals: ApiProposal[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      apiProposals.push(...result.value);
+    } else {
+      console.warn(
+        `[getProposals] Failed to fetch proposals for chainId=${chainsAttempted[index]}; continuing with remaining chains.`,
+        result.reason,
+      );
+    }
+  });
+
   const onChainDataList = await getProposalsOnChainData(
     apiProposals,
     governanceEnvironment,
@@ -96,43 +110,34 @@ async function getMoonbeamProposals(
 
   const proposals: Proposal[] = apiProposals.map((apiProposal, index) => {
     const onChainData = onChainDataList[index]!;
-
     const formattedData = formatApiProposalData(apiProposal);
-
-    const now = Math.floor(Date.now() / 1000);
-    const isCrossChainProposal =
-      apiProposal.chainId !== governanceEnvironment.chainId;
     const isMultichain = isMultichainProposal(apiProposal.targets);
 
-    let proposalState: number;
-    if (isCrossChainProposal) {
-      // No on-chain governor read — derive state from API events alone.
-      proposalState = deriveProposalStateFromApi(
-        formattedData,
-        apiProposal,
-        now,
-      );
-    } else {
-      proposalState = onChainData.state;
+    // `onChainData.state` is already API-derived for cross-chain proposals
+    // (handled inside getProposalsOnChainData), so the post-processing below
+    // is a no-op for them — derived states already reflect executed/canceled/
+    // queued/active/pending, and votesCollected is false so the Queued branch
+    // never fires.
+    const now = Math.floor(Date.now() / 1000);
+    let proposalState = onChainData.state;
 
-      if (
-        proposalState === 0 &&
-        now >= apiProposal.votingStartTime &&
-        now <= apiProposal.votingEndTime
-      ) {
-        proposalState = 1; // Active
-      }
+    if (
+      proposalState === ProposalState.Pending &&
+      now >= apiProposal.votingStartTime &&
+      now <= apiProposal.votingEndTime
+    ) {
+      proposalState = ProposalState.Active;
+    }
 
-      if (formattedData.executed) {
-        proposalState = 7; // ProposalState.Executed
-      } else if (
-        isMultichain &&
-        onChainData.votesCollected &&
-        now > apiProposal.votingEndTime &&
-        proposalState < 5
-      ) {
-        proposalState = 5; // ProposalState.Queued
-      }
+    if (formattedData.executed) {
+      proposalState = ProposalState.Executed;
+    } else if (
+      isMultichain &&
+      onChainData.votesCollected &&
+      now > apiProposal.votingEndTime &&
+      proposalState < ProposalState.Queued
+    ) {
+      proposalState = ProposalState.Queued;
     }
 
     const proposal: Proposal = {
