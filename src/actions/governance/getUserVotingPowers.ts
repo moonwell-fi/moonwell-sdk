@@ -1,5 +1,4 @@
 import { type Address, zeroAddress } from "viem";
-import { mainnet } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   Amount,
@@ -11,11 +10,6 @@ import type { Chain, GovernanceToken } from "../../environments/index.js";
 import type { UserVotingPowers } from "../../types/userVotingPowers.js";
 
 const warnedSkippedEnvs = new Set<string>();
-
-// Ethereum's views contract is staking-only (exposes getUserStakingVotingPower
-// but not the cross-source getUserVotingPower used here). Reading it on Eth
-// would revert at runtime, so we skip those chains explicitly.
-const STAKING_ONLY_VIEWS_CHAIN_IDS: ReadonlySet<number> = new Set([mainnet.id]);
 
 export type GetUserVotingPowersParameters<
   environments,
@@ -71,16 +65,6 @@ export async function getUserVotingPowers<
         warnedSkippedEnvs.add(key);
         console.warn(
           `[moonwell-sdk] getUserVotingPowers: skipping chainId=${env.chainId} for governanceToken=${governanceToken} — environment holds the token but has no views contract.`,
-        );
-      }
-      return [];
-    }
-    if (STAKING_ONLY_VIEWS_CHAIN_IDS.has(env.chainId)) {
-      const key = `${env.chainId}:${governanceToken}:staking-only`;
-      if (!warnedSkippedEnvs.has(key)) {
-        warnedSkippedEnvs.add(key);
-        console.warn(
-          `[moonwell-sdk] getUserVotingPowers: skipping chainId=${env.chainId} for governanceToken=${governanceToken} — views contract is staking-only and does not expose getUserVotingPower.`,
         );
       }
       return [];

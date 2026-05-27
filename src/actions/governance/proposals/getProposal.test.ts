@@ -114,6 +114,14 @@ describe("getProposal state post-processing", () => {
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(result?.state).toBe(1); // ProposalState.Active
+    // Regression guard against #3: the third argument carrying
+    // `crossChainQuorums` must reach getProposalsOnChainData. A wiring
+    // regression that drops it would still make assertions on `state` pass.
+    expect(mockedOnChain).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.anything(),
+      expect.objectContaining({ crossChainQuorums: expect.any(Map) }),
+    );
   });
 
   test("EXECUTED state-change forces state=Executed regardless of on-chain state", async () => {

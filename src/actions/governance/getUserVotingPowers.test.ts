@@ -1,5 +1,4 @@
 import type { Address } from "viem";
-import { mainnet } from "viem/chains";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../test/client.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
@@ -25,11 +24,9 @@ const mockedHelper = vi.mocked(getBlockNumberAtTimestamp);
 
 describe("Testing user voting powers", () => {
   // Only iterate environments where the queried governance token is configured
-  // AND a full governance views contract is deployed (must expose
-  // getUserVotingPower, not just the staking-only subset on Ethereum). Calling
-  // getUserVotingPowers({governanceToken: "WELL"}) on a chain that holds WELL
-  // but is not the governance hub correctly returns [], which would fail the
-  // `length > 0` assertion.
+  // and a views contract is deployed — those are the chains
+  // `getUserVotingPowers` actually reads from. Chains that hold the token but
+  // have no views wired return [], which would trip the `length > 0` assertion.
   Object.entries(testClient.environments)
     .filter(([, environment]) => {
       const custom = environment.custom as
@@ -37,9 +34,7 @@ describe("Testing user voting powers", () => {
         | undefined;
       const contracts = environment.contracts as { views?: unknown };
       return (
-        custom?.governance?.token === "WELL" &&
-        contracts.views !== undefined &&
-        environment.chainId !== mainnet.id
+        custom?.governance?.token === "WELL" && contracts.views !== undefined
       );
     })
     .forEach(([networkKey, environment]) => {
@@ -186,6 +181,47 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
     expect(mockedHelper).not.toHaveBeenCalled();
     expect(reads.chainA).toHaveBeenCalledWith([USER], { blockNumber: 42n });
     expect(reads.chainB).toHaveBeenCalledWith([USER], { blockNumber: 42n });
+  });
+
+  test("mainnet (chainId=1) is included once a views contract is wired (regression guard for PR #284)", async () => {
+    const mainnetRead = vi.fn(async () => ZERO_USER_VOTES);
+    const baseRead = vi.fn(async () => ZERO_USER_VOTES);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const client = {
+      environments: {
+        mainnet: {
+          chainId: 1,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: mainnetRead } },
+          },
+        },
+        base: {
+          chainId: 8453,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: baseRead } },
+          },
+        },
+      },
+    } as unknown as MoonwellClient;
+
+    const result = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+    });
+
+    expect(result.map((r) => r.chainId).sort()).toEqual([1, 8453]);
+    expect(mainnetRead).toHaveBeenCalledTimes(1);
+    // The "staking-only" warning from the removed STAKING_ONLY_VIEWS_CHAIN_IDS
+    // skip must not fire for mainnet anymore.
+    const stakingOnlyWarnings = warnSpy.mock.calls.filter((call) =>
+      String(call[0]).includes("staking-only"),
+    );
+    expect(stakingOnlyWarnings).toHaveLength(0);
+
+    warnSpy.mockRestore();
   });
 
   test("environments without a views contract are excluded from results", async () => {

@@ -10,6 +10,7 @@ import {
   fetchProposal,
   isNotFoundError,
 } from "../governor-api-client.js";
+import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
   appendProposalExtendedData,
   formatApiProposalData,
@@ -18,6 +19,7 @@ import {
   getProposalData,
   getProposalsOnChainData,
   isMultichainProposal,
+  readCrossChainQuorums,
 } from "./common.js";
 
 export type GetProposalParameters<
@@ -91,10 +93,16 @@ async function getMoonbeamProposal(
     return undefined;
   }
 
+  const [, crossChainQuorums] = await Promise.all([
+    resolveIpfsDescriptions([apiProposal], governanceEnvironment),
+    readCrossChainQuorums([apiProposal], governanceEnvironment),
+  ]);
+
   const formattedData = formatApiProposalData(apiProposal);
   const onChainDataList = await getProposalsOnChainData(
     [apiProposal],
     governanceEnvironment,
+    { crossChainQuorums },
   );
   const onChainData = onChainDataList[0]!;
   const isMultichain = isMultichainProposal(apiProposal.targets);

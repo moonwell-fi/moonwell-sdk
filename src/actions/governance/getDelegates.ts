@@ -1,5 +1,5 @@
 import { isAddress } from "viem";
-import { base, moonbeam, optimism } from "viem/chains";
+import { base, mainnet, moonbeam, optimism } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type Environment,
@@ -28,10 +28,12 @@ export async function getDelegates(
   const apiVoters = await fetchAllVoters(governanceEnvironment);
   const forumProfiles = await getForumProfiles();
 
-  // Mainnet stays excluded: the Eth views contract is staking-only and does
-  // not expose getUserVotingPower. Add mainnet.id here when a full Eth views
-  // contract ships, to match WELL.chainIds in environments/definitions/governance.ts.
-  const targetChainIds = [moonbeam.id, base.id, optimism.id] as const;
+  const targetChainIds = [
+    moonbeam.id,
+    base.id,
+    optimism.id,
+    mainnet.id,
+  ] as const;
   const envs = Object.values(client.environments as Environment[]).filter(
     (env) =>
       env.contracts.views !== undefined &&

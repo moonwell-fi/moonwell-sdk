@@ -263,11 +263,60 @@ const getLegacyArtemisMaxId = async (
 };
 
 /**
+ * Reads the multichain governor's quorum on every chain that holds an active
+ * proposal but isn't the one we'd normally read through. Returns a chainId →
+ * quorum map; chains with no `multichainGovernor` wired are omitted, as are
+ * chains whose quorum read reverted. Callers substitute `0n` for misses via
+ * the `options.crossChainQuorums?.get(...) ?? 0n` pattern.
+ *
+ * Read failures are routed through `onError` so Sentry-wired consumers see
+ * them — matching `getProposalData` / `getCrossChainProposalData` /
+ * `getExtendedProposalData`. The caller's `governanceEnvironment` carries
+ * `onError` since we don't have one per foreign chain in scope.
+ */
+export const readCrossChainQuorums = async (
+  apiProposals: ApiProposal[],
+  governanceEnvironment: Environment,
+): Promise<Map<number, bigint>> => {
+  const otherChainIds = Array.from(
+    new Set(
+      apiProposals
+        .map((p) => p.chainId)
+        .filter((c) => c !== governanceEnvironment.chainId),
+    ),
+  );
+  const quorums = new Map<number, bigint>();
+  await Promise.all(
+    otherChainIds.map(async (chainId) => {
+      const env = (Object.values(publicEnvironments) as Environment[]).find(
+        (e) => e.chainId === chainId,
+      );
+      const mg = env?.contracts.multichainGovernor;
+      if (!mg) return;
+      try {
+        quorums.set(chainId, await mg.read.quorum());
+      } catch (error) {
+        console.warn(
+          `[readCrossChainQuorums] quorum read failed for chainId=${chainId}:`,
+          error,
+        );
+        governanceEnvironment.onError?.(error, {
+          source: "governance-cross-chain-quorum",
+          chainId,
+        });
+      }
+    }),
+  );
+  return quorums;
+};
+
+/**
  * Fetches on-chain data for multiple proposals
  */
 export const getProposalsOnChainData = async (
   apiProposals: ApiProposal[],
   governanceEnvironment: Environment,
+  options?: { crossChainQuorums?: Map<number, bigint> },
 ): Promise<ProposalOnChainData[]> => {
   let quorum = 0n;
 
@@ -289,9 +338,12 @@ export const getProposalsOnChainData = async (
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
       // Proposals from a different chain than the governance env (e.g. chainId=1
-      // Ethereum proposals fetched through the Moonbeam env) can't be read from
-      // this env's contracts — derive state from API events here so callers
-      // never see a misleading `state: 0` default for finalized proposals.
+      // Ethereum proposals fetched through the Moonbeam env) can't have their
+      // state read from this env's contracts — derive state from API events here
+      // so callers never see a misleading `state: 0` default for finalized
+      // proposals. Quorum, however, comes from a per-chain map populated by the
+      // caller via `readCrossChainQuorums` (defaulting to 0n when the caller
+      // didn't pre-fetch, e.g. in unit tests).
       if (p.chainId !== governanceEnvironment.chainId) {
         const formatted = formatApiProposalData(p);
         return {
@@ -299,7 +351,7 @@ export const getProposalsOnChainData = async (
           proposalData: null,
           eta: 0,
           votesCollected: false,
-          quorum: 0n,
+          quorum: options?.crossChainQuorums?.get(p.chainId) ?? 0n,
         };
       }
 
