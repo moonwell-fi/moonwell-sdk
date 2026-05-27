@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.15.0
+
+### Minor Changes
+
+- [#280](https://github.com/moonwell-fi/moonwell-sdk/pull/280) [`c1468926c17754c111f2f0ba876c88b055e68895`](https://github.com/moonwell-fi/moonwell-sdk/commit/c1468926c17754c111f2f0ba876c88b055e68895) Thanks [@bprofiro](https://github.com/bprofiro)! - Enable staking on Ethereum mainnet — wire the newly deployed staking views contract (`0xF5f2ae75d762B7e2B42D53f48018436f52Ce5401`) and stkWELL so `getStakingInfo`, `getUserStakingInfo`, and `getStakingSnapshots` return Ethereum entries alongside Base / Optimism / Moonbeam. The Eth views contract is staking-only and does not expose `getUserVotingPower`, so `getUserVotingPowers` skips Ethereum with a one-time console warning.
+
 ## 0.14.0
 
 ### Minor Changes
