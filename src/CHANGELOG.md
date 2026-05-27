@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.16.0
+
+### Minor Changes
+
+- [#284](https://github.com/moonwell-fi/moonwell-sdk/pull/284) [`9c265b8f26ee11932c2c7b6ad63f97754a5dfa9c`](https://github.com/moonwell-fi/moonwell-sdk/commit/9c265b8f26ee11932c2c7b6ad63f97754a5dfa9c) Thanks [@bprofiro](https://github.com/bprofiro)! - Wire the full Ethereum CoreViews contract (`0xA061Ed814bBd1b03e8df0B7AbEbc40f4A6feb895`), replacing the staking-only proxy, and expose the Ethereum MultichainGovernor (`0x8769B70ac7c93AF0e75de0D69877709B66d75838`) so consumers can cast votes on Eth-side proposals. `getUserVotingPowers` and `getDelegates` now include Ethereum mainnet alongside Moonbeam, Base, and Optimism.
+
+- [#284](https://github.com/moonwell-fi/moonwell-sdk/pull/284) [`85ac822dd451faef723a1abbe1aa7948b146cda9`](https://github.com/moonwell-fi/moonwell-sdk/commit/85ac822dd451faef723a1abbe1aa7948b146cda9) Thanks [@bprofiro](https://github.com/bprofiro)! - Resolve Eth multigov proposal descriptions from IPFS via Pinata. The lunar indexer now surfaces these as `ipfs://<hash>` URIs; the SDK fetches and substitutes the plaintext markdown before subtitle extraction so consumers see resolved descriptions. Per-proposal fetch failures are routed through `env.onError` (matching `getProposalData` / `getExtendedProposalData`) and the `ipfs://` URI is left in place — frontend consumers can detect this with `description.startsWith("ipfs://")` if they want to show a fallback. Non-string gateway responses are rejected explicitly so they don't poison the in-memory cache.
+
 ## 0.15.0
 
 ### Minor Changes
