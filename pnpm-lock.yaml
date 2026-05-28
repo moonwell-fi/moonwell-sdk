@@ -92,7 +92,7 @@ importers:
         version: 5.9.3
       vocs:
         specifier: latest
-        version: 2.0.2(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.60.2)(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.17)(lightningcss@1.32.0))
+        version: 2.0.4(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.60.2)(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.17)(lightningcss@1.32.0))
 
   src:
     dependencies:
@@ -4411,8 +4411,8 @@ packages:
       jsdom:
         optional: true
 
-  vocs@2.0.2:
-    resolution: {integrity: sha512-t198f+qk8l8LjMIxfkvvS9ZZR3EDf9qLMRnEeg+DAeG2O1QwTRRaNdn2srhe056EwM8UHis6/MtHnRla2VLa+Q==}
+  vocs@2.0.4:
+    resolution: {integrity: sha512-Bn2MISkXc7hCfg5c1HQl0Kd6Df3cLKUW7a29TtSuh+TsF3tSPcFfmkLMKnzwek/O3kisOMJQZ4TuyMxPPtiBhg==}
     hasBin: true
     peerDependencies:
       '@vocs/twoslash-rust': ^0.1.0
@@ -9321,7 +9321,7 @@ snapshots:
       - supports-color
       - terser
 
-  vocs@2.0.2(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.60.2)(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.17)(lightningcss@1.32.0)):
+  vocs@2.0.4(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(rollup@4.60.2)(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.17)(lightningcss@1.32.0)):
     dependencies:
       '@base-ui/react': 1.5.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@codesandbox/sandpack-react': 2.20.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

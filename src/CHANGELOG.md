@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.17.1
+
+### Patch Changes
+
+- [#291](https://github.com/moonwell-fi/moonwell-sdk/pull/291) [`70bca2941e3f7b6f85a0539f49f70a94e5d06929`](https://github.com/moonwell-fi/moonwell-sdk/commit/70bca2941e3f7b6f85a0539f49f70a94e5d06929) Thanks [@bprofiro](https://github.com/bprofiro)! - Remove the Moonbeam-specific `tokenVotes` mask from `getUserVotingPowers` and `getDelegates`. The Moonbeam `MoonwellViews` implementation was upgraded on-chain to read xWELL for `tokenVotes` (matching Base and Optimism), so the temporary `RAW_WELL_MASKED_CHAINS` workaround is no longer needed. Both actions now return the views response unchanged on Moonbeam, the same as every other chain, so `totalDelegated` once again reflects the user's full xWELL + stkWELL + claims voting power on Moonbeam instead of zeroing the xWELL contribution.
+
 ## 0.17.0
 
 ### Minor Changes
