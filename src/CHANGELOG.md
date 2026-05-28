@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.17.0
+
+### Minor Changes
+
+- [#288](https://github.com/moonwell-fi/moonwell-sdk/pull/288) [`53effebc688e5aaa6f520efb242244ce954d40fc`](https://github.com/moonwell-fi/moonwell-sdk/commit/53effebc688e5aaa6f520efb242244ce954d40fc) Thanks [@bprofiro](https://github.com/bprofiro)! - Recognize Ethereum-home multichain proposals and enable Moonbeam-wallet voting on them. `isMultichainProposal` now matches both the Moonbeam Wormhole Core Bridge (existing behavior) and the Ethereum Wormhole Core Bridge (`0x98f3c9e6e3face36baad05fe09d375ef1464288b`), so proposals created on the Ethereum multigov hub no longer fall through the cross-chain check and get incorrectly classified as single-chain. `getProposal` (singular) now resolves Ethereum-home proposals when called with `chainId: 1` by routing through the Moonbeam Governor API path that already handles both chainIds — previously it bailed out at the `!moonbeam && !moonriver` env check and returned `undefined`, breaking direct deep-links to Ethereum proposals. Moonbeam's contracts config gains `voteCollector: "0xB8A798a50a7274A13449B7f2Dd6Df22faF2d40E5"` — the satellite collector deployed when governance moved to Ethereum — so consumers can route Moonbeam-resident votes to the new hub.
+
+- [#288](https://github.com/moonwell-fi/moonwell-sdk/pull/288) [`dcfb1ff5e289fa4b12adc7ccde84d0c2a6f3d8d6`](https://github.com/moonwell-fi/moonwell-sdk/commit/dcfb1ff5e289fa4b12adc7ccde84d0c2a6f3d8d6) Thanks [@bprofiro](https://github.com/bprofiro)! - Exclude raw WELL (`tokenVotes`) from voting power on Moonbeam (chainId 1284). Raw WELL — even delegated — is no longer an eligible voting source on Moonbeam; users vote with stkWELL (via `stakingVotes`) and xWELL only. `getUserVotingPowers` now returns zero for every `token*` field on Moonbeam and excludes the `tokenVotes` contribution from `totalDelegated`, `totalDelegatedSelf`, and `totalDelegatedOthers`. `getDelegates` applies the same mask when ranking delegates by voting power. The Moonbeam views contract still surfaces a non-zero `tokenVotes` tuple, so the SDK masks it here to keep results honest until the on-chain views are updated. Other chains (Base, Optimism, Ethereum) are unaffected.
+
 ## 0.16.1
 
 ### Patch Changes
