@@ -57,8 +57,9 @@ export async function getProposal<
   // would bail out on the `!moonbeam && !moonriver` check below and the page
   // reload path returns undefined.
   if (environment.chainId === mainnet.id) {
-    const moonbeamEnv = (client.environments as { moonbeam?: Environment })
-      .moonbeam;
+    const moonbeamEnv = Object.values(
+      client.environments as Record<string, Environment>,
+    ).find((e) => e.chainId === moonbeam.id);
     if (!moonbeamEnv) {
       return undefined;
     }

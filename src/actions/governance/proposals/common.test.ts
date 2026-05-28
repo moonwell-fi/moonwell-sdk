@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { Amount } from "../../../common/index.js";
 import { ProposalState } from "../../../types/proposal.js";
 import type {
@@ -13,6 +13,37 @@ import {
   isMultichainAware,
   isMultichainProposal,
 } from "./common.js";
+
+// Minimal stand-in for `publicEnvironments` exposing only the fields the
+// voteCollector filter inspects. Used by the wire-up test below. Values are
+// inlined inside the factory because vi.mock factories are hoisted above any
+// top-level constants.
+vi.mock("../../../environments/index.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../environments/index.js")>();
+  return {
+    ...actual,
+    publicEnvironments: {
+      moonbeam: {
+        chainId: 1284,
+        custom: { wormhole: { chainId: 16 } },
+        contracts: {
+          voteCollector: "0xB8A798a50a7274A13449B7f2Dd6Df22faF2d40E5",
+        },
+      },
+      base: {
+        chainId: 8453,
+        custom: { wormhole: { chainId: 30 } },
+        contracts: {
+          voteCollector: "0x0000000000000000000000000000000000000001",
+        },
+      },
+    },
+  };
+});
+
+const MOONBEAM_WORMHOLE_CHAIN_ID = 16;
+const BASE_WORMHOLE_CHAIN_ID = 30;
 
 const LOCAL_TARGET = "0xed301cd3eb27217bdb05c4e9b820a8a3c8b665f9";
 const ETHEREUM_WORMHOLE_BRIDGE = "0x98f3c9e6e3face36baad05fe09d375ef1464288b";
@@ -281,5 +312,56 @@ describe("getProposalsOnChainData cross-chain skip", () => {
       crossChainQuorums: new Map([[42, 1n]]), // wrong chainId
     });
     expect(missingEntry?.quorum).toBe(0n);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getProposalsOnChainData — Moonbeam voteCollector wire-up
+//
+// Pins the contracts.ts:17 addition: adding `voteCollector` to the Moonbeam
+// env is what lets it pass the filter at common.ts:434-445 and be queried as
+// an xc vote collector. Without this test, a future removal/typo would
+// silently turn off Moonbeam vote collection for Ethereum-home proposals.
+// ---------------------------------------------------------------------------
+
+describe("getProposalsOnChainData voteCollector wire-up", () => {
+  test("Moonbeam vote collector is exercised for a same-chain multichain proposal", async () => {
+    const chainVoteCollectorVotes = vi.fn(
+      async () => [0n, 0n, 0n] as readonly [bigint, bigint, bigint],
+    );
+
+    // Ethereum-shaped governance env whose `chainIds` includes both Moonbeam
+    // and Base. The mocked publicEnvironments above now wires voteCollector on
+    // Moonbeam, so both entries must pass the filter.
+    const env = {
+      chainId: 1,
+      contracts: {
+        multichainGovernor: {
+          read: { chainVoteCollectorVotes },
+        },
+      },
+      custom: { governance: { chainIds: [1284, 8453] } },
+    } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+    const proposal: ApiProposal = {
+      ...baseApiProposal,
+      chainId: 1,
+      proposalId: 7,
+      targets: [WORMHOLE_CONTRACT],
+    };
+
+    await getProposalsOnChainData([proposal], env);
+
+    // The Moonbeam wormhole chainId reaches the multichain governor — this is
+    // the behavior change the contracts.ts addition unlocks.
+    expect(chainVoteCollectorVotes).toHaveBeenCalledWith([
+      MOONBEAM_WORMHOLE_CHAIN_ID,
+      7n,
+    ]);
+    // Counterpart: Base was already wired, so it should still be queried.
+    expect(chainVoteCollectorVotes).toHaveBeenCalledWith([
+      BASE_WORMHOLE_CHAIN_ID,
+      7n,
+    ]);
   });
 });

@@ -1,5 +1,4 @@
 import { type Address, zeroAddress } from "viem";
-import { moonbeam } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   Amount,
@@ -9,6 +8,7 @@ import {
 import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain, GovernanceToken } from "../../environments/index.js";
 import type { UserVotingPowers } from "../../types/userVotingPowers.js";
+import { RAW_WELL_MASKED_CHAINS } from "./votingPolicy.js";
 
 // Raw WELL (even delegated) is no longer an eligible voting source on Moonbeam —
 // eligible voting now flows through stkWELL (stakingVotes) and xWELL only. The
@@ -108,10 +108,9 @@ export async function getUserVotingPowers<
   );
 
   return resolvedVotingPowers.map(({ env: environment, votingPowers }) => {
-    const tokenVotes =
-      environment.chainId === moonbeam.id
-        ? ZERO_TOKEN_VOTES
-        : votingPowers.tokenVotes;
+    const tokenVotes = RAW_WELL_MASKED_CHAINS.has(environment.chainId)
+      ? ZERO_TOKEN_VOTES
+      : votingPowers.tokenVotes;
 
     return {
       chainId: environment.chainId,

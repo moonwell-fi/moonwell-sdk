@@ -17,11 +17,12 @@ export const WORMHOLE_CONTRACT = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3"; /
 // Wormhole Core Bridge addresses for chains that can host the multichain
 // governance hub. Moonbeam was the historical hub; Ethereum is the current
 // multigov hub. Either chain's bridge in a proposal's targets signals a
-// multichain proposal.
-const MULTICHAIN_WORMHOLE_BRIDGES = [
+// multichain proposal. Entries MUST be lowercase — `isMultichainProposal`
+// lowercases the proposal target once and looks the entry up directly.
+const MULTICHAIN_WORMHOLE_BRIDGES: ReadonlySet<string> = new Set([
   WORMHOLE_CONTRACT,
   "0x98f3c9e6e3face36baad05fe09d375ef1464288b", // Ethereum
-];
+]);
 
 type PonderExtendedProposalData = {
   id: number;
@@ -103,13 +104,9 @@ export const extractProposalSubtitle = (input: string): string => {
  * (Moonbeam or Ethereum). Bridges from both hubs are checked, so the result
  * is correct regardless of which chain the proposal was created on.
  */
-export const isMultichainProposal = (targets?: string[]): boolean => {
-  if (!targets) return false;
-  const lowered = targets.map((t) => t.toLowerCase());
-  return MULTICHAIN_WORMHOLE_BRIDGES.some((bridge) =>
-    lowered.includes(bridge.toLowerCase()),
-  );
-};
+export const isMultichainProposal = (targets?: string[]): boolean =>
+  targets?.some((t) => MULTICHAIN_WORMHOLE_BRIDGES.has(t.toLowerCase())) ??
+  false;
 
 /**
  * Routes a proposal to the multichain governor when:
