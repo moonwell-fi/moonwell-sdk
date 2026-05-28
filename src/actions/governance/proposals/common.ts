@@ -344,31 +344,52 @@ export const getProposalsOnChainData = async (
 
   const nowSeconds = Math.floor(Date.now() / 1000);
 
+  // Resolve the env that hosts the governor for a given proposal's chainId.
+  // Local proposals reuse the caller's `governanceEnvironment` (which carries
+  // the user's RPC). Foreign proposals — e.g. Ethereum multigov proposals
+  // (chainId=1) fetched through the Moonbeam governance env — fall back to
+  // `publicEnvironments`, mirroring how `readCrossChainQuorums` resolves
+  // cross-chain quorums. Without this, foreign proposals can't be read at all
+  // and we'd have to derive every field from API events.
+  const resolveHomeEnv = (chainId: number): Environment | undefined =>
+    chainId === governanceEnvironment.chainId
+      ? governanceEnvironment
+      : (Object.values(publicEnvironments) as Environment[]).find(
+          (e) => e.chainId === chainId,
+        );
+
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
-      // Proposals from a different chain than the governance env (e.g. chainId=1
-      // Ethereum proposals fetched through the Moonbeam env) can't have their
-      // state read from this env's contracts — derive state from API events here
-      // so callers never see a misleading `state: 0` default for finalized
-      // proposals. Quorum, however, comes from a per-chain map populated by the
-      // caller via `readCrossChainQuorums` (defaulting to 0n when the caller
-      // didn't pre-fetch, e.g. in unit tests).
-      if (p.chainId !== governanceEnvironment.chainId) {
+      const isLocal = p.chainId === governanceEnvironment.chainId;
+      const proposalQuorum = isLocal
+        ? quorum
+        : (options?.crossChainQuorums?.get(p.chainId) ?? 0n);
+      const homeEnv = resolveHomeEnv(p.chainId);
+
+      // No env wired for this chain — derive state from API events so terminal
+      // proposals (executed / canceled / queued) don't appear stuck at
+      // Pending(0), and zero out the on-chain-only fields.
+      if (!homeEnv) {
         const formatted = formatApiProposalData(p);
         return {
           state: deriveProposalStateFromApi(formatted, p, nowSeconds),
           proposalData: null,
           eta: 0,
           votesCollected: false,
-          quorum: options?.crossChainQuorums?.get(p.chainId) ?? 0n,
+          quorum: proposalQuorum,
         };
       }
 
-      const isMultichain = isMultichainAware(p, legacyArtemisMaxId);
+      // legacyArtemisMaxId is meaningful only for the caller's env — it's the
+      // Moonbeam Artemis cap. For foreign envs the targets-only heuristic is
+      // the right check (Ethereum-hub multigov has no Artemis predecessor).
+      const isMultichain = isLocal
+        ? isMultichainAware(p, legacyArtemisMaxId)
+        : isMultichainProposal(p.targets);
 
       const governorContract = isMultichain
-        ? governanceEnvironment.contracts.multichainGovernor
-        : governanceEnvironment.contracts.governor;
+        ? homeEnv.contracts.multichainGovernor
+        : homeEnv.contracts.governor;
 
       let state = 0;
       let proposalData = null;
@@ -380,8 +401,18 @@ export const getProposalsOnChainData = async (
             governorContract.read.proposals([BigInt(p.proposalId)]),
           ]);
         } catch (error) {
-          console.warn("Failed to fetch state and proposalData:", error);
+          console.warn(
+            `Failed to fetch state and proposalData for proposal ${p.proposalId} (chainId=${p.chainId}):`,
+            error,
+          );
         }
+      }
+
+      // Foreign read produced nothing — fall back to API-derived state so a
+      // terminal proposal doesn't surface as Pending(0).
+      if (!isLocal && proposalData === null && state === 0) {
+        const formatted = formatApiProposalData(p);
+        state = deriveProposalStateFromApi(formatted, p, nowSeconds);
       }
 
       let eta = 0;
@@ -397,26 +428,33 @@ export const getProposalsOnChainData = async (
         eta = p.votingEndTime + 86400; // 1 day
       }
 
-      return { state, proposalData, eta, votesCollected: false, quorum };
+      return {
+        state,
+        proposalData,
+        eta,
+        votesCollected: false,
+        quorum: proposalQuorum,
+      };
     }),
   );
 
   const votesCollectedList = await Promise.all(
     apiProposals.map(async (apiProposal) => {
-      if (apiProposal.chainId !== governanceEnvironment.chainId) {
+      const homeEnv = resolveHomeEnv(apiProposal.chainId);
+      if (!homeEnv) {
         return false;
       }
 
-      const isMultichain = isMultichainAware(apiProposal, legacyArtemisMaxId);
+      const isLocal = apiProposal.chainId === governanceEnvironment.chainId;
+      const isMultichain = isLocal
+        ? isMultichainAware(apiProposal, legacyArtemisMaxId)
+        : isMultichainProposal(apiProposal.targets);
 
-      if (
-        !isMultichain ||
-        !governanceEnvironment.contracts.multichainGovernor
-      ) {
+      if (!isMultichain || !homeEnv.contracts.multichainGovernor) {
         return false;
       }
 
-      const xcGovernanceSettings = governanceEnvironment.custom.governance;
+      const xcGovernanceSettings = homeEnv.custom.governance;
       if (!xcGovernanceSettings || xcGovernanceSettings.chainIds.length === 0) {
         return false;
       }
@@ -453,7 +491,7 @@ export const getProposalsOnChainData = async (
               if (!wormholeChainId) return false;
 
               const [forVotes, againstVotes, abstainVotes] =
-                await governanceEnvironment.contracts.multichainGovernor!.read.chainVoteCollectorVotes(
+                await homeEnv.contracts.multichainGovernor!.read.chainVoteCollectorVotes(
                   [wormholeChainId, BigInt(apiProposal.proposalId)],
                 );
               return forVotes > 0n || againstVotes > 0n || abstainVotes > 0n;

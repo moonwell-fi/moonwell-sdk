@@ -1,5 +1,6 @@
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { Amount } from "../../../common/index.js";
+import { publicEnvironments } from "../../../environments/index.js";
 import { ProposalState } from "../../../types/proposal.js";
 import type {
   ApiProposal,
@@ -15,15 +16,36 @@ import {
 } from "./common.js";
 
 // Minimal stand-in for `publicEnvironments` exposing only the fields the
-// voteCollector filter inspects. Used by the wire-up test below. Values are
+// foreign-env governor lookup and the voteCollector filter inspect. The
+// Ethereum entry carries mocked `multichainGovernor` reads so foreign-env
+// tests can configure per-test return values via `vi.mocked(...)`. Values are
 // inlined inside the factory because vi.mock factories are hoisted above any
-// top-level constants.
+// top-level constants. `governance.chainIds` is `[1284, 8453]` in the mock —
+// a subset of production's `[moonbeam, base, optimism]` — to keep tests
+// focused on a pair of satellites without needing an Optimism stub.
 vi.mock("../../../environments/index.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../../../environments/index.js")>();
   return {
     ...actual,
     publicEnvironments: {
+      ethereum: {
+        chainId: 1,
+        custom: {
+          wormhole: { chainId: 2 },
+          governance: { token: "WELL", chainIds: [1284, 8453] },
+        },
+        contracts: {
+          multichainGovernor: {
+            read: {
+              state: vi.fn(),
+              proposals: vi.fn(),
+              chainVoteCollectorVotes: vi.fn(),
+              quorum: vi.fn(),
+            },
+          },
+        },
+      },
       moonbeam: {
         chainId: 1284,
         custom: { wormhole: { chainId: 16 } },
@@ -363,5 +385,167 @@ describe("getProposalsOnChainData voteCollector wire-up", () => {
       BASE_WORMHOLE_CHAIN_ID,
       7n,
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getProposalsOnChainData — Ethereum-hub proposals fetched through Moonbeam env
+//
+// Before this path existed, foreign-chain proposals (e.g. chainId=1 Ethereum
+// proposals reached through the Moonbeam governance env) bailed out with
+// `eta: 0` and `votesCollected: false`, breaking the proposal-detail timeline
+// (no countdown, label stuck on "Vote Collection, ends in 0s"). The fix
+// resolves the proposal's home env from `publicEnvironments` and reads the
+// state/eta/votesCollected from that env's multichain governor instead.
+// ---------------------------------------------------------------------------
+
+const ETHEREUM_WORMHOLE_BRIDGE_LOWER =
+  "0x98f3c9e6e3face36baad05fe09d375ef1464288b";
+
+// Tuple shape matches the multichainGovernor `proposals(uint256)` return —
+// only index [4] (eta) is read by getProposalsOnChainData, but the full shape
+// is provided so consumers wrapping the result don't choke.
+const buildProposalsTuple = (eta: bigint) =>
+  [
+    "0x0000000000000000000000000000000000000001", // proposer
+    0n, // voteSnapshotTimestamp
+    0n, // votingStartTime
+    0n, // votingEndTime
+    eta, // eta (index 4 — the one we actually read)
+    0n, // voteSnapshotBlock
+    0n, // forVotes
+    0n, // againstVotes
+    0n, // abstainVotes
+    0n, // totalVotes
+    false, // canceled
+    false, // executed
+  ] as const;
+
+describe("getProposalsOnChainData Ethereum-hub via foreign env", () => {
+  // Pull mock handles from the mocked publicEnvironments. The factory above
+  // wires these as vi.fn() so each test can set return values without touching
+  // module internals.
+  const ethereumMG = (
+    publicEnvironments as unknown as {
+      ethereum: {
+        contracts: {
+          multichainGovernor: {
+            read: {
+              state: ReturnType<typeof vi.fn>;
+              proposals: ReturnType<typeof vi.fn>;
+              chainVoteCollectorVotes: ReturnType<typeof vi.fn>;
+            };
+          };
+        };
+      };
+    }
+  ).ethereum.contracts.multichainGovernor;
+
+  const moonbeamEnv = {
+    chainId: 1284,
+    contracts: {},
+    custom: {},
+  } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+  beforeEach(() => {
+    ethereumMG.read.state.mockReset();
+    ethereumMG.read.proposals.mockReset();
+    ethereumMG.read.chainVoteCollectorVotes.mockReset();
+  });
+
+  test("reads state and eta from the Ethereum multichain governor", async () => {
+    ethereumMG.read.state.mockResolvedValue(ProposalState.Queued);
+    ethereumMG.read.proposals.mockResolvedValue(
+      buildProposalsTuple(1_700_000_000n),
+    );
+
+    const ethProposal: ApiProposal = {
+      ...baseApiProposal,
+      chainId: 1,
+      proposalId: 169,
+      targets: [ETHEREUM_WORMHOLE_BRIDGE_LOWER],
+      votingEndTime: 1_699_900_000,
+    };
+
+    const [data] = await getProposalsOnChainData([ethProposal], moonbeamEnv);
+
+    expect(ethereumMG.read.state).toHaveBeenCalledWith([169n]);
+    expect(ethereumMG.read.proposals).toHaveBeenCalledWith([169n]);
+    expect(data?.state).toBe(ProposalState.Queued);
+    expect(data?.eta).toBe(1_700_000_000);
+  });
+
+  test("falls back to votingEndTime + 1d when on-chain eta is 0 (multichain)", async () => {
+    ethereumMG.read.state.mockResolvedValue(ProposalState.Active);
+    ethereumMG.read.proposals.mockResolvedValue(buildProposalsTuple(0n));
+
+    const ethProposal: ApiProposal = {
+      ...baseApiProposal,
+      chainId: 1,
+      proposalId: 200,
+      targets: [ETHEREUM_WORMHOLE_BRIDGE_LOWER],
+      votingEndTime: 1_500_000_000,
+    };
+
+    const [data] = await getProposalsOnChainData([ethProposal], moonbeamEnv);
+
+    expect(data?.eta).toBe(1_500_000_000 + 86_400);
+  });
+
+  test("queries Ethereum-side vote collectors using Ethereum's chainIds list", async () => {
+    ethereumMG.read.state.mockResolvedValue(ProposalState.Active);
+    ethereumMG.read.proposals.mockResolvedValue(buildProposalsTuple(0n));
+    ethereumMG.read.chainVoteCollectorVotes.mockResolvedValue([
+      100n,
+      0n,
+      0n,
+    ] as readonly [bigint, bigint, bigint]);
+
+    const ethProposal: ApiProposal = {
+      ...baseApiProposal,
+      chainId: 1,
+      proposalId: 169,
+      targets: [ETHEREUM_WORMHOLE_BRIDGE_LOWER],
+      votingEndTime: 1_500_000_000,
+    };
+
+    const [data] = await getProposalsOnChainData([ethProposal], moonbeamEnv);
+
+    // Ethereum's mocked `governance.chainIds` is [1284, 8453]; both satellites
+    // should hit the Ethereum-side multichainGovernor (not Moonbeam's).
+    expect(ethereumMG.read.chainVoteCollectorVotes).toHaveBeenCalledWith([
+      MOONBEAM_WORMHOLE_CHAIN_ID,
+      169n,
+    ]);
+    expect(ethereumMG.read.chainVoteCollectorVotes).toHaveBeenCalledWith([
+      BASE_WORMHOLE_CHAIN_ID,
+      169n,
+    ]);
+    // Both satellites returned non-zero votes → aggregate votesCollected=true.
+    expect(data?.votesCollected).toBe(true);
+  });
+
+  test("votesCollected stays false if any satellite reports zero votes", async () => {
+    ethereumMG.read.state.mockResolvedValue(ProposalState.Active);
+    ethereumMG.read.proposals.mockResolvedValue(buildProposalsTuple(0n));
+    // Moonbeam satellite has votes, Base does not.
+    ethereumMG.read.chainVoteCollectorVotes.mockImplementation(
+      async ([wormholeChainId]: readonly [number, bigint]) =>
+        wormholeChainId === MOONBEAM_WORMHOLE_CHAIN_ID
+          ? ([10n, 0n, 0n] as readonly [bigint, bigint, bigint])
+          : ([0n, 0n, 0n] as readonly [bigint, bigint, bigint]),
+    );
+
+    const ethProposal: ApiProposal = {
+      ...baseApiProposal,
+      chainId: 1,
+      proposalId: 169,
+      targets: [ETHEREUM_WORMHOLE_BRIDGE_LOWER],
+      votingEndTime: 1_500_000_000,
+    };
+
+    const [data] = await getProposalsOnChainData([ethProposal], moonbeamEnv);
+
+    expect(data?.votesCollected).toBe(false);
   });
 });

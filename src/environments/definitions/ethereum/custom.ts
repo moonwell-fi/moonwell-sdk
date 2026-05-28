@@ -1,9 +1,15 @@
+import { base, moonbeam, optimism } from "viem/chains";
 import { createCustomConfig } from "../../types/config.js";
 
 export const custom = createCustomConfig({
   governance: {
     token: "WELL",
-    chainIds: [],
+    // Satellite chains the Ethereum hub talks to via Wormhole: Moonbeam's
+    // temporal governor (proposal execution) plus Base and Optimism's vote
+    // collectors. Used by `getProposalsOnChainData` to enumerate per-chain
+    // vote-collector reads when computing `votesCollected` for Ethereum-hub
+    // proposals.
+    chainIds: [moonbeam.id, base.id, optimism.id],
   },
   wormhole: {
     chainId: 2,
