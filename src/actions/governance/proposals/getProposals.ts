@@ -127,11 +127,6 @@ async function getMoonbeamProposals(
     const formattedData = formatApiProposalData(apiProposal);
     const isMultichain = isMultichainProposal(apiProposal.targets);
 
-    // `onChainData.state` is already API-derived for cross-chain proposals
-    // (handled inside getProposalsOnChainData), so the post-processing below
-    // is a no-op for them — derived states already reflect executed/canceled/
-    // queued/active/pending, and votesCollected is false so the Queued branch
-    // never fires.
     const now = Math.floor(Date.now() / 1000);
     let proposalState = onChainData.state;
 

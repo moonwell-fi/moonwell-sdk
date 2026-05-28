@@ -1,5 +1,6 @@
 import { base, mainnet, moonbeam, optimism } from "viem/chains";
 import { describe, expect, test } from "vitest";
+import { publicEnvironments } from "../../index.js";
 import { GovernanceTokensConfig } from "../governance.js";
 import { createEnvironment, ethereum } from "./environment.js";
 
@@ -51,5 +52,24 @@ describe("ethereum environment invariants", () => {
     expect(GovernanceTokensConfig.WELL.chainIds).toEqual(
       expect.arrayContaining([moonbeam.id, base.id, optimism.id, mainnet.id]),
     );
+  });
+
+  // No `publicEnvironments` entry may list `moonbeam.id` in
+  // `custom.governance.chainIds` — that field is consumed as a `homeEnvironment`
+  // membership predicate by core/markets/user-rewards (see
+  // src/actions/core/user-rewards/common.ts:21). Listing moonbeam.id on any env
+  // other than Moonbeam itself would re-point Moonbeam's homeEnv to that env,
+  // mispricing Moonbeam native-token rewards. Specific regression: PR #290
+  // briefly added moonbeam.id to Ethereum's chainIds for governance-satellite
+  // enumeration; that satellite list now lives in `getVoteCollectorSatellites`.
+  test("Moonbeam homeEnvironment still resolves to Moonbeam", () => {
+    const homeEnv = Object.values(publicEnvironments).find((e) => {
+      const chainIds: readonly number[] | undefined =
+        e.custom && "governance" in e.custom
+          ? e.custom.governance?.chainIds
+          : undefined;
+      return chainIds?.includes(moonbeam.id);
+    });
+    expect(homeEnv?.chainId ?? moonbeam.id).toBe(moonbeam.id);
   });
 });

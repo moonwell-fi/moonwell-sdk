@@ -127,9 +127,6 @@ async function getMoonbeamProposal(
   const onChainData = onChainDataList[0]!;
   const isMultichain = isMultichainProposal(apiProposal.targets);
 
-  // For cross-chain proposals, onChainData.state is already API-derived inside
-  // getProposalsOnChainData, so the post-processing below acts as a no-op
-  // (votesCollected is false and the derived state is already terminal).
   const now = Math.floor(Date.now() / 1000);
   let proposalState = onChainData.state;
 

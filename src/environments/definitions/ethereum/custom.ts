@@ -1,12 +1,15 @@
-import { base, moonbeam, optimism } from "viem/chains";
 import { createCustomConfig } from "../../types/config.js";
 
 export const custom = createCustomConfig({
   governance: {
     token: "WELL",
-    // Wormhole satellites the Ethereum hub talks to: Moonbeam (temporal
-    // governor / proposal execution) plus Base and Optimism (vote collectors).
-    chainIds: [moonbeam.id, base.id, optimism.id],
+    // Empty: this field is also consumed as a `homeEnvironment` membership
+    // predicate by core/markets/user-rewards (see src/actions/core/user-rewards/
+    // common.ts:21). Listing Moonbeam here would mis-route Moonbeam's home env
+    // to Ethereum. The Ethereum hub's Wormhole satellite set is derived inside
+    // `getProposalsOnChainData` from envs exposing both `custom.wormhole.chainId`
+    // and `contracts.voteCollector`.
+    chainIds: [],
   },
   wormhole: {
     chainId: 2,

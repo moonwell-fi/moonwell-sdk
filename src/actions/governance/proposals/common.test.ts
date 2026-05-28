@@ -15,14 +15,11 @@ import {
   isMultichainProposal,
 } from "./common.js";
 
-// Minimal stand-in for `publicEnvironments` exposing only the fields the
-// foreign-env governor lookup and the voteCollector filter inspect. The
-// Ethereum entry carries mocked `multichainGovernor` reads so foreign-env
-// tests can configure per-test return values via `vi.mocked(...)`. Values are
-// inlined inside the factory because vi.mock factories are hoisted above any
-// top-level constants. `governance.chainIds` is `[1284, 8453]` in the mock —
-// a subset of production's `[moonbeam, base, optimism]` — to keep tests
-// focused on a pair of satellites without needing an Optimism stub.
+// Stand-in `publicEnvironments`. Ethereum is the hub (no voteCollector); the
+// satellite set is derived from envs exposing both `custom.wormhole.chainId`
+// and `contracts.voteCollector` — so Moonbeam and Base count, the Optimism
+// stub (no wormhole) is excluded by the filter, and `governance.chainIds: []`
+// preserves the production invariant tested in environment.test.ts.
 vi.mock("../../../environments/index.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../../../environments/index.js")>();
@@ -33,7 +30,7 @@ vi.mock("../../../environments/index.js", async (importOriginal) => {
         chainId: 1,
         custom: {
           wormhole: { chainId: 2 },
-          governance: { token: "WELL", chainIds: [1284, 8453] },
+          governance: { token: "WELL", chainIds: [] },
         },
         contracts: {
           multichainGovernor: {
@@ -58,6 +55,13 @@ vi.mock("../../../environments/index.js", async (importOriginal) => {
         custom: { wormhole: { chainId: 30 } },
         contracts: {
           voteCollector: "0x0000000000000000000000000000000000000001",
+        },
+      },
+      optimism: {
+        chainId: 10,
+        custom: {},
+        contracts: {
+          voteCollector: "0x0000000000000000000000000000000000000002",
         },
       },
     },
@@ -322,24 +326,12 @@ describe("getProposalsOnChainData unmapped chain", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getProposalsOnChainData — Moonbeam voteCollector wire-up
-//
-// Pins the contracts.ts:17 addition: adding `voteCollector` to the Moonbeam
-// env is what lets it pass the filter at common.ts:434-445 and be queried as
-// an xc vote collector. Without this test, a future removal/typo would
-// silently turn off Moonbeam vote collection for Ethereum-home proposals.
-// ---------------------------------------------------------------------------
-
-describe("getProposalsOnChainData voteCollector wire-up", () => {
-  test("Moonbeam vote collector is exercised for a same-chain multichain proposal", async () => {
+describe("getProposalsOnChainData derived satellite set", () => {
+  test("queries every env with both voteCollector and wormhole, and excludes envs missing either", async () => {
     const chainVoteCollectorVotes = vi.fn(
       async () => [0n, 0n, 0n] as readonly [bigint, bigint, bigint],
     );
 
-    // Ethereum-shaped governance env whose `chainIds` includes both Moonbeam
-    // and Base. The mocked publicEnvironments above now wires voteCollector on
-    // Moonbeam, so both entries must pass the filter.
     const env = {
       chainId: 1,
       contracts: {
@@ -347,7 +339,7 @@ describe("getProposalsOnChainData voteCollector wire-up", () => {
           read: { chainVoteCollectorVotes },
         },
       },
-      custom: { governance: { chainIds: [1284, 8453] } },
+      custom: {},
     } as unknown as Parameters<typeof getProposalsOnChainData>[1];
 
     const proposal: ApiProposal = {
@@ -359,17 +351,19 @@ describe("getProposalsOnChainData voteCollector wire-up", () => {
 
     await getProposalsOnChainData([proposal], env);
 
-    // The Moonbeam wormhole chainId reaches the multichain governor — this is
-    // the behavior change the contracts.ts addition unlocks.
     expect(chainVoteCollectorVotes).toHaveBeenCalledWith([
       MOONBEAM_WORMHOLE_CHAIN_ID,
       7n,
     ]);
-    // Counterpart: Base was already wired, so it should still be queried.
     expect(chainVoteCollectorVotes).toHaveBeenCalledWith([
       BASE_WORMHOLE_CHAIN_ID,
       7n,
     ]);
+    // Optimism is mocked with `voteCollector` but no `custom.wormhole` block,
+    // so the derivation must exclude it — otherwise an env declared in a
+    // hand-listed satellite array would silently get filtered out, dropping
+    // it from the `votesCollected` AND-check.
+    expect(chainVoteCollectorVotes).toHaveBeenCalledTimes(2);
   });
 });
 

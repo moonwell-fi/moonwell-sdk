@@ -283,6 +283,33 @@ const getLegacyArtemisMaxId = async (
  * `getExtendedProposalData`. The caller's `governanceEnvironment` carries
  * `onError` since we don't have one per foreign chain in scope.
  */
+export const getEnvironmentByChainId = (
+  chainId: number,
+): Environment | undefined =>
+  (Object.values(publicEnvironments) as Environment[]).find(
+    (e) => e.chainId === chainId,
+  );
+
+/**
+ * Wormhole satellites the given hub talks to for cross-chain vote collection:
+ * every `publicEnvironments` entry other than the hub that exposes both
+ * `custom.wormhole.chainId` and `contracts.voteCollector`. Derived (not
+ * hand-listed) so the set stays consistent with the actual wiring and an env
+ * declared in a satellite list but missing either prerequisite can't silently
+ * drop out of the AND-semantics `votesCollected` check.
+ */
+export const getVoteCollectorSatellites = (hubChainId: number): Environment[] =>
+  (Object.values(publicEnvironments) as Environment[]).filter((env) => {
+    if (env.chainId === hubChainId) return false;
+    const hasWormhole =
+      env.custom && "wormhole" in env.custom && env.custom.wormhole?.chainId;
+    const hasVoteCollector =
+      env.contracts &&
+      "voteCollector" in env.contracts &&
+      env.contracts.voteCollector;
+    return !!(hasWormhole && hasVoteCollector);
+  });
+
 export const readCrossChainQuorums = async (
   apiProposals: ApiProposal[],
   governanceEnvironment: Environment,
@@ -297,9 +324,7 @@ export const readCrossChainQuorums = async (
   const quorums = new Map<number, bigint>();
   await Promise.all(
     otherChainIds.map(async (chainId) => {
-      const env = (Object.values(publicEnvironments) as Environment[]).find(
-        (e) => e.chainId === chainId,
-      );
+      const env = getEnvironmentByChainId(chainId);
       const mg = env?.contracts.multichainGovernor;
       if (!mg) return;
       try {
@@ -349,9 +374,7 @@ export const getProposalsOnChainData = async (
   const resolveHomeEnv = (chainId: number): Environment | undefined =>
     chainId === governanceEnvironment.chainId
       ? governanceEnvironment
-      : (Object.values(publicEnvironments) as Environment[]).find(
-          (e) => e.chainId === chainId,
-        );
+      : getEnvironmentByChainId(chainId);
 
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
@@ -388,31 +411,35 @@ export const getProposalsOnChainData = async (
       let stateReadFailed = !governorContract;
 
       if (governorContract) {
-        try {
-          state = Number(
-            await governorContract.read.state([BigInt(p.proposalId)]),
-          );
-        } catch (error) {
+        const statePromise = (async () =>
+          governorContract.read.state([BigInt(p.proposalId)]))();
+        const proposalsPromise = (async () =>
+          governorContract.read.proposals([BigInt(p.proposalId)]))();
+        const [stateResult, proposalsResult] = await Promise.allSettled([
+          statePromise,
+          proposalsPromise,
+        ]);
+        if (stateResult.status === "fulfilled") {
+          state = Number(stateResult.value);
+        } else {
           stateReadFailed = true;
           console.warn(
             `Failed to fetch state for proposal ${p.proposalId} (chainId=${p.chainId}):`,
-            error,
+            stateResult.reason,
           );
-          governanceEnvironment.onError?.(error, {
+          governanceEnvironment.onError?.(stateResult.reason, {
             source: "governance-proposals",
             chainId: p.chainId,
           });
         }
-        try {
-          proposalData =
-            (await governorContract.read.proposals([BigInt(p.proposalId)])) ??
-            null;
-        } catch (error) {
+        if (proposalsResult.status === "fulfilled") {
+          proposalData = proposalsResult.value ?? null;
+        } else {
           console.warn(
             `Failed to fetch proposalData for proposal ${p.proposalId} (chainId=${p.chainId}):`,
-            error,
+            proposalsResult.reason,
           );
-          governanceEnvironment.onError?.(error, {
+          governanceEnvironment.onError?.(proposalsResult.reason, {
             source: "governance-proposals",
             chainId: p.chainId,
           });
@@ -465,69 +492,36 @@ export const getProposalsOnChainData = async (
         return false;
       }
 
-      const xcGovernanceSettings = homeEnv.custom.governance;
-      if (!xcGovernanceSettings || xcGovernanceSettings.chainIds.length === 0) {
+      const xcEnvironments = getVoteCollectorSatellites(homeEnv.chainId);
+      if (xcEnvironments.length === 0) {
         return false;
       }
 
-      try {
-        const xcEnvironments = xcGovernanceSettings.chainIds
-          .map((chainId) =>
-            Object.values(publicEnvironments).find(
-              (env) => env.chainId === chainId,
-            ),
-          )
-          .filter((env) => {
-            if (!env) return false;
-            const hasWormhole =
-              env.custom &&
-              "wormhole" in env.custom &&
-              env.custom.wormhole?.chainId;
-            const hasVoteCollector =
-              env.contracts &&
-              "voteCollector" in env.contracts &&
-              env.contracts.voteCollector;
-            return !!(hasWormhole && hasVoteCollector);
-          });
-
-        if (xcEnvironments.length === 0) {
-          return false;
-        }
-
-        const votesCollectedChecks = await Promise.all(
-          xcEnvironments.map(async (xcEnvironment) => {
-            const wormholeChainId = (xcEnvironment!.custom as any)?.wormhole
-              ?.chainId;
-            if (!wormholeChainId) return false;
-
-            try {
-              const [forVotes, againstVotes, abstainVotes] =
-                await homeEnv.contracts.multichainGovernor!.read.chainVoteCollectorVotes(
-                  [wormholeChainId, BigInt(apiProposal.proposalId)],
-                );
-              return forVotes > 0n || againstVotes > 0n || abstainVotes > 0n;
-            } catch (error) {
-              console.warn(
-                `chainVoteCollectorVotes failed for proposalId=${apiProposal.proposalId} wormholeChainId=${wormholeChainId}:`,
-                error,
+      const votesCollectedChecks = await Promise.all(
+        xcEnvironments.map(async (xcEnvironment) => {
+          const wormholeChainId = (xcEnvironment.custom as any)?.wormhole
+            ?.chainId;
+          try {
+            const [forVotes, againstVotes, abstainVotes] =
+              await homeEnv.contracts.multichainGovernor!.read.chainVoteCollectorVotes(
+                [wormholeChainId, BigInt(apiProposal.proposalId)],
               );
-              governanceEnvironment.onError?.(error, {
-                source: "governance-vote-collector",
-                chainId: apiProposal.chainId,
-              });
-              return false;
-            }
-          }),
-        );
+            return forVotes > 0n || againstVotes > 0n || abstainVotes > 0n;
+          } catch (error) {
+            console.warn(
+              `chainVoteCollectorVotes failed for proposalId=${apiProposal.proposalId} wormholeChainId=${wormholeChainId}:`,
+              error,
+            );
+            governanceEnvironment.onError?.(error, {
+              source: "governance-vote-collector",
+              chainId: apiProposal.chainId,
+            });
+            return false;
+          }
+        }),
+      );
 
-        return (
-          votesCollectedChecks.length > 0 &&
-          votesCollectedChecks.every((collected) => collected)
-        );
-      } catch (error) {
-        console.warn("Failed to check votes collected status:", error);
-        return false;
-      }
+      return votesCollectedChecks.every((collected) => collected);
     }),
   );
 
