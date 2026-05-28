@@ -8,17 +8,6 @@ import {
 import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain, GovernanceToken } from "../../environments/index.js";
 import type { UserVotingPowers } from "../../types/userVotingPowers.js";
-import { RAW_WELL_MASKED_CHAINS } from "./votingPolicy.js";
-
-// Raw WELL (even delegated) is no longer an eligible voting source on Moonbeam —
-// eligible voting now flows through stkWELL (stakingVotes) and xWELL only. The
-// Moonbeam views contract still returns a non-zero tokenVotes tuple, so the SDK
-// masks it here to keep `totalDelegated` and the per-source breakdown honest.
-const ZERO_TOKEN_VOTES = {
-  delegates: zeroAddress,
-  votingPower: 0n,
-  delegatedVotingPower: 0n,
-} as const;
 
 const warnedSkippedEnvs = new Set<string>();
 
@@ -108,9 +97,7 @@ export async function getUserVotingPowers<
   );
 
   return resolvedVotingPowers.map(({ env: environment, votingPowers }) => {
-    const tokenVotes = RAW_WELL_MASKED_CHAINS.has(environment.chainId)
-      ? ZERO_TOKEN_VOTES
-      : votingPowers.tokenVotes;
+    const { tokenVotes } = votingPowers;
 
     return {
       chainId: environment.chainId,
