@@ -8,6 +8,17 @@ import {
 import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain, GovernanceToken } from "../../environments/index.js";
 import type { UserVotingPowers } from "../../types/userVotingPowers.js";
+import { RAW_WELL_MASKED_CHAINS } from "./votingPolicy.js";
+
+// Raw WELL (even delegated) is no longer an eligible voting source on Moonbeam —
+// eligible voting now flows through stkWELL (stakingVotes) and xWELL only. The
+// Moonbeam views contract still returns a non-zero tokenVotes tuple, so the SDK
+// masks it here to keep `totalDelegated` and the per-source breakdown honest.
+const ZERO_TOKEN_VOTES = {
+  delegates: zeroAddress,
+  votingPower: 0n,
+  delegatedVotingPower: 0n,
+} as const;
 
 const warnedSkippedEnvs = new Set<string>();
 
@@ -97,6 +108,10 @@ export async function getUserVotingPowers<
   );
 
   return resolvedVotingPowers.map(({ env: environment, votingPowers }) => {
+    const tokenVotes = RAW_WELL_MASKED_CHAINS.has(environment.chainId)
+      ? ZERO_TOKEN_VOTES
+      : votingPowers.tokenVotes;
+
     return {
       chainId: environment.chainId,
 
@@ -129,29 +144,20 @@ export async function getUserVotingPowers<
       ),
 
       //Token balances
-      tokenDelegates: votingPowers.tokenVotes.delegates,
-      tokenBalance: new Amount(votingPowers.tokenVotes.votingPower, 18),
-      tokenDelegated: new Amount(
-        votingPowers.tokenVotes.delegatedVotingPower,
-        18,
-      ),
+      tokenDelegates: tokenVotes.delegates,
+      tokenBalance: new Amount(tokenVotes.votingPower, 18),
+      tokenDelegated: new Amount(tokenVotes.delegatedVotingPower, 18),
       tokenDelegatedOthers: new Amount(
-        votingPowers.tokenVotes.delegatedVotingPower -
-          (votingPowers.tokenVotes.delegates === userAddress
-            ? votingPowers.tokenVotes.votingPower
-            : 0n),
+        tokenVotes.delegatedVotingPower -
+          (tokenVotes.delegates === userAddress ? tokenVotes.votingPower : 0n),
         18,
       ),
       tokenDelegatedSelf: new Amount(
-        votingPowers.tokenVotes.delegates === userAddress
-          ? votingPowers.tokenVotes.votingPower
-          : 0n,
+        tokenVotes.delegates === userAddress ? tokenVotes.votingPower : 0n,
         18,
       ),
       tokenUndelegated: new Amount(
-        votingPowers.tokenVotes.delegates === zeroAddress
-          ? votingPowers.tokenVotes.votingPower
-          : 0n,
+        tokenVotes.delegates === zeroAddress ? tokenVotes.votingPower : 0n,
         18,
       ),
 
@@ -162,7 +168,7 @@ export async function getUserVotingPowers<
 
       totalDelegated: new Amount(
         votingPowers.claimsVotes.delegatedVotingPower +
-          votingPowers.tokenVotes.delegatedVotingPower +
+          tokenVotes.delegatedVotingPower +
           votingPowers.stakingVotes.delegatedVotingPower,
         18,
       ),
@@ -172,9 +178,9 @@ export async function getUserVotingPowers<
           (votingPowers.claimsVotes.delegates === userAddress
             ? votingPowers.claimsVotes.votingPower
             : 0n) +
-          (votingPowers.tokenVotes.delegatedVotingPower -
-            (votingPowers.tokenVotes.delegates === userAddress
-              ? votingPowers.tokenVotes.votingPower
+          (tokenVotes.delegatedVotingPower -
+            (tokenVotes.delegates === userAddress
+              ? tokenVotes.votingPower
               : 0n)),
         18,
       ),
@@ -183,9 +189,7 @@ export async function getUserVotingPowers<
         (votingPowers.claimsVotes.delegates === userAddress
           ? votingPowers.claimsVotes.votingPower
           : 0n) +
-          (votingPowers.tokenVotes.delegates === userAddress
-            ? votingPowers.tokenVotes.votingPower
-            : 0n) +
+          (tokenVotes.delegates === userAddress ? tokenVotes.votingPower : 0n) +
           votingPowers.stakingVotes.delegatedVotingPower,
         18,
       ),

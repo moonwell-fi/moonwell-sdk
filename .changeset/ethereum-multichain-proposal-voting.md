@@ -1,0 +1,5 @@
+---
+"@moonwell-fi/moonwell-sdk": minor
+---
+
+Recognize Ethereum-home multichain proposals and enable Moonbeam-wallet voting on them. `isMultichainProposal` now matches both the Moonbeam Wormhole Core Bridge (existing behavior) and the Ethereum Wormhole Core Bridge (`0x98f3c9e6e3face36baad05fe09d375ef1464288b`), so proposals created on the Ethereum multigov hub no longer fall through the cross-chain check and get incorrectly classified as single-chain. `getProposal` (singular) now resolves Ethereum-home proposals when called with `chainId: 1` by routing through the Moonbeam Governor API path that already handles both chainIds — previously it bailed out at the `!moonbeam && !moonriver` env check and returned `undefined`, breaking direct deep-links to Ethereum proposals. Moonbeam's contracts config gains `voteCollector: "0xB8A798a50a7274A13449B7f2Dd6Df22faF2d40E5"` — the satellite collector deployed when governance moved to Ethereum — so consumers can route Moonbeam-resident votes to the new hub.

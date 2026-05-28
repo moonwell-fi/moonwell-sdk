@@ -1,4 +1,4 @@
-import { moonbeam, moonriver } from "viem/chains";
+import { mainnet, moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
@@ -48,6 +48,26 @@ export async function getProposal<
   const environment = getEnvironmentFromArgs(client, args);
   if (!environment) {
     return undefined;
+  }
+
+  // Ethereum-home multigov proposals are served by the same Governor API as
+  // historical Moonbeam ones (the lunar indexer fans out both chainIds), so
+  // route them through `getMoonbeamProposal` using the Moonbeam env as the
+  // indexer source. Without this, a caller resolving the env by `chainId: 1`
+  // would bail out on the `!moonbeam && !moonriver` check below and the page
+  // reload path returns undefined.
+  if (environment.chainId === mainnet.id) {
+    const moonbeamEnv = Object.values(
+      client.environments as Record<string, Environment>,
+    ).find((e) => e.chainId === moonbeam.id);
+    if (!moonbeamEnv) {
+      return undefined;
+    }
+    return getMoonbeamProposal(
+      moonbeamEnv,
+      proposalId,
+      args.chainId ?? mainnet.id,
+    );
   }
 
   if (
