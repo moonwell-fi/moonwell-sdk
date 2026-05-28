@@ -5,6 +5,7 @@ import { Amount } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
 import { publicEnvironments } from "../../../environments/index.js";
 import {
+  MultichainProposalState,
   MultichainProposalStateMapping,
   type Proposal,
   ProposalState,
@@ -294,9 +295,7 @@ export const getEnvironmentByChainId = (
  * Wormhole satellites the given hub talks to for cross-chain vote collection:
  * every `publicEnvironments` entry other than the hub that exposes both
  * `custom.wormhole.chainId` and `contracts.voteCollector`. Derived (not
- * hand-listed) so the set stays consistent with the actual wiring and an env
- * declared in a satellite list but missing either prerequisite can't silently
- * drop out of the AND-semantics `votesCollected` check.
+ * hand-listed) so the set stays consistent with the actual wiring.
  */
 export const getVoteCollectorSatellites = (hubChainId: number): Environment[] =>
   (Object.values(publicEnvironments) as Environment[]).filter((env) => {
@@ -466,69 +465,29 @@ export const getProposalsOnChainData = async (
         eta = p.votingEndTime + 86400; // 1 day
       }
 
+      // Cross-chain vote collection is the multichain governor's own state
+      // machine: votes can only be bridged in during the post-voting
+      // `crossChainVoteCollectionPeriod`, and once that window closes the state
+      // advances to Succeeded/Defeated. So "collection complete" is exactly
+      // `state > MultichainVoteCollection`. Reading per-satellite tallies and
+      // AND-ing them would pin false forever for a satellite where no one
+      // voted (its entry stays [0,0,0] even after collection ends).
+      const votesCollected =
+        isMultichain &&
+        !stateReadFailed &&
+        state > MultichainProposalState.MultichainVoteCollection;
+
       return {
         state,
         proposalData,
         eta,
-        votesCollected: false,
+        votesCollected,
         quorum: proposalQuorum,
       };
     }),
   );
 
-  const votesCollectedList = await Promise.all(
-    apiProposals.map(async (apiProposal) => {
-      const homeEnv = resolveHomeEnv(apiProposal.chainId);
-      if (!homeEnv) {
-        return false;
-      }
-
-      const isLocal = apiProposal.chainId === governanceEnvironment.chainId;
-      const isMultichain = isLocal
-        ? isMultichainAware(apiProposal, legacyArtemisMaxId)
-        : isMultichainProposal(apiProposal.targets);
-
-      if (!isMultichain || !homeEnv.contracts.multichainGovernor) {
-        return false;
-      }
-
-      const xcEnvironments = getVoteCollectorSatellites(homeEnv.chainId);
-      if (xcEnvironments.length === 0) {
-        return false;
-      }
-
-      const votesCollectedChecks = await Promise.all(
-        xcEnvironments.map(async (xcEnvironment) => {
-          const wormholeChainId = (xcEnvironment.custom as any)?.wormhole
-            ?.chainId;
-          try {
-            const [forVotes, againstVotes, abstainVotes] =
-              await homeEnv.contracts.multichainGovernor!.read.chainVoteCollectorVotes(
-                [wormholeChainId, BigInt(apiProposal.proposalId)],
-              );
-            return forVotes > 0n || againstVotes > 0n || abstainVotes > 0n;
-          } catch (error) {
-            console.warn(
-              `chainVoteCollectorVotes failed for proposalId=${apiProposal.proposalId} wormholeChainId=${wormholeChainId}:`,
-              error,
-            );
-            governanceEnvironment.onError?.(error, {
-              source: "governance-vote-collector",
-              chainId: apiProposal.chainId,
-            });
-            return false;
-          }
-        }),
-      );
-
-      return votesCollectedChecks.every((collected) => collected);
-    }),
-  );
-
-  return onChainDataList.map((data, index) => ({
-    ...data,
-    votesCollected: votesCollectedList[index] ?? false,
-  }));
+  return onChainDataList;
 };
 
 /**

@@ -1,5 +1,6 @@
 import { base, mainnet, moonbeam, optimism } from "viem/chains";
 import { describe, expect, test } from "vitest";
+import { getVoteCollectorSatellites } from "../../../actions/governance/proposals/common.js";
 import { publicEnvironments } from "../../index.js";
 import { GovernanceTokensConfig } from "../governance.js";
 import { createEnvironment, ethereum } from "./environment.js";
@@ -71,5 +72,22 @@ describe("ethereum environment invariants", () => {
       return chainIds?.includes(moonbeam.id);
     });
     expect(homeEnv?.chainId ?? moonbeam.id).toBe(moonbeam.id);
+  });
+
+  // Ethereum hub MultichainGovernor (0x8769B70ac7c93AF0e75de0D69877709B66d75838)
+  // registers Wormhole chain IDs 16 (Moonbeam), 30 (Base), 24 (Optimism) as
+  // vote-collection chains. The SDK must mirror that set: each satellite env
+  // needs both `custom.wormhole.chainId` and `contracts.voteCollector` so it
+  // can be enumerated. A missing `wormhole` block on any of them is the bug
+  // that motivated this test — Optimism previously had no wormhole config and
+  // was silently dropped from the satellite enumeration.
+  test("getVoteCollectorSatellites for Ethereum hub yields Moonbeam, Base, and Optimism", () => {
+    const satellites = getVoteCollectorSatellites(mainnet.id).map(
+      (env) => env.chainId,
+    );
+    expect(satellites).toEqual(
+      expect.arrayContaining([moonbeam.id, base.id, optimism.id]),
+    );
+    expect(satellites).toHaveLength(3);
   });
 });

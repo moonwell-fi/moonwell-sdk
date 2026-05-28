@@ -6,9 +6,7 @@ export const custom = createCustomConfig({
     // Empty: this field is also consumed as a `homeEnvironment` membership
     // predicate by core/markets/user-rewards (see src/actions/core/user-rewards/
     // common.ts:21). Listing Moonbeam here would mis-route Moonbeam's home env
-    // to Ethereum. The Ethereum hub's Wormhole satellite set is derived inside
-    // `getProposalsOnChainData` from envs exposing both `custom.wormhole.chainId`
-    // and `contracts.voteCollector`.
+    // to Ethereum.
     chainIds: [],
   },
   wormhole: {
