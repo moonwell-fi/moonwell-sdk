@@ -9,7 +9,6 @@ import * as logger from "../../logger/console.js";
 import type { Delegate } from "../../types/delegate.js";
 import { getWithRetry } from "../axiosWithRetry.js";
 import { fetchAllVoters } from "./governor-api-client.js";
-import { RAW_WELL_MASKED_CHAINS } from "./votingPolicy.js";
 
 export type GetDelegatesReturnType = Promise<Delegate[]>;
 
@@ -65,17 +64,10 @@ export async function getDelegates(
         const { claimsVotes, stakingVotes, tokenVotes } =
           userVotingPowers[reduceIndex]!;
 
-        // Raw WELL (tokenVotes) is no longer an eligible voting source on
-        // Moonbeam — see comment in getUserVotingPowers.ts. Mask it here so
-        // delegate rankings reflect the new policy.
-        const eligibleTokenVotes = RAW_WELL_MASKED_CHAINS.has(env.chainId)
-          ? 0n
-          : tokenVotes.delegatedVotingPower;
-
         const totalVotes =
           claimsVotes.delegatedVotingPower +
           stakingVotes.delegatedVotingPower +
-          eligibleTokenVotes;
+          tokenVotes.delegatedVotingPower;
 
         votingPower[env.chainId] = Number(totalVotes / BigInt(10 ** 18));
       });

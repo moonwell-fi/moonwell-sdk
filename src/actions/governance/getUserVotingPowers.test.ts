@@ -1,4 +1,4 @@
-import { type Address, zeroAddress } from "viem";
+import type { Address } from "viem";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../test/client.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
@@ -254,10 +254,12 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
     expect(result.map((r) => r.chainId)).toEqual([8453]);
   });
 
-  test("Moonbeam (chainId=1284) zeroes out raw WELL tokenVotes — eligible sources are stkWELL and claims only", async () => {
-    // Simulate a Moonbeam views read where the user has non-zero raw WELL
-    // delegated to themselves, plus non-zero stkWELL and claims voting power.
-    // Per policy, raw WELL must not count toward voting power on Moonbeam.
+  test("Moonbeam (chainId=1284) passes tokenVotes through after the views contract was upgraded to read xWELL", async () => {
+    // The Moonbeam MoonwellViews implementation was upgraded to read xWELL for
+    // tokenVotes (matching Base/OP). The SDK no longer rewrites Moonbeam's
+    // tokenVotes — every source the views returns flows through unmodified.
+    // This test pins that pass-through so a regression to the prior mask
+    // would fail loudly.
     const moonbeamRead = vi.fn(async () => ({
       claimsVotes: {
         delegates: USER,
@@ -294,23 +296,19 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
     });
 
     expect(result?.chainId).toBe(1284);
-    // Raw WELL is fully masked — every token* field reads as zero.
-    expect(result?.tokenBalance.value).toBe(0);
-    expect(result?.tokenDelegated.value).toBe(0);
-    expect(result?.tokenDelegatedSelf.value).toBe(0);
-    expect(result?.tokenDelegatedOthers.value).toBe(0);
-    expect(result?.tokenUndelegated.value).toBe(0);
-    expect(result?.tokenDelegates).toBe(zeroAddress);
-    // stkWELL + claims pass through untouched.
+    expect(result?.tokenBalance.value).toBe(Number(500n) / 1e18);
+    expect(result?.tokenDelegated.value).toBe(Number(500n) / 1e18);
+    expect(result?.tokenDelegatedSelf.value).toBe(Number(500n) / 1e18);
+    expect(result?.tokenDelegates).toBe(USER);
     expect(result?.stakingDelegated.value).toBe(Number(200n) / 1e18);
     expect(result?.claimsDelegated.value).toBe(Number(100n) / 1e18);
-    // Total excludes the masked tokenVotes (100 + 200 = 300, not 800).
-    expect(result?.totalDelegated.value).toBe(Number(300n) / 1e18);
+    // 100 + 500 + 200 = 800
+    expect(result?.totalDelegated.value).toBe(Number(800n) / 1e18);
   });
 
-  test("non-Moonbeam chains keep raw WELL tokenVotes in voting power", async () => {
-    // Sanity counterpart: the mask is Moonbeam-specific and must NOT bleed
-    // into other chains where raw WELL is still an eligible source.
+  test("non-Moonbeam chains pass tokenVotes through in voting power", async () => {
+    // Positive counterpart to the Moonbeam test above — every chain shares
+    // the same pass-through code path now that the per-chain mask is gone.
     const baseRead = vi.fn(async () => ({
       claimsVotes: {
         delegates: USER,
