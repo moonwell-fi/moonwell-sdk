@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import { type Address, zeroAddress } from "viem";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../test/client.js";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
@@ -252,6 +252,104 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
 
     expect(validRead).toHaveBeenCalledTimes(1);
     expect(result.map((r) => r.chainId)).toEqual([8453]);
+  });
+
+  test("Moonbeam (chainId=1284) zeroes out raw WELL tokenVotes — eligible sources are stkWELL and claims only", async () => {
+    // Simulate a Moonbeam views read where the user has non-zero raw WELL
+    // delegated to themselves, plus non-zero stkWELL and claims voting power.
+    // Per policy, raw WELL must not count toward voting power on Moonbeam.
+    const moonbeamRead = vi.fn(async () => ({
+      claimsVotes: {
+        delegates: USER,
+        votingPower: 100n,
+        delegatedVotingPower: 100n,
+      },
+      tokenVotes: {
+        delegates: USER,
+        votingPower: 500n,
+        delegatedVotingPower: 500n,
+      },
+      stakingVotes: {
+        delegates: USER,
+        votingPower: 200n,
+        delegatedVotingPower: 200n,
+      },
+    }));
+
+    const client = {
+      environments: {
+        moonbeam: {
+          chainId: 1284,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: moonbeamRead } },
+          },
+        },
+      },
+    } as unknown as MoonwellClient;
+
+    const [result] = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+    });
+
+    expect(result?.chainId).toBe(1284);
+    // Raw WELL is fully masked — every token* field reads as zero.
+    expect(result?.tokenBalance.value).toBe(0);
+    expect(result?.tokenDelegated.value).toBe(0);
+    expect(result?.tokenDelegatedSelf.value).toBe(0);
+    expect(result?.tokenDelegatedOthers.value).toBe(0);
+    expect(result?.tokenUndelegated.value).toBe(0);
+    expect(result?.tokenDelegates).toBe(zeroAddress);
+    // stkWELL + claims pass through untouched.
+    expect(result?.stakingDelegated.value).toBe(Number(200n) / 1e18);
+    expect(result?.claimsDelegated.value).toBe(Number(100n) / 1e18);
+    // Total excludes the masked tokenVotes (100 + 200 = 300, not 800).
+    expect(result?.totalDelegated.value).toBe(Number(300n) / 1e18);
+  });
+
+  test("non-Moonbeam chains keep raw WELL tokenVotes in voting power", async () => {
+    // Sanity counterpart: the mask is Moonbeam-specific and must NOT bleed
+    // into other chains where raw WELL is still an eligible source.
+    const baseRead = vi.fn(async () => ({
+      claimsVotes: {
+        delegates: USER,
+        votingPower: 100n,
+        delegatedVotingPower: 100n,
+      },
+      tokenVotes: {
+        delegates: USER,
+        votingPower: 500n,
+        delegatedVotingPower: 500n,
+      },
+      stakingVotes: {
+        delegates: USER,
+        votingPower: 200n,
+        delegatedVotingPower: 200n,
+      },
+    }));
+
+    const client = {
+      environments: {
+        base: {
+          chainId: 8453,
+          custom: { governance: { token: "WELL" } },
+          contracts: {
+            views: { read: { getUserVotingPower: baseRead } },
+          },
+        },
+      },
+    } as unknown as MoonwellClient;
+
+    const [result] = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+    });
+
+    expect(result?.chainId).toBe(8453);
+    expect(result?.tokenDelegated.value).toBe(Number(500n) / 1e18);
+    // 100 + 500 + 200 = 800
+    expect(result?.totalDelegated.value).toBe(Number(800n) / 1e18);
   });
 
   test("snapshotTimestamp preserves index correlation across a mixed [noViews, valid, noViews, valid] env list", async () => {

@@ -64,10 +64,16 @@ export async function getDelegates(
         const { claimsVotes, stakingVotes, tokenVotes } =
           userVotingPowers[reduceIndex]!;
 
+        // Raw WELL (tokenVotes) is no longer an eligible voting source on
+        // Moonbeam — see comment in getUserVotingPowers.ts. Mask it here so
+        // delegate rankings reflect the new policy.
+        const eligibleTokenVotes =
+          env.chainId === moonbeam.id ? 0n : tokenVotes.delegatedVotingPower;
+
         const totalVotes =
           claimsVotes.delegatedVotingPower +
           stakingVotes.delegatedVotingPower +
-          tokenVotes.delegatedVotingPower;
+          eligibleTokenVotes;
 
         votingPower[env.chainId] = Number(totalVotes / BigInt(10 ** 18));
       });
