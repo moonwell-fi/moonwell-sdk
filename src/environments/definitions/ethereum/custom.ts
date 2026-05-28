@@ -4,11 +4,8 @@ import { createCustomConfig } from "../../types/config.js";
 export const custom = createCustomConfig({
   governance: {
     token: "WELL",
-    // Satellite chains the Ethereum hub talks to via Wormhole: Moonbeam's
-    // temporal governor (proposal execution) plus Base and Optimism's vote
-    // collectors. Used by `getProposalsOnChainData` to enumerate per-chain
-    // vote-collector reads when computing `votesCollected` for Ethereum-hub
-    // proposals.
+    // Wormhole satellites the Ethereum hub talks to: Moonbeam (temporal
+    // governor / proposal execution) plus Base and Optimism (vote collectors).
     chainIds: [moonbeam.id, base.id, optimism.id],
   },
   wormhole: {

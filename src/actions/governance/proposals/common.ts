@@ -344,13 +344,8 @@ export const getProposalsOnChainData = async (
 
   const nowSeconds = Math.floor(Date.now() / 1000);
 
-  // Resolve the env that hosts the governor for a given proposal's chainId.
-  // Local proposals reuse the caller's `governanceEnvironment` (which carries
-  // the user's RPC). Foreign proposals — e.g. Ethereum multigov proposals
-  // (chainId=1) fetched through the Moonbeam governance env — fall back to
-  // `publicEnvironments`, mirroring how `readCrossChainQuorums` resolves
-  // cross-chain quorums. Without this, foreign proposals can't be read at all
-  // and we'd have to derive every field from API events.
+  // Foreign proposals (chainId !== caller's) need their own home env's
+  // governor — the caller's RPC can't read them. Falls back to publicEnvironments.
   const resolveHomeEnv = (chainId: number): Environment | undefined =>
     chainId === governanceEnvironment.chainId
       ? governanceEnvironment
@@ -366,9 +361,6 @@ export const getProposalsOnChainData = async (
         : (options?.crossChainQuorums?.get(p.chainId) ?? 0n);
       const homeEnv = resolveHomeEnv(p.chainId);
 
-      // No env wired for this chain — derive state from API events so terminal
-      // proposals (executed / canceled / queued) don't appear stuck at
-      // Pending(0), and zero out the on-chain-only fields.
       if (!homeEnv) {
         const formatted = formatApiProposalData(p);
         return {
@@ -393,24 +385,43 @@ export const getProposalsOnChainData = async (
 
       let state = 0;
       let proposalData = null;
+      let stateReadFailed = !governorContract;
 
       if (governorContract) {
         try {
-          [state, proposalData] = await Promise.all([
-            governorContract.read.state([BigInt(p.proposalId)]),
-            governorContract.read.proposals([BigInt(p.proposalId)]),
-          ]);
+          state = Number(
+            await governorContract.read.state([BigInt(p.proposalId)]),
+          );
         } catch (error) {
+          stateReadFailed = true;
           console.warn(
-            `Failed to fetch state and proposalData for proposal ${p.proposalId} (chainId=${p.chainId}):`,
+            `Failed to fetch state for proposal ${p.proposalId} (chainId=${p.chainId}):`,
             error,
           );
+          governanceEnvironment.onError?.(error, {
+            source: "governance-proposals",
+            chainId: p.chainId,
+          });
+        }
+        try {
+          proposalData =
+            (await governorContract.read.proposals([BigInt(p.proposalId)])) ??
+            null;
+        } catch (error) {
+          console.warn(
+            `Failed to fetch proposalData for proposal ${p.proposalId} (chainId=${p.chainId}):`,
+            error,
+          );
+          governanceEnvironment.onError?.(error, {
+            source: "governance-proposals",
+            chainId: p.chainId,
+          });
         }
       }
 
-      // Foreign read produced nothing — fall back to API-derived state so a
-      // terminal proposal doesn't surface as Pending(0).
-      if (!isLocal && proposalData === null && state === 0) {
+      // State read produced nothing — derive from API events so a terminal
+      // proposal doesn't surface as Pending(0).
+      if (stateReadFailed) {
         const formatted = formatApiProposalData(p);
         state = deriveProposalStateFromApi(formatted, p, nowSeconds);
       }
@@ -485,17 +496,25 @@ export const getProposalsOnChainData = async (
 
         const votesCollectedChecks = await Promise.all(
           xcEnvironments.map(async (xcEnvironment) => {
-            try {
-              const wormholeChainId = (xcEnvironment!.custom as any)?.wormhole
-                ?.chainId;
-              if (!wormholeChainId) return false;
+            const wormholeChainId = (xcEnvironment!.custom as any)?.wormhole
+              ?.chainId;
+            if (!wormholeChainId) return false;
 
+            try {
               const [forVotes, againstVotes, abstainVotes] =
                 await homeEnv.contracts.multichainGovernor!.read.chainVoteCollectorVotes(
                   [wormholeChainId, BigInt(apiProposal.proposalId)],
                 );
               return forVotes > 0n || againstVotes > 0n || abstainVotes > 0n;
             } catch (error) {
+              console.warn(
+                `chainVoteCollectorVotes failed for proposalId=${apiProposal.proposalId} wormholeChainId=${wormholeChainId}:`,
+                error,
+              );
+              governanceEnvironment.onError?.(error, {
+                source: "governance-vote-collector",
+                chainId: apiProposal.chainId,
+              });
               return false;
             }
           }),
