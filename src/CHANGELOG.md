@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.18.0
+
+### Minor Changes
+
+- [#290](https://github.com/moonwell-fi/moonwell-sdk/pull/290) [`7ec897474a32cc6fc2e27db16c05e6674244176e`](https://github.com/moonwell-fi/moonwell-sdk/commit/7ec897474a32cc6fc2e27db16c05e6674244176e) Thanks [@bprofiro](https://github.com/bprofiro)! - Resolve on-chain proposal data for Ethereum-hub multigov proposals fetched through the Moonbeam governance environment. `getProposalsOnChainData` now looks up the proposal's home environment from `publicEnvironments` when the proposal's `chainId` differs from the calling governance env's `chainId`, and reads `state` and `proposalData` (for `eta`) against that env's `multichainGovernor`. Previously, foreign-chain proposals bailed out with `eta: 0` and `votesCollected: false`, which left the proposal-detail timeline stuck without a timelock countdown and unable to flip from "Vote Collection" to "Ready to Execute". `votesCollected` is now derived from the governor's own state machine — true once the on-chain state advances past `MultichainVoteCollection` (i.e., Canceled / Defeated / Succeeded / Executed) — instead of summing per-satellite `chainVoteCollectorVotes`. The previous AND-of-non-zero-tallies gate would pin `votesCollected: false` forever for low-participation proposals, since a satellite with no voters reports `[0,0,0]` permanently. The returned `state` is now normalized through `MultichainProposalStateMapping`, so consumers always see values in the public `ProposalState` enum (previously the raw governor enum leaked through and `MultichainVoteCollection(1)` collided with `ProposalState.Active(1)`). Paired with that, the `getProposal` / `getProposals` Queued-promotion gate is tightened from `< Queued` to `=== Succeeded` so terminal `Canceled` / `Defeated` proposals — which now also satisfy `votesCollected: true` — are not mislabeled as Queued. Optimism's `custom` config now exposes `wormhole.chainId: 24`, matching the on-chain hub's registered vote-collection chains (Wormhole IDs 16/30/24 = Moonbeam/Base/Optimism). When state/proposals reads fail (RPC outage, ABI mismatch), the state falls back to a value derived from indexed events instead of surfacing as `Pending(0)`. Moonbeam-hub proposals continue to take the local-env path and are unaffected.
+
 ## 0.17.1
 
 ### Patch Changes
