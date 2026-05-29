@@ -413,6 +413,24 @@ describe("getProposalsOnChainData Ethereum-hub via foreign env", () => {
     expect(data?.votesCollected).toBe(false);
   });
 
+  test("keeps eta=0 when state succeeds but proposals rejects (no synthetic eta over real state)", async () => {
+    ethereumMG.read.state.mockResolvedValue(MultichainProposalState.Succeeded);
+    ethereumMG.read.proposals.mockRejectedValue(new Error("RPC down"));
+
+    const [data] = await getProposalsOnChainData(
+      [ethProposal({ proposalId: 200 })],
+      moonbeamEnv,
+    );
+
+    // Real on-chain state should not be paired with a fabricated eta — if the
+    // governor's collection period ever diverges from the hardcoded 1 day, the
+    // synthetic value would silently mislead the timeline. Better: leave eta
+    // at 0 so callers know they don't have a real countdown.
+    expect(data?.state).toBe(Number(MultichainProposalState.Succeeded));
+    expect(data?.proposalData).toBeNull();
+    expect(data?.eta).toBe(0);
+  });
+
   test("uses options.crossChainQuorums entry for the proposal chainId without reading homeEnv.quorum", async () => {
     ethereumMG.read.state.mockResolvedValue(MultichainProposalState.Active);
     ethereumMG.read.proposals.mockResolvedValue(buildProposalsTuple(0n));
