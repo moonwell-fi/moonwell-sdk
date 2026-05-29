@@ -38,6 +38,7 @@ import {
 import {
   createEnvironment as createEthereumEnvironment,
   ethereum,
+  type markets as ethereumMarkets,
   type tokens as ethereumTokens,
 } from "./definitions/ethereum/environment.js";
 
@@ -211,7 +212,9 @@ export type MarketsType<environment> = environment extends BaseEnvironment
       ? typeof moonriverMarkets
       : environment extends OptimismEnvironment
         ? typeof optimismMarkets
-        : undefined;
+        : environment extends EthereumEnvironment
+          ? typeof ethereumMarkets
+          : undefined;
 
 export type VaultsType<environment> = environment extends BaseEnvironment
   ? typeof baseVaults

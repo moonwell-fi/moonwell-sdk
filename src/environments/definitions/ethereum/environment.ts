@@ -5,6 +5,7 @@ import {
   createEnvironmentConfig,
 } from "../../types/config.js";
 import { contracts } from "./contracts.js";
+import { markets } from "./core-markets.js";
 import { custom } from "./custom.js";
 import { tokens } from "./tokens.js";
 
@@ -16,7 +17,13 @@ const createEnvironment = (
   rpcUrls?: string[],
   governanceIndexerUrl?: string,
   lunarIndexerUrl?: string,
-): Environment<typeof tokens, {}, {}, typeof contracts, typeof custom> =>
+): Environment<
+  typeof tokens,
+  typeof markets,
+  {},
+  typeof contracts,
+  typeof custom
+> =>
   createEnvironmentConfig({
     key: "ethereum",
     name: "Ethereum",
@@ -35,11 +42,17 @@ const createEnvironment = (
     lunarIndexerUrl:
       lunarIndexerUrl || "https://lunar-services-worker.moonwell.workers.dev",
     tokens,
-    markets: {},
+    markets,
     vaults: {},
     morphoMarkets: {},
     contracts,
     custom,
-  }) as Environment<typeof tokens, {}, {}, typeof contracts, typeof custom>;
+  }) as Environment<
+    typeof tokens,
+    typeof markets,
+    {},
+    typeof contracts,
+    typeof custom
+  >;
 
-export { createEnvironment, ethereum, tokens };
+export { createEnvironment, ethereum, markets, tokens };
