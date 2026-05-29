@@ -9,11 +9,13 @@
   },
   "devDependencies": {
     "@moonwell-fi/moonwell-sdk": "file:../src",
-    "@types/react": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "@types/react": "19.2.14",
+    "@vitejs/plugin-react": "5.0.4",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
     "typescript": "5.9.3",
-    "vocs": "latest"
+    "vite": "7.1.11",
+    "vocs": "1.4.1"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",
