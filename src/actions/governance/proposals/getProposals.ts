@@ -127,11 +127,6 @@ async function getMoonbeamProposals(
     const formattedData = formatApiProposalData(apiProposal);
     const isMultichain = isMultichainProposal(apiProposal.targets);
 
-    // `onChainData.state` is already API-derived for cross-chain proposals
-    // (handled inside getProposalsOnChainData), so the post-processing below
-    // is a no-op for them — derived states already reflect executed/canceled/
-    // queued/active/pending, and votesCollected is false so the Queued branch
-    // never fires.
     const now = Math.floor(Date.now() / 1000);
     let proposalState = onChainData.state;
 
@@ -149,8 +144,14 @@ async function getMoonbeamProposals(
       isMultichain &&
       onChainData.votesCollected &&
       now > apiProposal.votingEndTime &&
-      proposalState < ProposalState.Queued
+      proposalState === ProposalState.Succeeded
     ) {
+      // Succeeded with collection done means "awaiting execution" — surface
+      // as Queued so the frontend renders the "Ready to Execute" timeline
+      // step. Defeated/Canceled/Executed must NOT be promoted: under the new
+      // state-machine-based votesCollected, those terminal states also
+      // satisfy `votesCollected: true`, so a `< Queued` gate would mislabel
+      // them.
       proposalState = ProposalState.Queued;
     }
 

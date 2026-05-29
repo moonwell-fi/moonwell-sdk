@@ -10,5 +10,8 @@ export const custom = createCustomConfig({
     token: "WELL",
     chainIds: [],
   },
+  wormhole: {
+    chainId: 24,
+  },
   multiRewarder: [{ rewardToken: "WELL" }, { rewardToken: "OP" }],
 });
