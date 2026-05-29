@@ -23,13 +23,13 @@ export const tokens = createTokenConfig({
   USDT: {
     address: "0xdac17f958d2ee523a2206206994597c13d831ec7",
     decimals: 6,
-    name: "Tether USD",
+    name: "Tether",
     symbol: "USDT",
   },
   cbBTC: {
     address: "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
     decimals: 8,
-    name: "Coinbase Wrapped BTC",
+    name: "Coinbase Bitcoin",
     symbol: "cbBTC",
   },
   WELL: {
