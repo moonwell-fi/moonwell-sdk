@@ -72,7 +72,8 @@ describe("ethereum environment invariants", () => {
       },
     });
     expect(Object.keys(env.config.markets)).toHaveLength(4);
-    
+  });
+
   // No `publicEnvironments` entry may list `moonbeam.id` in
   // `custom.governance.chainIds` — that field is consumed as a `homeEnvironment`
   // membership predicate by core/markets/user-rewards (see
