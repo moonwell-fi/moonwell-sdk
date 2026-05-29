@@ -60,7 +60,9 @@ describe("ethereum environment invariants", () => {
     const env = createEnvironment();
 
     expect(env.config.markets).toMatchObject({
-      MOONWELL_WETH: { marketToken: "MOONWELL_WETH", underlyingToken: "WETH" },
+      // Presented as native ETH (zeroAddress) — see core-markets.ts for the
+      // rationale; mirrors Base/Optimism convention (key + symbol "mETH").
+      MOONWELL_ETH: { marketToken: "MOONWELL_ETH", underlyingToken: "ETH" },
       MOONWELL_USDC: { marketToken: "MOONWELL_USDC", underlyingToken: "USDC" },
       MOONWELL_USDT: { marketToken: "MOONWELL_USDT", underlyingToken: "USDT" },
       MOONWELL_cbBTC: {

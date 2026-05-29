@@ -44,11 +44,14 @@ export const tokens = createTokenConfig({
     name: "Moonwell Staked WELL",
     symbol: "stkWELL",
   },
-  MOONWELL_WETH: {
+  MOONWELL_ETH: {
     address: "0xb85ca1decc4971f8094da7676f8b71002a9590c4",
     decimals: 8,
-    name: "Moonwell WETH",
-    symbol: "mWETH",
+    name: "Moonwell ETH",
+    // On-chain `symbol()` is "mWETH"; presented as "mETH" to mirror the Base
+    // convention where the same mToken type is surfaced as the native-ETH
+    // market via the mWETHRouter.
+    symbol: "mETH",
   },
   MOONWELL_USDC: {
     address: "0xe655790552c68f2871eb44b2cfe3dcfe6a63e62e",
