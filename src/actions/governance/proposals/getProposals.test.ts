@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { ProposalState } from "../../../types/proposal.js";
 import { type ApiProposal, fetchAllProposals } from "../governor-api-client.js";
 import { type ProposalOnChainData, getProposalsOnChainData } from "./common.js";
 import { getProposals } from "./getProposals.js";
@@ -152,7 +153,7 @@ describe("getProposals state post-processing", () => {
     expect(result[0]?.executed).toBe(true);
   });
 
-  test("multichain proposal with votesCollected past voting end gets Queued post-processing + multichain block populated", async () => {
+  test("multichain Succeeded with votesCollected past voting end → promoted to Queued", async () => {
     const now = Math.floor(Date.now() / 1000);
     mockedFetchAll.mockResolvedValueOnce([]).mockResolvedValueOnce([
       {
@@ -162,20 +163,55 @@ describe("getProposals state post-processing", () => {
         votingEndTime: now - 100,
       },
     ]);
+    // Succeeded comes from getProposalsOnChainData already normalized to
+    // ProposalState space (4). The consumer promotes it to Queued (5).
     mockedOnChain.mockResolvedValueOnce([
-      { ...defaultOnChain, state: 1, votesCollected: true }, // < Queued, eligible for promotion
+      {
+        ...defaultOnChain,
+        state: ProposalState.Succeeded,
+        votesCollected: true,
+      },
     ]);
 
     const result = await getProposals(client, {
       network: "moonbeam",
     } as unknown as Parameters<typeof getProposals>[1]);
 
-    expect(result[0]?.state).toBe(5); // ProposalState.Queued
+    expect(result[0]?.state).toBe(ProposalState.Queued);
     expect(result[0]?.multichain).toEqual({
       id: 13,
       votesCollected: true,
     });
   });
+
+  test.each([
+    ["Defeated", ProposalState.Defeated],
+    ["Canceled", ProposalState.Canceled],
+  ])(
+    "multichain %s with votesCollected past voting end stays terminal (not promoted)",
+    async (_label, terminalState) => {
+      // Regression for the Critical: terminal failed states must not be
+      // promoted to Queued just because `votesCollected: true`.
+      const now = Math.floor(Date.now() / 1000);
+      mockedFetchAll.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        {
+          ...makeApiProposal(MOONBEAM_CHAIN_ID, 13),
+          targets: [WORMHOLE_TARGET],
+          votingStartTime: now - 200,
+          votingEndTime: now - 100,
+        },
+      ]);
+      mockedOnChain.mockResolvedValueOnce([
+        { ...defaultOnChain, state: terminalState, votesCollected: true },
+      ]);
+
+      const result = await getProposals(client, {
+        network: "moonbeam",
+      } as unknown as Parameters<typeof getProposals>[1]);
+
+      expect(result[0]?.state).toBe(terminalState);
+    },
+  );
 });
 
 describe("getProposals sort + partial-failure behavior", () => {

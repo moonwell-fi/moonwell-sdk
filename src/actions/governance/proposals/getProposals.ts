@@ -144,8 +144,14 @@ async function getMoonbeamProposals(
       isMultichain &&
       onChainData.votesCollected &&
       now > apiProposal.votingEndTime &&
-      proposalState < ProposalState.Queued
+      proposalState === ProposalState.Succeeded
     ) {
+      // Succeeded with collection done means "awaiting execution" — surface
+      // as Queued so the frontend renders the "Ready to Execute" timeline
+      // step. Defeated/Canceled/Executed must NOT be promoted: under the new
+      // state-machine-based votesCollected, those terminal states also
+      // satisfy `votesCollected: true`, so a `< Queued` gate would mislabel
+      // them.
       proposalState = ProposalState.Queued;
     }
 

@@ -1,6 +1,5 @@
 import { base, mainnet, moonbeam, optimism } from "viem/chains";
 import { describe, expect, test } from "vitest";
-import { getVoteCollectorSatellites } from "../../../actions/governance/proposals/common.js";
 import { publicEnvironments } from "../../index.js";
 import { GovernanceTokensConfig } from "../governance.js";
 import { createEnvironment, ethereum } from "./environment.js";
@@ -60,9 +59,7 @@ describe("ethereum environment invariants", () => {
   // membership predicate by core/markets/user-rewards (see
   // src/actions/core/user-rewards/common.ts:21). Listing moonbeam.id on any env
   // other than Moonbeam itself would re-point Moonbeam's homeEnv to that env,
-  // mispricing Moonbeam native-token rewards. Specific regression: PR #290
-  // briefly added moonbeam.id to Ethereum's chainIds for governance-satellite
-  // enumeration; that satellite list now lives in `getVoteCollectorSatellites`.
+  // mispricing Moonbeam native-token rewards.
   test("Moonbeam homeEnvironment still resolves to Moonbeam", () => {
     const homeEnv = Object.values(publicEnvironments).find((e) => {
       const chainIds: readonly number[] | undefined =
@@ -77,17 +74,29 @@ describe("ethereum environment invariants", () => {
   // Ethereum hub MultichainGovernor (0x8769B70ac7c93AF0e75de0D69877709B66d75838)
   // registers Wormhole chain IDs 16 (Moonbeam), 30 (Base), 24 (Optimism) as
   // vote-collection chains. The SDK must mirror that set: each satellite env
-  // needs both `custom.wormhole.chainId` and `contracts.voteCollector` so it
-  // can be enumerated. A missing `wormhole` block on any of them is the bug
-  // that motivated this test — Optimism previously had no wormhole config and
-  // was silently dropped from the satellite enumeration.
-  test("getVoteCollectorSatellites for Ethereum hub yields Moonbeam, Base, and Optimism", () => {
-    const satellites = getVoteCollectorSatellites(mainnet.id).map(
-      (env) => env.chainId,
-    );
-    expect(satellites).toEqual(
+  // needs both `custom.wormhole.chainId` and `contracts.voteCollector`. A
+  // missing `wormhole` block on any of them is the bug that motivated this
+  // test — Optimism previously had no wormhole config and would have been
+  // silently dropped from any future satellite enumeration.
+  test("Moonbeam, Base, and Optimism are wired as Ethereum-hub satellites", () => {
+    const satelliteChainIds = (
+      Object.values(publicEnvironments) as Array<{
+        chainId: number;
+        custom?: { wormhole?: { chainId?: number } };
+        contracts?: { voteCollector?: unknown };
+      }>
+    )
+      .filter((env) => {
+        if (env.chainId === mainnet.id) return false;
+        return !!(
+          env.custom?.wormhole?.chainId && env.contracts?.voteCollector
+        );
+      })
+      .map((env) => env.chainId);
+
+    expect(satelliteChainIds).toEqual(
       expect.arrayContaining([moonbeam.id, base.id, optimism.id]),
     );
-    expect(satellites).toHaveLength(3);
+    expect(satelliteChainIds).toHaveLength(3);
   });
 });

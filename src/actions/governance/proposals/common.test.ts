@@ -375,8 +375,57 @@ describe("getProposalsOnChainData Ethereum-hub via foreign env", () => {
 
     expect(ethereumMG.read.state).toHaveBeenCalledWith([169n]);
     expect(ethereumMG.read.proposals).toHaveBeenCalledWith([169n]);
-    expect(data?.state).toBe(MultichainProposalState.Succeeded);
+    // The governor returns MultichainProposalState.Succeeded(4); the SDK
+    // normalizes to ProposalState.Succeeded(4). Same numeric value, but
+    // semantically the returned `state` is in ProposalState space.
+    expect(data?.state).toBe(ProposalState.Succeeded);
     expect(data?.eta).toBe(1_700_000_000);
+  });
+
+  test("normalizes MultichainVoteCollection(1) to ProposalState.Queued(5)", async () => {
+    ethereumMG.read.state.mockResolvedValue(
+      MultichainProposalState.MultichainVoteCollection,
+    );
+
+    const [data] = await getProposalsOnChainData(
+      [ethProposal({ proposalId: 200 })],
+      moonbeamEnv,
+    );
+
+    // Without normalization these would collide: MultichainVoteCollection(1)
+    // looks identical to ProposalState.Active(1) to a downstream consumer.
+    expect(data?.state).toBe(ProposalState.Queued);
+    // Still mid-collection window — votesCollected must stay false.
+    expect(data?.votesCollected).toBe(false);
+  });
+
+  test("normalizes MultichainProposalState.Executed(5) to ProposalState.Executed(7)", async () => {
+    ethereumMG.read.state.mockResolvedValue(MultichainProposalState.Executed);
+
+    const [data] = await getProposalsOnChainData(
+      [ethProposal({ proposalId: 200 })],
+      moonbeamEnv,
+    );
+
+    // The most visible mismatch — Executed is 5 on the governor and 7 in
+    // ProposalState. A consumer comparing to ProposalState.Executed without
+    // normalization would never recognize an executed proposal.
+    expect(data?.state).toBe(ProposalState.Executed);
+  });
+
+  test("preserves Defeated/Canceled identity through normalization", async () => {
+    ethereumMG.read.state.mockResolvedValue(MultichainProposalState.Defeated);
+
+    const [data] = await getProposalsOnChainData(
+      [ethProposal({ proposalId: 200 })],
+      moonbeamEnv,
+    );
+
+    expect(data?.state).toBe(ProposalState.Defeated);
+    // votesCollected is true (state > MultichainVoteCollection), but the
+    // consumer must NOT promote a Defeated proposal to Queued — that's the
+    // Critical the gate-tightening in getProposal/getProposals addresses.
+    expect(data?.votesCollected).toBe(true);
   });
 
   test("falls back to votingEndTime + 1d when on-chain eta is 0 (multichain)", async () => {
@@ -426,7 +475,7 @@ describe("getProposalsOnChainData Ethereum-hub via foreign env", () => {
     // governor's collection period ever diverges from the hardcoded 1 day, the
     // synthetic value would silently mislead the timeline. Better: leave eta
     // at 0 so callers know they don't have a real countdown.
-    expect(data?.state).toBe(Number(MultichainProposalState.Succeeded));
+    expect(data?.state).toBe(ProposalState.Succeeded);
     expect(data?.proposalData).toBeNull();
     expect(data?.eta).toBe(0);
   });

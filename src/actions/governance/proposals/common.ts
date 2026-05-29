@@ -291,24 +291,6 @@ export const getEnvironmentByChainId = (
     (e) => e.chainId === chainId,
   );
 
-/**
- * Wormhole satellites the given hub talks to for cross-chain vote collection:
- * every `publicEnvironments` entry other than the hub that exposes both
- * `custom.wormhole.chainId` and `contracts.voteCollector`. Derived (not
- * hand-listed) so the set stays consistent with the actual wiring.
- */
-export const getVoteCollectorSatellites = (hubChainId: number): Environment[] =>
-  (Object.values(publicEnvironments) as Environment[]).filter((env) => {
-    if (env.chainId === hubChainId) return false;
-    const hasWormhole =
-      env.custom && "wormhole" in env.custom && env.custom.wormhole?.chainId;
-    const hasVoteCollector =
-      env.contracts &&
-      "voteCollector" in env.contracts &&
-      env.contracts.voteCollector;
-    return !!(hasWormhole && hasVoteCollector);
-  });
-
 export const readCrossChainQuorums = async (
   apiProposals: ApiProposal[],
   governanceEnvironment: Environment,
@@ -484,13 +466,31 @@ export const getProposalsOnChainData = async (
       // `state > MultichainVoteCollection`. Reading per-satellite tallies and
       // AND-ing them would pin false forever for a satellite where no one
       // voted (its entry stays [0,0,0] even after collection ends).
+      //
+      // NOTE: this comparison must run against the raw governor state — once
+      // we normalize through MultichainProposalStateMapping below, the values
+      // are in ProposalState space and the inequality stops being meaningful.
       const votesCollected =
         isMultichain &&
         !stateReadFailed &&
         state > MultichainProposalState.MultichainVoteCollection;
 
+      // Normalize successful multichain reads from MultichainProposalState
+      // (Active=0, MultichainVoteCollection=1, Canceled=2, Defeated=3,
+      // Succeeded=4, Executed=5) into the public ProposalState enum. Consumers
+      // compare against ProposalState constants — leaving the value raw would
+      // mislabel (e.g. MultichainVoteCollection(1) collides with
+      // ProposalState.Active(1)). The API-derived fallback path already
+      // returns ProposalState values, so we only map the read-succeeded case.
+      const normalizedState =
+        !stateReadFailed && isMultichain
+          ? ((MultichainProposalStateMapping as Record<number, ProposalState>)[
+              state
+            ] ?? state)
+          : state;
+
       return {
-        state,
+        state: normalizedState,
         proposalData,
         eta,
         votesCollected,
