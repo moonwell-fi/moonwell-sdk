@@ -5,7 +5,7 @@ export const tokens = createTokenConfig({
   ETH: {
     address: zeroAddress,
     decimals: 18,
-    name: "ETH",
+    name: "Ethereum",
     symbol: "ETH",
   },
   WETH: {
