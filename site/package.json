@@ -14,7 +14,7 @@
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "typescript": "5.9.3",
-    "vite": "7.1.11",
+    "vite": "7.3.3",
     "vocs": "1.4.1"
   },
   "dependencies": {
