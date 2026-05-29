@@ -3,6 +3,10 @@ import { createCustomConfig } from "../../types/config.js";
 export const custom = createCustomConfig({
   governance: {
     token: "WELL",
+    // Empty: this field is also consumed as a `homeEnvironment` membership
+    // predicate by core/markets/user-rewards (see src/actions/core/user-rewards/
+    // common.ts:21). Listing Moonbeam here would mis-route Moonbeam's home env
+    // to Ethereum.
     chainIds: [],
   },
   wormhole: {

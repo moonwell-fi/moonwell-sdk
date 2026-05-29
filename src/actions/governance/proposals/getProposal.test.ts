@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { ProposalState } from "../../../types/proposal.js";
 import {
   type ApiProposal,
   GovernorNotFoundError,
@@ -155,7 +156,7 @@ describe("getProposal state post-processing", () => {
     expect(result?.executed).toBe(true);
   });
 
-  test("multichain proposal with votesCollected past voting end → Queued + multichain block populated", async () => {
+  test("multichain Succeeded with votesCollected past voting end → promoted to Queued", async () => {
     const now = Math.floor(Date.now() / 1000);
     mockedFetchProposal.mockResolvedValueOnce({
       ...baseApiProposal,
@@ -164,8 +165,15 @@ describe("getProposal state post-processing", () => {
       votingStartTime: now - 200,
       votingEndTime: now - 100,
     });
+    // Succeeded comes from getProposalsOnChainData already normalized to
+    // ProposalState space (4). The consumer promotes it to Queued (5) so the
+    // frontend timeline shows "Ready to Execute".
     mockedOnChain.mockResolvedValueOnce([
-      { ...defaultOnChain, state: 1, votesCollected: true },
+      {
+        ...defaultOnChain,
+        state: ProposalState.Succeeded,
+        votesCollected: true,
+      },
     ]);
 
     const result = await getProposal(client, {
@@ -174,12 +182,44 @@ describe("getProposal state post-processing", () => {
       chainId: MOONBEAM_CHAIN_ID,
     } as unknown as Parameters<typeof getProposal>[1]);
 
-    expect(result?.state).toBe(5); // ProposalState.Queued
+    expect(result?.state).toBe(ProposalState.Queued);
     expect(result?.multichain).toEqual({
       id: 7,
       votesCollected: true,
     });
   });
+
+  test.each([
+    ["Defeated", ProposalState.Defeated],
+    ["Canceled", ProposalState.Canceled],
+  ])(
+    "multichain %s with votesCollected past voting end stays terminal (not promoted)",
+    async (_label, terminalState) => {
+      // Regression for the Critical: under the state-machine-based
+      // votesCollected, terminal failed states (Canceled/Defeated) also satisfy
+      // `votesCollected: true`. The old `< Queued` gate would have wrongly
+      // promoted them to Queued; the tightened `=== Succeeded` gate must not.
+      const now = Math.floor(Date.now() / 1000);
+      mockedFetchProposal.mockResolvedValueOnce({
+        ...baseApiProposal,
+        chainId: MOONBEAM_CHAIN_ID,
+        targets: [WORMHOLE_TARGET],
+        votingStartTime: now - 200,
+        votingEndTime: now - 100,
+      });
+      mockedOnChain.mockResolvedValueOnce([
+        { ...defaultOnChain, state: terminalState, votesCollected: true },
+      ]);
+
+      const result = await getProposal(client, {
+        network: "moonbeam",
+        proposalId: 7,
+        chainId: MOONBEAM_CHAIN_ID,
+      } as unknown as Parameters<typeof getProposal>[1]);
+
+      expect(result?.state).toBe(terminalState);
+    },
+  );
 });
 
 describe("getProposal fallback behavior", () => {

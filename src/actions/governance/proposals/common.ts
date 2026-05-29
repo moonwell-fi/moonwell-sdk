@@ -5,6 +5,7 @@ import { Amount } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
 import { publicEnvironments } from "../../../environments/index.js";
 import {
+  MultichainProposalState,
   MultichainProposalStateMapping,
   type Proposal,
   ProposalState,
@@ -283,6 +284,13 @@ const getLegacyArtemisMaxId = async (
  * `getExtendedProposalData`. The caller's `governanceEnvironment` carries
  * `onError` since we don't have one per foreign chain in scope.
  */
+export const getEnvironmentByChainId = (
+  chainId: number,
+): Environment | undefined =>
+  (Object.values(publicEnvironments) as Environment[]).find(
+    (e) => e.chainId === chainId,
+  );
+
 export const readCrossChainQuorums = async (
   apiProposals: ApiProposal[],
   governanceEnvironment: Environment,
@@ -297,9 +305,7 @@ export const readCrossChainQuorums = async (
   const quorums = new Map<number, bigint>();
   await Promise.all(
     otherChainIds.map(async (chainId) => {
-      const env = (Object.values(publicEnvironments) as Environment[]).find(
-        (e) => e.chainId === chainId,
-      );
+      const env = getEnvironmentByChainId(chainId);
       const mg = env?.contracts.multichainGovernor;
       if (!mg) return;
       try {
@@ -344,44 +350,90 @@ export const getProposalsOnChainData = async (
 
   const nowSeconds = Math.floor(Date.now() / 1000);
 
+  // Foreign proposals (chainId !== caller's) need their own home env's
+  // governor — the caller's RPC can't read them. Falls back to publicEnvironments.
+  const resolveHomeEnv = (chainId: number): Environment | undefined =>
+    chainId === governanceEnvironment.chainId
+      ? governanceEnvironment
+      : getEnvironmentByChainId(chainId);
+
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
-      // Proposals from a different chain than the governance env (e.g. chainId=1
-      // Ethereum proposals fetched through the Moonbeam env) can't have their
-      // state read from this env's contracts — derive state from API events here
-      // so callers never see a misleading `state: 0` default for finalized
-      // proposals. Quorum, however, comes from a per-chain map populated by the
-      // caller via `readCrossChainQuorums` (defaulting to 0n when the caller
-      // didn't pre-fetch, e.g. in unit tests).
-      if (p.chainId !== governanceEnvironment.chainId) {
+      const isLocal = p.chainId === governanceEnvironment.chainId;
+      const proposalQuorum = isLocal
+        ? quorum
+        : (options?.crossChainQuorums?.get(p.chainId) ?? 0n);
+      const homeEnv = resolveHomeEnv(p.chainId);
+
+      if (!homeEnv) {
         const formatted = formatApiProposalData(p);
         return {
           state: deriveProposalStateFromApi(formatted, p, nowSeconds),
           proposalData: null,
           eta: 0,
           votesCollected: false,
-          quorum: options?.crossChainQuorums?.get(p.chainId) ?? 0n,
+          quorum: proposalQuorum,
         };
       }
 
-      const isMultichain = isMultichainAware(p, legacyArtemisMaxId);
+      // legacyArtemisMaxId is meaningful only for the caller's env — it's the
+      // Moonbeam Artemis cap. For foreign envs the targets-only heuristic is
+      // the right check (Ethereum-hub multigov has no Artemis predecessor).
+      const isMultichain = isLocal
+        ? isMultichainAware(p, legacyArtemisMaxId)
+        : isMultichainProposal(p.targets);
 
       const governorContract = isMultichain
-        ? governanceEnvironment.contracts.multichainGovernor
-        : governanceEnvironment.contracts.governor;
+        ? homeEnv.contracts.multichainGovernor
+        : homeEnv.contracts.governor;
 
       let state = 0;
       let proposalData = null;
+      let stateReadFailed = !governorContract;
+      let proposalsReadFailed = false;
 
       if (governorContract) {
-        try {
-          [state, proposalData] = await Promise.all([
-            governorContract.read.state([BigInt(p.proposalId)]),
-            governorContract.read.proposals([BigInt(p.proposalId)]),
-          ]);
-        } catch (error) {
-          console.warn("Failed to fetch state and proposalData:", error);
+        const statePromise = (async () =>
+          governorContract.read.state([BigInt(p.proposalId)]))();
+        const proposalsPromise = (async () =>
+          governorContract.read.proposals([BigInt(p.proposalId)]))();
+        const [stateResult, proposalsResult] = await Promise.allSettled([
+          statePromise,
+          proposalsPromise,
+        ]);
+        if (stateResult.status === "fulfilled") {
+          state = Number(stateResult.value);
+        } else {
+          stateReadFailed = true;
+          console.warn(
+            `Failed to fetch state for proposal ${p.proposalId} (chainId=${p.chainId}):`,
+            stateResult.reason,
+          );
+          governanceEnvironment.onError?.(stateResult.reason, {
+            source: "governance-proposals",
+            chainId: p.chainId,
+          });
         }
+        if (proposalsResult.status === "fulfilled") {
+          proposalData = proposalsResult.value ?? null;
+        } else {
+          proposalsReadFailed = true;
+          console.warn(
+            `Failed to fetch proposalData for proposal ${p.proposalId} (chainId=${p.chainId}):`,
+            proposalsResult.reason,
+          );
+          governanceEnvironment.onError?.(proposalsResult.reason, {
+            source: "governance-proposals",
+            chainId: p.chainId,
+          });
+        }
+      }
+
+      // State read produced nothing — derive from API events so a terminal
+      // proposal doesn't surface as Pending(0).
+      if (stateReadFailed) {
+        const formatted = formatApiProposalData(p);
+        state = deriveProposalStateFromApi(formatted, p, nowSeconds);
       }
 
       let eta = 0;
@@ -393,91 +445,61 @@ export const getProposalsOnChainData = async (
         } else {
           eta = onChainEta;
         }
-      } else if (isMultichain && p.votingEndTime) {
+      } else if (
+        isMultichain &&
+        p.votingEndTime &&
+        !(proposalsReadFailed && !stateReadFailed)
+      ) {
+        // Skip the synthetic eta only when proposals() was attempted+rejected
+        // but state succeeded — pairing real on-chain state with a fabricated
+        // countdown would silently diverge if the governor's
+        // `crossChainVoteCollectionPeriod` ever changes from the hardcoded
+        // 1 day. When state also failed (or no read was attempted at all),
+        // synthesize as a best-effort match to the API-derived state.
         eta = p.votingEndTime + 86400; // 1 day
       }
 
-      return { state, proposalData, eta, votesCollected: false, quorum };
+      // Cross-chain vote collection is the multichain governor's own state
+      // machine: votes can only be bridged in during the post-voting
+      // `crossChainVoteCollectionPeriod`, and once that window closes the state
+      // advances to Succeeded/Defeated. So "collection complete" is exactly
+      // `state > MultichainVoteCollection`. Reading per-satellite tallies and
+      // AND-ing them would pin false forever for a satellite where no one
+      // voted (its entry stays [0,0,0] even after collection ends).
+      //
+      // NOTE: this comparison must run against the raw governor state — once
+      // we normalize through MultichainProposalStateMapping below, the values
+      // are in ProposalState space and the inequality stops being meaningful.
+      const votesCollected =
+        isMultichain &&
+        !stateReadFailed &&
+        state > MultichainProposalState.MultichainVoteCollection;
+
+      // Normalize successful multichain reads from MultichainProposalState
+      // (Active=0, MultichainVoteCollection=1, Canceled=2, Defeated=3,
+      // Succeeded=4, Executed=5) into the public ProposalState enum. Consumers
+      // compare against ProposalState constants — leaving the value raw would
+      // mislabel (e.g. MultichainVoteCollection(1) collides with
+      // ProposalState.Active(1)). The API-derived fallback path already
+      // returns ProposalState values, so we only map the read-succeeded case.
+      const normalizedState =
+        !stateReadFailed && isMultichain
+          ? ((MultichainProposalStateMapping as Record<number, ProposalState>)[
+              state
+            ] ?? state)
+          : state;
+
+      return {
+        state: normalizedState,
+        proposalData,
+        eta,
+        votesCollected,
+        quorum: proposalQuorum,
+      };
     }),
   );
 
-  const votesCollectedList = await Promise.all(
-    apiProposals.map(async (apiProposal) => {
-      if (apiProposal.chainId !== governanceEnvironment.chainId) {
-        return false;
-      }
-
-      const isMultichain = isMultichainAware(apiProposal, legacyArtemisMaxId);
-
-      if (
-        !isMultichain ||
-        !governanceEnvironment.contracts.multichainGovernor
-      ) {
-        return false;
-      }
-
-      const xcGovernanceSettings = governanceEnvironment.custom.governance;
-      if (!xcGovernanceSettings || xcGovernanceSettings.chainIds.length === 0) {
-        return false;
-      }
-
-      try {
-        const xcEnvironments = xcGovernanceSettings.chainIds
-          .map((chainId) =>
-            Object.values(publicEnvironments).find(
-              (env) => env.chainId === chainId,
-            ),
-          )
-          .filter((env) => {
-            if (!env) return false;
-            const hasWormhole =
-              env.custom &&
-              "wormhole" in env.custom &&
-              env.custom.wormhole?.chainId;
-            const hasVoteCollector =
-              env.contracts &&
-              "voteCollector" in env.contracts &&
-              env.contracts.voteCollector;
-            return !!(hasWormhole && hasVoteCollector);
-          });
-
-        if (xcEnvironments.length === 0) {
-          return false;
-        }
-
-        const votesCollectedChecks = await Promise.all(
-          xcEnvironments.map(async (xcEnvironment) => {
-            try {
-              const wormholeChainId = (xcEnvironment!.custom as any)?.wormhole
-                ?.chainId;
-              if (!wormholeChainId) return false;
-
-              const [forVotes, againstVotes, abstainVotes] =
-                await governanceEnvironment.contracts.multichainGovernor!.read.chainVoteCollectorVotes(
-                  [wormholeChainId, BigInt(apiProposal.proposalId)],
-                );
-              return forVotes > 0n || againstVotes > 0n || abstainVotes > 0n;
-            } catch (error) {
-              return false;
-            }
-          }),
-        );
-
-        return (
-          votesCollectedChecks.length > 0 &&
-          votesCollectedChecks.every((collected) => collected)
-        );
-      } catch (error) {
-        console.warn("Failed to check votes collected status:", error);
-        return false;
-      }
-    }),
-  );
-
-  return onChainDataList.map((data, index) => ({
-    ...data,
-    votesCollected: votesCollectedList[index] ?? false,
-  }));
+  return onChainDataList;
 };
 
 /**
