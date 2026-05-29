@@ -47,12 +47,6 @@ const createEnvironment = (
     morphoMarkets: {},
     contracts,
     custom,
-  }) as Environment<
-    typeof tokens,
-    typeof markets,
-    {},
-    typeof contracts,
-    typeof custom
-  >;
+  });
 
 export { createEnvironment, ethereum, markets, tokens };
