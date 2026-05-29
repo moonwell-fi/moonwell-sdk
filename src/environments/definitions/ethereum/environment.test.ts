@@ -54,6 +54,26 @@ describe("ethereum environment invariants", () => {
     );
   });
 
+  // Locks the 4 launch Core markets so reverting `markets: markets` back to
+  // `markets: {}`, dropping a market, or transposing an mToken/underlying
+  // mapping fails CI instead of silently regressing `getMarkets()` for chain 1.
+  test("core markets are registered with the correct underlying mapping", () => {
+    const env = createEnvironment();
+
+    expect(env.config.markets).toMatchObject({
+      // Presented as native ETH (zeroAddress) — see core-markets.ts for the
+      // rationale; mirrors Base/Optimism convention (key + symbol "mETH").
+      MOONWELL_ETH: { marketToken: "MOONWELL_ETH", underlyingToken: "ETH" },
+      MOONWELL_USDC: { marketToken: "MOONWELL_USDC", underlyingToken: "USDC" },
+      MOONWELL_USDT: { marketToken: "MOONWELL_USDT", underlyingToken: "USDT" },
+      MOONWELL_cbBTC: {
+        marketToken: "MOONWELL_cbBTC",
+        underlyingToken: "cbBTC",
+      },
+    });
+    expect(Object.keys(env.config.markets)).toHaveLength(4);
+  });
+
   // No `publicEnvironments` entry may list `moonbeam.id` in
   // `custom.governance.chainIds` — that field is consumed as a `homeEnvironment`
   // membership predicate by core/markets/user-rewards (see
