@@ -408,6 +408,7 @@ export const getProposalsOnChainData = async (
       let state = 0;
       let proposalData = null;
       let stateReadFailed = !governorContract;
+      let proposalsReadFailed = false;
 
       if (governorContract) {
         const statePromise = (async () =>
@@ -434,6 +435,7 @@ export const getProposalsOnChainData = async (
         if (proposalsResult.status === "fulfilled") {
           proposalData = proposalsResult.value ?? null;
         } else {
+          proposalsReadFailed = true;
           console.warn(
             `Failed to fetch proposalData for proposal ${p.proposalId} (chainId=${p.chainId}):`,
             proposalsResult.reason,
@@ -461,7 +463,17 @@ export const getProposalsOnChainData = async (
         } else {
           eta = onChainEta;
         }
-      } else if (isMultichain && p.votingEndTime) {
+      } else if (
+        isMultichain &&
+        p.votingEndTime &&
+        !(proposalsReadFailed && !stateReadFailed)
+      ) {
+        // Skip the synthetic eta only when proposals() was attempted+rejected
+        // but state succeeded — pairing real on-chain state with a fabricated
+        // countdown would silently diverge if the governor's
+        // `crossChainVoteCollectionPeriod` ever changes from the hardcoded
+        // 1 day. When state also failed (or no read was attempted at all),
+        // synthesize as a best-effort match to the API-derived state.
         eta = p.votingEndTime + 86400; // 1 day
       }
 
