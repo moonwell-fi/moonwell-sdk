@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.19.1
+
+### Patch Changes
+
+- [#297](https://github.com/moonwell-fi/moonwell-sdk/pull/297) [`da1c36553303a07181924189a32302fa26ae943e`](https://github.com/moonwell-fi/moonwell-sdk/commit/da1c36553303a07181924189a32302fa26ae943e) Thanks [@bprofiro](https://github.com/bprofiro)! - Wire the Ethereum mainnet Unitroller (`0xdec80bb934397575594e91970b37baf65f5b21be`) as `contracts.comptroller` on the Ethereum environment. Consumers can now call `enterMarkets` / `exitMarket` for the 4 Core markets — without this, the frontend's "Enable as collateral" modal built its `useTransaction` against an undefined contract address, which caused the confirm button to silently no-op (no wallet prompt, no toast, no console error).
+
 ## 0.19.0
 
 ### Minor Changes
