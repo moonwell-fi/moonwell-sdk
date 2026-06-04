@@ -12,9 +12,9 @@
   },
   "audit": {
     "critical": 0,
-    "high": 6,
-    "moderate": 8,
-    "low": 1
+    "high": 0,
+    "moderate": 1,
+    "low": 0
   },
   "duplication": {
     "percentage": 9.29,
