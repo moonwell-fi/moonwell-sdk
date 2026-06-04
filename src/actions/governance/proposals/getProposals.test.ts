@@ -60,6 +60,9 @@ const defaultOnChain: ProposalOnChainData = {
   eta: 0,
   votesCollected: false,
   quorum: 0n,
+  // getProposalsOnChainData is mocked here, so it no longer derives multichain
+  // from the proposal — the mock supplies the canonical flag the fetcher reads.
+  isMultichain: false,
 };
 
 beforeEach(() => {
@@ -170,6 +173,7 @@ describe("getProposals state post-processing", () => {
         ...defaultOnChain,
         state: ProposalState.Succeeded,
         votesCollected: true,
+        isMultichain: true,
       },
     ]);
 
@@ -202,7 +206,12 @@ describe("getProposals state post-processing", () => {
         },
       ]);
       mockedOnChain.mockResolvedValueOnce([
-        { ...defaultOnChain, state: terminalState, votesCollected: true },
+        {
+          ...defaultOnChain,
+          state: terminalState,
+          votesCollected: true,
+          isMultichain: true,
+        },
       ]);
 
       const result = await getProposals(client, {

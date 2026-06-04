@@ -9,7 +9,6 @@ import { type ApiProposal, fetchAllProposals } from "../governor-api-client.js";
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
   appendProposalExtendedData,
-  classifyProposalMultichain,
   formatApiProposalData,
   getCrossChainProposalData,
   getExtendedProposalData,
@@ -125,7 +124,10 @@ async function getMoonbeamProposals(
   const proposals: Proposal[] = apiProposals.map((apiProposal, index) => {
     const onChainData = onChainDataList[index]!;
     const formattedData = formatApiProposalData(apiProposal);
-    const isMultichain = classifyProposalMultichain(apiProposal);
+    // Single source of truth — see getProposal.ts. getProposalsOnChainData
+    // classified with the Artemis cutoff and routed the reads accordingly;
+    // re-classifying here without the cutoff would drift and drop `multichain`.
+    const isMultichain = onChainData.isMultichain;
 
     const now = Math.floor(Date.now() / 1000);
     let proposalState = onChainData.state;

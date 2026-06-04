@@ -267,6 +267,13 @@ export type ProposalOnChainData = {
   eta: number;
   votesCollected: boolean;
   quorum: bigint;
+  /**
+   * Canonical multichain classification, computed here with the caller env's
+   * Artemis cutoff. Returned so `getProposal`/`getProposals` consume it instead
+   * of re-running `classifyProposalMultichain` (which, without the cutoff,
+   * misses Moonbeam-homed local-target proposals and drifts from this routing).
+   */
+  isMultichain: boolean;
 };
 
 // Cached per chain: highest proposalId held by the legacy Artemis governor.
@@ -396,6 +403,17 @@ export const getProposalsOnChainData = async (
         : (options?.crossChainQuorums?.get(p.chainId) ?? 0n);
       const homeEnv = resolveHomeEnv(p.chainId);
 
+      // legacyArtemisMaxId is meaningful only for the caller's env — it's the
+      // Moonbeam Artemis cap; pass 0 for foreign envs. Hub-homed proposals
+      // (Ethereum multigov, no Artemis predecessor) classify as multichain
+      // regardless of targets via classifyProposalMultichain. Computed once
+      // here and returned on ProposalOnChainData so callers don't re-classify
+      // and drift (see getProposal/getProposals).
+      const isMultichain = classifyProposalMultichain(
+        p,
+        isLocal ? legacyArtemisMaxId : 0,
+      );
+
       if (!homeEnv) {
         const formatted = formatApiProposalData(p);
         return {
@@ -404,17 +422,9 @@ export const getProposalsOnChainData = async (
           eta: 0,
           votesCollected: false,
           quorum: proposalQuorum,
+          isMultichain,
         };
       }
-
-      // legacyArtemisMaxId is meaningful only for the caller's env — it's the
-      // Moonbeam Artemis cap; pass 0 for foreign envs. Hub-homed proposals
-      // (Ethereum multigov, no Artemis predecessor) classify as multichain
-      // regardless of targets via classifyProposalMultichain.
-      const isMultichain = classifyProposalMultichain(
-        p,
-        isLocal ? legacyArtemisMaxId : 0,
-      );
 
       const governorContract = isMultichain
         ? homeEnv.contracts.multichainGovernor
@@ -528,6 +538,7 @@ export const getProposalsOnChainData = async (
         eta,
         votesCollected,
         quorum: proposalQuorum,
+        isMultichain,
       };
     }),
   );

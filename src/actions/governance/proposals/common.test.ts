@@ -586,6 +586,25 @@ describe("getProposalsOnChainData Ethereum-hub via foreign env", () => {
     expect(withoutMap?.quorum).toBe(0n);
     expect(ethereumMG.read.quorum).not.toHaveBeenCalled();
   });
+
+  test("returns isMultichain for a hub-local Ethereum proposal with no bridge target — e01/171", async () => {
+    // proposal-171/e01 shape: homed on the Ethereum hub with a single local
+    // target and no Wormhole bridge. It must still route through the multichain
+    // governor AND surface isMultichain, so getProposal/getProposals populate
+    // `proposal.multichain` (single source of truth) and the timeline renders
+    // the Vote Collection / cross-chain steps instead of single-chain copy.
+    ethereumMG.read.state.mockResolvedValue(MultichainProposalState.Active);
+    ethereumMG.read.proposals.mockResolvedValue(buildProposalsTuple(0n));
+
+    const [data] = await getProposalsOnChainData(
+      [ethProposal({ proposalId: 171, targets: [LOCAL_TARGET] })],
+      moonbeamEnv,
+    );
+
+    expect(data?.isMultichain).toBe(true);
+    // Routed to the Ethereum multichain governor, not a legacy governor.
+    expect(ethereumMG.read.state).toHaveBeenCalledWith([171n]);
+  });
 });
 
 // ---------------------------------------------------------------------------
