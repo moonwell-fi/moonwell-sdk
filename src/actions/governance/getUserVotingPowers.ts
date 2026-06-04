@@ -72,29 +72,44 @@ export async function getUserVotingPowers<
     return [{ env, views }];
   });
 
-  const perChainBlockNumbers =
-    snapshotTimestamp !== undefined
-      ? await Promise.all(
-          tokenEnvironments.map(({ env }) =>
-            getBlockNumberAtTimestamp(
+  // Per-chain isolation: one chain's failing block resolution or views read
+  // must degrade ONLY that chain, never the whole call. The previous
+  // implementation wrapped everything in a single Promise.all, so a Moonbeam
+  // revert erased voting power on every chain at once — which hid the vote
+  // buttons for all users during the proposal-171 incident (June 2026).
+  // Failed chains are reported through `env.onError` and omitted from the
+  // result; consumers see partial data instead of a rejection.
+  const settled = await Promise.allSettled(
+    tokenEnvironments.map(async ({ env, views }) => {
+      const blockForChain =
+        snapshotTimestamp !== undefined
+          ? await getBlockNumberAtTimestamp(
               env.publicClient,
               BigInt(snapshotTimestamp),
-            ),
-          ),
-        )
-      : undefined;
-
-  const resolvedVotingPowers = await Promise.all(
-    tokenEnvironments.map(async ({ env, views }, index) => {
-      const blockForChain = perChainBlockNumbers
-        ? perChainBlockNumbers[index]
-        : blockNumber;
+            )
+          : blockNumber;
       const votingPowers = await views.read.getUserVotingPower([userAddress], {
         blockNumber: blockForChain,
       });
       return { env, votingPowers };
     }),
   );
+
+  const resolvedVotingPowers = settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") {
+      return [result.value];
+    }
+    const env = tokenEnvironments[index]?.env;
+    console.warn(
+      `[moonwell-sdk] getUserVotingPowers: skipping chainId=${env?.chainId} — voting-power read failed; returning remaining chains.`,
+      result.reason,
+    );
+    env?.onError?.(result.reason, {
+      source: "getUserVotingPowers",
+      chainId: env.chainId,
+    });
+    return [];
+  });
 
   return resolvedVotingPowers.map(({ env: environment, votingPowers }) => {
     const { tokenVotes } = votingPowers;

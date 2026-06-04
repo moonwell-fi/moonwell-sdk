@@ -403,3 +403,126 @@ describe("getUserVotingPowers — snapshotTimestamp", () => {
     expect(result.map((r) => r.chainId)).toEqual([8453, 10]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Per-chain isolation — one chain's failure must never erase the others.
+// During the proposal-171 incident (June 2026) a Moonbeam views revert
+// rejected the whole multi-chain Promise.all, which blanked voting power on
+// every chain and hid the vote buttons for all users.
+// ---------------------------------------------------------------------------
+
+describe("getUserVotingPowers — per-chain isolation", () => {
+  beforeEach(() => {
+    mockedHelper.mockReset();
+  });
+
+  const isolationEnv = (
+    chainId: number,
+    read: ReturnType<typeof vi.fn>,
+  ): { env: Environment; onError: ReturnType<typeof vi.fn> } => {
+    const onError = vi.fn();
+    const env = {
+      chainId,
+      custom: { governance: { token: "WELL" } },
+      contracts: { views: { read: { getUserVotingPower: read } } },
+      publicClient: {},
+      onError,
+    } as unknown as Environment;
+    return { env, onError };
+  };
+
+  const quietWarn = (): ReturnType<typeof vi.spyOn> =>
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  test("a views revert on one chain degrades only that chain and reports via onError", async () => {
+    const warnSpy = quietWarn();
+    const failing = isolationEnv(
+      1284,
+      vi.fn(async () => {
+        throw new Error("returned no data (0x)");
+      }),
+    );
+    const healthy = isolationEnv(
+      1,
+      vi.fn(async () => ZERO_USER_VOTES),
+    );
+    const client = {
+      environments: { moonbeam: failing.env, mainnet: healthy.env },
+    } as unknown as MoonwellClient;
+
+    const result = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+    });
+
+    expect(result.map((r) => r.chainId)).toEqual([1]);
+    expect(failing.onError).toHaveBeenCalledTimes(1);
+    expect(failing.onError.mock.calls[0]?.[1]).toEqual({
+      source: "getUserVotingPowers",
+      chainId: 1284,
+    });
+    expect(healthy.onError).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  test("a failing snapshot block resolution degrades only that chain", async () => {
+    const warnSpy = quietWarn();
+    const a = isolationEnv(
+      1284,
+      vi.fn(async () => ZERO_USER_VOTES),
+    );
+    const b = isolationEnv(
+      10,
+      vi.fn(async () => ZERO_USER_VOTES),
+    );
+    // First env's block lookup rejects (the Moonbeam incident shape), the
+    // second resolves normally.
+    mockedHelper
+      .mockRejectedValueOnce(new Error("rpc timeout"))
+      .mockResolvedValueOnce(222n);
+
+    const client = {
+      environments: { moonbeam: a.env, optimism: b.env },
+    } as unknown as MoonwellClient;
+
+    const result = await getUserVotingPowers(client, {
+      governanceToken: "WELL",
+      userAddress: USER,
+      snapshotTimestamp: 1_700_000_000,
+    });
+
+    expect(result.map((r) => r.chainId)).toEqual([10]);
+    expect(a.onError).toHaveBeenCalledTimes(1);
+    expect(b.onError).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  test("resolves to an empty array (never rejects) when every chain fails", async () => {
+    const warnSpy = quietWarn();
+    const a = isolationEnv(
+      1,
+      vi.fn(async () => {
+        throw new Error("down");
+      }),
+    );
+    const b = isolationEnv(
+      8453,
+      vi.fn(async () => {
+        throw new Error("down");
+      }),
+    );
+    const client = {
+      environments: { mainnet: a.env, base: b.env },
+    } as unknown as MoonwellClient;
+
+    await expect(
+      getUserVotingPowers(client, {
+        governanceToken: "WELL",
+        userAddress: USER,
+      }),
+    ).resolves.toEqual([]);
+    expect(a.onError).toHaveBeenCalledTimes(1);
+    expect(b.onError).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+});

@@ -100,25 +100,56 @@ export const extractProposalSubtitle = (input: string): string => {
 };
 
 /**
- * Detects if a proposal is a multichain proposal by checking whether any of
- * its targets is a Wormhole Core Bridge on a known multichain-governance hub
- * (Moonbeam or Ethereum). Bridges from both hubs are checked, so the result
- * is correct regardless of which chain the proposal was created on.
+ * Detects whether a proposal SENDS a cross-chain message, by checking whether
+ * any of its targets is a Wormhole Core Bridge on a known multichain-governance
+ * hub (Moonbeam or Ethereum).
+ *
+ * WARNING: this is NOT sufficient to classify a proposal as belonging to the
+ * multichain governor. Hub-local proposals (created on the Ethereum
+ * MultichainGovernor with only same-chain targets) never message a bridge and
+ * return `false` here — misclassifying them broke voting on proposal 171
+ * (June 2026). Use `classifyProposalMultichain` for governor classification.
  */
 export const isMultichainProposal = (targets?: string[]): boolean =>
   targets?.some((t) => MULTICHAIN_WORMHOLE_BRIDGES.has(t.toLowerCase())) ??
   false;
 
 /**
- * Routes a proposal to the multichain governor when:
- *   - its targets include the Wormhole bridge (legacy detection), OR
- *   - its proposalId is past the legacy Artemis governor's `proposalCount`,
- *     which means it could only have been created on the multichain governor
- *     (proposals migrated to the multichain governor after the cutoff but
- *     can have local-only targets, e.g. Moonbeam-internal contract calls).
+ * True when `chainId`'s environment is a multichain-governance hub with no
+ * legacy governor lineage (Ethereum: `multichainGovernor` only, no Artemis
+ * predecessor). On such a chain every proposal belongs to the multichain
+ * governor by construction — what the proposal targets is irrelevant.
+ */
+export const isMultichainHomeChain = (chainId: number): boolean => {
+  const env = getEnvironmentByChainId(chainId);
+  return Boolean(env?.contracts.multichainGovernor && !env.contracts.governor);
+};
+
+/**
+ * Canonical multichain classification for a proposal — the single entry point
+ * used by `getProposal`, `getProposals`, and on-chain-data routing so the
+ * paths cannot drift. A proposal belongs to the multichain governor when:
+ *   1. it is homed on a hub chain with no legacy governor (every Ethereum-hub
+ *      proposal, including hub-local ones with no bridge target), OR
+ *   2. its targets include a Wormhole Core Bridge (legacy detection), OR
+ *   3. its proposalId is past the legacy Artemis governor's `proposalCount`
+ *      (Moonbeam-hub-era proposals with local-only targets).
  *
- * `legacyArtemisMaxId === 0` indicates the count read failed; in that case we
- * fall back to the targets-only heuristic.
+ * `legacyArtemisMaxId` is only meaningful for Moonbeam-homed proposals; pass 0
+ * (the default) when it is unknown or the count read failed — classification
+ * then falls back to the first two checks.
+ */
+export const classifyProposalMultichain = (
+  proposal: { targets?: string[]; proposalId: number; chainId: number },
+  legacyArtemisMaxId = 0,
+): boolean =>
+  isMultichainHomeChain(proposal.chainId) ||
+  isMultichainProposal(proposal.targets) ||
+  (legacyArtemisMaxId > 0 && proposal.proposalId > legacyArtemisMaxId);
+
+/**
+ * @deprecated Use `classifyProposalMultichain` — this variant misses hub-homed
+ * proposals when the Artemis count is unavailable. Kept for compatibility.
  */
 export const isMultichainAware = (
   proposal: { targets?: string[]; proposalId: number },
@@ -377,11 +408,13 @@ export const getProposalsOnChainData = async (
       }
 
       // legacyArtemisMaxId is meaningful only for the caller's env — it's the
-      // Moonbeam Artemis cap. For foreign envs the targets-only heuristic is
-      // the right check (Ethereum-hub multigov has no Artemis predecessor).
-      const isMultichain = isLocal
-        ? isMultichainAware(p, legacyArtemisMaxId)
-        : isMultichainProposal(p.targets);
+      // Moonbeam Artemis cap; pass 0 for foreign envs. Hub-homed proposals
+      // (Ethereum multigov, no Artemis predecessor) classify as multichain
+      // regardless of targets via classifyProposalMultichain.
+      const isMultichain = classifyProposalMultichain(
+        p,
+        isLocal ? legacyArtemisMaxId : 0,
+      );
 
       const governorContract = isMultichain
         ? homeEnv.contracts.multichainGovernor

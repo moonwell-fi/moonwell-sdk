@@ -9,12 +9,12 @@ import { type ApiProposal, fetchAllProposals } from "../governor-api-client.js";
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
   appendProposalExtendedData,
+  classifyProposalMultichain,
   formatApiProposalData,
   getCrossChainProposalData,
   getExtendedProposalData,
   getProposalData,
   getProposalsOnChainData,
-  isMultichainProposal,
   readCrossChainQuorums,
 } from "./common.js";
 
@@ -125,7 +125,7 @@ async function getMoonbeamProposals(
   const proposals: Proposal[] = apiProposals.map((apiProposal, index) => {
     const onChainData = onChainDataList[index]!;
     const formattedData = formatApiProposalData(apiProposal);
-    const isMultichain = isMultichainProposal(apiProposal.targets);
+    const isMultichain = classifyProposalMultichain(apiProposal);
 
     const now = Math.floor(Date.now() / 1000);
     let proposalState = onChainData.state;

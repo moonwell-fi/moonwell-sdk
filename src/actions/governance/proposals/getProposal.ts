@@ -13,12 +13,12 @@ import {
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
   appendProposalExtendedData,
+  classifyProposalMultichain,
   formatApiProposalData,
   getCrossChainProposalData,
   getExtendedProposalData,
   getProposalData,
   getProposalsOnChainData,
-  isMultichainProposal,
   readCrossChainQuorums,
 } from "./common.js";
 
@@ -125,7 +125,7 @@ async function getMoonbeamProposal(
     { crossChainQuorums },
   );
   const onChainData = onChainDataList[0]!;
-  const isMultichain = isMultichainProposal(apiProposal.targets);
+  const isMultichain = classifyProposalMultichain(apiProposal);
 
   const now = Math.floor(Date.now() / 1000);
   let proposalState = onChainData.state;

@@ -12,9 +12,11 @@ import type {
 import {
   type ApiProposalFormatted,
   WORMHOLE_CONTRACT,
+  classifyProposalMultichain,
   deriveProposalStateFromApi,
   getProposalsOnChainData,
   isMultichainAware,
+  isMultichainHomeChain,
   isMultichainProposal,
 } from "./common.js";
 
@@ -122,6 +124,91 @@ describe("isMultichainAware", () => {
 
   test("returns false for an unknown proposal (no targets, no past-cutoff id)", () => {
     expect(isMultichainAware({ proposalId: 1 }, 86)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// classifyProposalMultichain — the canonical classification matrix. The
+// hub-local row is the proposal-171 incident regression: a proposal homed on
+// the Ethereum hub with only local targets is multichain by construction,
+// even though no target is a Wormhole bridge.
+// ---------------------------------------------------------------------------
+
+describe("isMultichainHomeChain", () => {
+  test("Ethereum hub (multichainGovernor, no legacy governor) is a multichain home", () => {
+    expect(isMultichainHomeChain(1)).toBe(true);
+  });
+
+  test("chains without a hub-only env are not multichain homes", () => {
+    // The mocked publicEnvironments carries only the Ethereum hub; any other
+    // chainId resolves no env. (The real Moonbeam env has BOTH governor and
+    // multichainGovernor, so it is not a hub-only home either.)
+    expect(isMultichainHomeChain(1284)).toBe(false);
+    expect(isMultichainHomeChain(8453)).toBe(false);
+  });
+});
+
+describe("classifyProposalMultichain", () => {
+  test("hub-local proposal (local-only targets, chainId 1) is multichain — proposal-171 regression", () => {
+    expect(
+      classifyProposalMultichain({
+        targets: [LOCAL_TARGET],
+        proposalId: 171,
+        chainId: 1,
+      }),
+    ).toBe(true);
+  });
+
+  test("hub proposal with no targets at all is still multichain", () => {
+    expect(classifyProposalMultichain({ proposalId: 172, chainId: 1 })).toBe(
+      true,
+    );
+  });
+
+  test("bridged hub proposal is multichain (targets detection still works)", () => {
+    expect(
+      classifyProposalMultichain({
+        targets: [ETHEREUM_WORMHOLE_BRIDGE],
+        proposalId: 169,
+        chainId: 1,
+      }),
+    ).toBe(true);
+  });
+
+  test("legacy Artemis proposal (Moonbeam, id <= cutoff, local targets) is NOT multichain", () => {
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 50, chainId: 1284 },
+        86,
+      ),
+    ).toBe(false);
+  });
+
+  test("Moonbeam multigov-era proposal (id past the Artemis cutoff) is multichain", () => {
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 93, chainId: 1284 },
+        86,
+      ),
+    ).toBe(true);
+  });
+
+  test("Moonbeam bridged proposal is multichain regardless of the cutoff", () => {
+    expect(
+      classifyProposalMultichain(
+        { targets: [WORMHOLE_CONTRACT], proposalId: 10, chainId: 1284 },
+        0,
+      ),
+    ).toBe(true);
+  });
+
+  test("cutoff read failure (legacyArtemisMaxId 0) falls back to targets + home checks", () => {
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 999, chainId: 1284 },
+        0,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -573,10 +660,32 @@ describe("getProposalsOnChainData votesCollected gate", () => {
     },
   );
 
+  test("hub-local proposals (chainId 1, local-only targets) flip true — proposal-171 routing regression", async () => {
+    // Pre-fix, a chainId-1 proposal without a Wormhole bridge target was
+    // classified non-multichain, so its state was read from a nonexistent
+    // legacy governor and votesCollected could never flip. Hub-homed
+    // proposals are multichain by construction.
+    ethereumMG.read.state.mockResolvedValue(MultichainProposalState.Succeeded);
+    const hubLocalProposal: ApiProposal = {
+      ...ethProposal,
+      proposalId: 171,
+      targets: [LOCAL_TARGET],
+    };
+    const [data] = await getProposalsOnChainData(
+      [hubLocalProposal],
+      moonbeamEnv,
+    );
+    expect(data?.votesCollected).toBe(true);
+  });
+
   test("non-multichain proposals never flip true regardless of state", async () => {
+    // Re-homed onto the (non-hub) caller chain: with no Artemis cutoff
+    // readable and no bridge target, a Moonbeam-homed proposal stays
+    // non-multichain and its votesCollected must stay false.
     ethereumMG.read.state.mockResolvedValue(MultichainProposalState.Succeeded);
     const legacyProposal: ApiProposal = {
       ...ethProposal,
+      chainId: 1284,
       targets: [LOCAL_TARGET],
     };
     const [data] = await getProposalsOnChainData([legacyProposal], moonbeamEnv);
