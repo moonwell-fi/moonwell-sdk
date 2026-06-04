@@ -202,13 +202,29 @@ describe("classifyProposalMultichain", () => {
     ).toBe(true);
   });
 
-  test("cutoff read failure (legacyArtemisMaxId 0) falls back to targets + home checks", () => {
+  test("no legacy governor (legacyArtemisMaxId 0) falls back to targets + home checks", () => {
+    // 0 means the chain has no legacy Artemis governor, so the ID cutoff is N/A
+    // — classification relies on targets/home only. A failed read is a distinct
+    // case (undefined), covered below.
     expect(
       classifyProposalMultichain(
         { targets: [LOCAL_TARGET], proposalId: 999, chainId: 1284 },
         0,
       ),
     ).toBe(false);
+  });
+
+  test("cutoff read failure (undefined) biases to multichain — proposal-171 regression on Moonbeam", () => {
+    // A transient proposalCount() failure with a cold cache used to collapse to
+    // 0 and misclassify a live local-target multichain proposal as a pre-cutoff
+    // legacy one, routing its votes to the dead Artemis governor. An unknown
+    // cutoff must bias to the multichain governor instead.
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 999, chainId: 1284 },
+        undefined,
+      ),
+    ).toBe(true);
   });
 });
 

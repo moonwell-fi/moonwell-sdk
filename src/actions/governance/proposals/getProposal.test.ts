@@ -87,6 +87,9 @@ afterEach(() => {
 });
 
 const WORMHOLE_TARGET = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+// A plain (non-bridge) contract target — the shape of a hub-local proposal that
+// executes only on Ethereum (proposal-171 successor).
+const LOCAL_TARGET = "0xed301cd3eb27217bdb05c4e9b820a8a3c8b665f9";
 
 describe("getProposal environment guard", () => {
   test("returns undefined when the requested env doesn't exist in the client", async () => {
@@ -191,6 +194,47 @@ describe("getProposal state post-processing", () => {
       id: 7,
       votesCollected: true,
     });
+  });
+
+  test("hub-local Ethereum proposal (chainId 1, no bridge target) Succeeded+collected → Queued — the next hub proposal", async () => {
+    // proposal-171 successor shape: homed on the Ethereum MultichainGovernor
+    // with only a local (non-bridge) target. getProposalsOnChainData classifies
+    // it multichain via isMultichainHomeChain and reads Succeeded + collected
+    // from the hub governor (covered in common.test.ts). This locks the
+    // end-to-end fetcher contract the timeline consumes: state promotes to
+    // Queued and multichain.votesCollected is true (→ "Votes Collected, Ready
+    // to Execute"), while the preserved no-bridge targets keep the frontend on
+    // the single-chain Execute step rather than phantom cross-chain steps.
+    const now = Math.floor(Date.now() / 1000);
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      chainId: ETHEREUM_CHAIN_ID,
+      targets: [LOCAL_TARGET],
+      votingStartTime: now - 200,
+      votingEndTime: now - 100,
+    });
+    mockedOnChain.mockResolvedValueOnce([
+      {
+        ...defaultOnChain,
+        state: ProposalState.Succeeded,
+        votesCollected: true,
+        isMultichain: true,
+      },
+    ]);
+
+    // No explicit chainId — default routing tries chainId 1 first and the
+    // mocked fetch returns this Ethereum-homed proposal, short-circuiting.
+    const result = await getProposal(client, {
+      network: "moonbeam",
+      proposalId: 7,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.chainId).toBe(ETHEREUM_CHAIN_ID);
+    expect(result?.state).toBe(ProposalState.Queued);
+    expect(result?.multichain).toEqual({ id: 7, votesCollected: true });
+    // No Wormhole bridge target → the timeline gates cross-chain steps off and
+    // renders the single-chain Execute step; the SDK must preserve targets.
+    expect(result?.targets).toEqual([LOCAL_TARGET]);
   });
 
   test.each([

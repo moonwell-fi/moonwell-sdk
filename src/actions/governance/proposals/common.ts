@@ -133,18 +133,24 @@ export const isMultichainHomeChain = (chainId: number): boolean => {
  *      proposal, including hub-local ones with no bridge target), OR
  *   2. its targets include a Wormhole Core Bridge (legacy detection), OR
  *   3. its proposalId is past the legacy Artemis governor's `proposalCount`
- *      (Moonbeam-hub-era proposals with local-only targets).
+ *      (Moonbeam-hub-era proposals with local-only targets), OR
+ *   4. the Artemis cutoff is unknown because the read failed (`undefined`) — we
+ *      bias to multichain rather than risk routing a live proposal to the dead
+ *      Artemis governor (the proposal-171 root cause, on Moonbeam).
  *
- * `legacyArtemisMaxId` is only meaningful for Moonbeam-homed proposals; pass 0
- * (the default) when it is unknown or the count read failed — classification
- * then falls back to the first two checks.
+ * `legacyArtemisMaxId` is only meaningful for Moonbeam-homed proposals. Pass 0
+ * for chains with no legacy governor — the ID check is N/A and classification
+ * falls back to the home/bridge checks. Omit it or pass `undefined` when the
+ * count read failed so the unknown-cutoff bias above applies. (No `= 0` default:
+ * that would coerce an explicit `undefined` back to 0 and defeat the bias.)
  */
 export const classifyProposalMultichain = (
   proposal: { targets?: string[]; proposalId: number; chainId: number },
-  legacyArtemisMaxId = 0,
+  legacyArtemisMaxId?: number,
 ): boolean =>
   isMultichainHomeChain(proposal.chainId) ||
   isMultichainProposal(proposal.targets) ||
+  legacyArtemisMaxId === undefined ||
   (legacyArtemisMaxId > 0 && proposal.proposalId > legacyArtemisMaxId);
 
 /**
@@ -288,7 +294,7 @@ const legacyArtemisMaxIdCache = new Map<
 
 const getLegacyArtemisMaxId = async (
   governanceEnvironment: Environment,
-): Promise<number> => {
+): Promise<number | undefined> => {
   const governor = governanceEnvironment.contracts.governor;
   if (!governor) return 0;
 
@@ -306,7 +312,13 @@ const getLegacyArtemisMaxId = async (
     return value;
   } catch (error) {
     console.warn("Failed to fetch legacy governor proposalCount:", error);
-    return cached?.value ?? 0;
+    // A cold-cache read failure must NOT collapse to 0. On a dual-governor
+    // chain (Moonbeam) that would make a live multichain proposal with
+    // local-only targets look like a pre-cutoff legacy proposal and route its
+    // votes to the dead Artemis governor — the proposal-171 root cause. Return
+    // a stale cached cutoff if we have one, otherwise `undefined` (unknown) so
+    // `classifyProposalMultichain` biases to the multichain governor instead.
+    return cached?.value;
   }
 };
 
