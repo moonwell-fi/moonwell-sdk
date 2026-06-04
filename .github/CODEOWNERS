@@ -1,0 +1,13 @@
+# Governance-critical paths: classification, routing, and voting-power logic.
+# A misclassification here silently routes votes to dead contracts or hides
+# voting UI (proposal-171 incident, MOO-351). Changes require a review from a
+# governance owner in addition to ordinary review.
+#
+# Owners list is a starting point — adjust in review if ownership should sit
+# elsewhere.
+
+/src/actions/governance/                  @apokusin @bprofiro @lyoungblood
+/src/common/getBlockNumberAtTimestamp.ts  @apokusin @bprofiro @lyoungblood
+/src/environments/definitions/            @apokusin @bprofiro @lyoungblood
+/scripts/governance-canary.mjs            @apokusin @lyoungblood
+/.github/workflows/governance-canary.yml  @apokusin @lyoungblood

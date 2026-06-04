@@ -1,0 +1,51 @@
+# Governance canary (MOO-351 follow-up): while any proposal is in its voting
+# window, prove every 15 minutes that it can actually be voted on — correct
+# classification, live castVote route on every chain, snapshot voting power
+# resolving everywhere. The proposal-171 outage ran silently for ~21h; this
+# turns that class of failure into a minutes-to-alert signal.
+#
+# A failed run is the alert (configure repo/org notification routing or wire
+# SLACK_WEBHOOK_URL below to page a channel).
+
+name: governance-canary
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - name: Run governance canary
+        env:
+          CANARY_DELEGATE: ${{ vars.CANARY_DELEGATE }}
+        run: node scripts/governance-canary.mjs
+
+      - name: Notify Slack on failure
+        if: failure() && vars.CANARY_SLACK_WEBHOOK != ''
+        env:
+          WEBHOOK: ${{ vars.CANARY_SLACK_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -sf -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"🚨 governance-canary tripped: a live proposal cannot be voted on. Run: $RUN_URL\"}" \
+            "$WEBHOOK"
