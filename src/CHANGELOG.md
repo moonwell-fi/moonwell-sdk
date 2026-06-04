@@ -1,5 +1,23 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.20.0
+
+### Minor Changes
+
+- [#299](https://github.com/moonwell-fi/moonwell-sdk/pull/299) [`967885cee27632a0e0415360dfff9a636f78061f`](https://github.com/moonwell-fi/moonwell-sdk/commit/967885cee27632a0e0415360dfff9a636f78061f) Thanks [@apokusin](https://github.com/apokusin)! - Fix the three SDK defects behind the proposal-171 "cannot vote" incident (June 2026), where the first hub-local Ethereum proposal broke voting for all users on all chains.
+
+  **Hub-aware multichain classification (MOO-354).** `getProposal` / `getProposals` previously set `proposal.multichain` only when a proposal's targets included a Wormhole Core Bridge — a Moonbeam-hub-era heuristic that misclassified hub-local proposals (created on the Ethereum MultichainGovernor with only same-chain targets, e.g. proposal 171) as single-chain, which routed frontend votes into a dead legacy-governor branch. Classification now flows through a new canonical `classifyProposalMultichain(proposal, legacyArtemisMaxId?)`: a proposal is multichain when it is homed on a hub chain with no legacy governor (`isMultichainHomeChain`, also exported), when its targets include a bridge, or when its proposalId is past the legacy Artemis cutoff. The same function now drives on-chain state-read routing in `getProposalsOnChainData`, so the paths cannot drift. `isMultichainAware` is deprecated in favor of `classifyProposalMultichain`.
+
+  **`getBlockNumberAtTimestamp` never returns an unconverged bound (MOO-352).** The interpolation search silently returned its lower bound after 8 iterations even when unconverged. On Moonbeam — whose block time changed ~12s → ~6s with async backing — every interpolated probe overshoots a recent target, the lower bound never leaves block 1, and the function returned **block 1** for timestamps hours old; historical voting-power reads then reverted. The search now finishes with a binary-search completion phase: identical fast path on near-linear chains, guaranteed `~log2(range)` convergence on regime-change chains. Regression-tested against the Moonbeam 12s→6s shape and a randomized piecewise-regime invariant suite.
+
+  **`getUserVotingPowers` per-chain failure isolation (MOO-353).** All chains were wrapped in a single `Promise.all`, so one chain's failing block resolution or views read rejected the entire multi-chain result — during the incident, the Moonbeam failure erased voting power on Ethereum/Base/Optimism too. Chains now resolve independently (`Promise.allSettled`); failed chains are reported through the environment's `onError` (`source: "getUserVotingPowers"`) and omitted from the result. **Behavioral change:** consumers that previously caught a rejection for an all-chain failure now receive partial results (or an empty array); a missing chain in the result indicates that chain's read failed or it has no views contract.
+
+### Patch Changes
+
+- [#299](https://github.com/moonwell-fi/moonwell-sdk/pull/299) [`da250da1dc08de63b9274d1991b0cea583629b84`](https://github.com/moonwell-fi/moonwell-sdk/commit/da250da1dc08de63b9274d1991b0cea583629b84) Thanks [@apokusin](https://github.com/apokusin)! - Make multichain classification a single source of truth so `getProposal` / `getProposals` cannot drift from on-chain routing.
+
+  `getProposalsOnChainData` already classified each proposal with the caller env's Artemis cutoff (`classifyProposalMultichain(p, isLocal ? legacyArtemisMaxId : 0)`) to route its governor reads, but `getProposal` and `getProposals` then **re-classified** with `classifyProposalMultichain(apiProposal)` — omitting the cutoff. The two could disagree: a Moonbeam-homed proposal with local-only targets past the Artemis cutoff routed through the multichain governor for its on-chain state, yet was written out with `proposal.multichain` unset (and hub-local Ethereum proposals relied on the home-chain check landing in both places). `getProposalsOnChainData` now returns its `isMultichain` decision on `ProposalOnChainData`, and both fetchers consume it instead of re-deriving — eliminating the divergence and guaranteeing `proposal.multichain` is populated whenever the on-chain reads were routed as multichain. No public API change (`ProposalOnChainData` is internal).
+
 ## 0.19.1
 
 ### Patch Changes
