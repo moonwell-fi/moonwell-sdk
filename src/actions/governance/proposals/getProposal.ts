@@ -18,7 +18,6 @@ import {
   getExtendedProposalData,
   getProposalData,
   getProposalsOnChainData,
-  isMultichainProposal,
   readCrossChainQuorums,
 } from "./common.js";
 
@@ -125,7 +124,11 @@ async function getMoonbeamProposal(
     { crossChainQuorums },
   );
   const onChainData = onChainDataList[0]!;
-  const isMultichain = isMultichainProposal(apiProposal.targets);
+  // Single source of truth: getProposalsOnChainData already classified this
+  // proposal with the caller env's Artemis cutoff and used it to route the
+  // on-chain reads. Reusing it avoids the drift that left Moonbeam-homed
+  // local-target proposals (and hub-local Ethereum ones) without `multichain`.
+  const isMultichain = onChainData.isMultichain;
 
   const now = Math.floor(Date.now() / 1000);
   let proposalState = onChainData.state;

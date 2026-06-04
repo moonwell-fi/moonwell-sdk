@@ -60,6 +60,9 @@ const defaultOnChain: ProposalOnChainData = {
   eta: 0,
   votesCollected: false,
   quorum: 0n,
+  // getProposalsOnChainData is mocked here, so it no longer derives multichain
+  // from the proposal — the mock supplies the canonical flag the fetcher reads.
+  isMultichain: false,
 };
 
 beforeEach(() => {
@@ -70,6 +73,9 @@ afterEach(() => {
 });
 
 const WORMHOLE_TARGET = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
+// A plain (non-bridge) contract target — the shape of a hub-local proposal that
+// executes only on Ethereum (proposal-171 successor).
+const LOCAL_TARGET = "0xed301cd3eb27217bdb05c4e9b820a8a3c8b665f9";
 
 const executedStateChange = {
   id: "sc-1",
@@ -170,6 +176,7 @@ describe("getProposals state post-processing", () => {
         ...defaultOnChain,
         state: ProposalState.Succeeded,
         votesCollected: true,
+        isMultichain: true,
       },
     ]);
 
@@ -182,6 +189,39 @@ describe("getProposals state post-processing", () => {
       id: 13,
       votesCollected: true,
     });
+  });
+
+  test("hub-local Ethereum proposal (chainId 1, no bridge target) Succeeded+collected → Queued — the next hub proposal", async () => {
+    // proposal-171 successor shape in the list path: chainId 1, local-only
+    // target. Mirrors the getProposal end-to-end guarantee so the proposals
+    // list and the detail page render the same correct timeline state —
+    // promoted to Queued with multichain.votesCollected true, and no bridge
+    // target so the frontend keeps the single-chain Execute step.
+    const now = Math.floor(Date.now() / 1000);
+    mockedFetchAll.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        ...makeApiProposal(ETHEREUM_CHAIN_ID, 13),
+        targets: [LOCAL_TARGET],
+        votingStartTime: now - 200,
+        votingEndTime: now - 100,
+      },
+    ]);
+    mockedOnChain.mockResolvedValueOnce([
+      {
+        ...defaultOnChain,
+        state: ProposalState.Succeeded,
+        votesCollected: true,
+        isMultichain: true,
+      },
+    ]);
+
+    const result = await getProposals(client, {
+      network: "moonbeam",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result[0]?.state).toBe(ProposalState.Queued);
+    expect(result[0]?.multichain).toEqual({ id: 13, votesCollected: true });
+    expect(result[0]?.targets).toEqual([LOCAL_TARGET]);
   });
 
   test.each([
@@ -202,7 +242,12 @@ describe("getProposals state post-processing", () => {
         },
       ]);
       mockedOnChain.mockResolvedValueOnce([
-        { ...defaultOnChain, state: terminalState, votesCollected: true },
+        {
+          ...defaultOnChain,
+          state: terminalState,
+          votesCollected: true,
+          isMultichain: true,
+        },
       ]);
 
       const result = await getProposals(client, {

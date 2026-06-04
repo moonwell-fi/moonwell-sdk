@@ -14,7 +14,6 @@ import {
   getExtendedProposalData,
   getProposalData,
   getProposalsOnChainData,
-  isMultichainProposal,
   readCrossChainQuorums,
 } from "./common.js";
 
@@ -125,7 +124,10 @@ async function getMoonbeamProposals(
   const proposals: Proposal[] = apiProposals.map((apiProposal, index) => {
     const onChainData = onChainDataList[index]!;
     const formattedData = formatApiProposalData(apiProposal);
-    const isMultichain = isMultichainProposal(apiProposal.targets);
+    // Single source of truth — see getProposal.ts. getProposalsOnChainData
+    // classified with the Artemis cutoff and routed the reads accordingly;
+    // re-classifying here without the cutoff would drift and drop `multichain`.
+    const isMultichain = onChainData.isMultichain;
 
     const now = Math.floor(Date.now() / 1000);
     let proposalState = onChainData.state;

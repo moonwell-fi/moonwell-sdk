@@ -156,4 +156,118 @@ describe("getBlockNumberAtTimestamp", () => {
     );
     expect(result).toBe(13n);
   });
+
+  /**
+   * Build a lazily-synthesized chain whose block time is piecewise-constant:
+   * `eras` is [firstBlock, secondsPerBlock][] in ascending block order. This is
+   * the shape that defeats pure interpolation: the all-history average slope
+   * differs from the local slope near the head, so every projected probe lands
+   * on the same side of the target and one bound never moves.
+   */
+  function makeRegimeClient(
+    genesisTs: bigint,
+    head: bigint,
+    eras: Array<[bigint, bigint]>,
+  ): {
+    client: PublicClient;
+    getBlockSpy: ReturnType<typeof vi.fn>;
+    timestampOf: (block: bigint) => bigint;
+  } {
+    const timestampOf = (block: bigint): bigint => {
+      let ts = genesisTs;
+      let prevBoundary = 1n;
+      let prevSeconds = eras[0]?.[1] ?? 12n;
+      for (const [firstBlock, seconds] of eras) {
+        if (block < firstBlock) break;
+        ts += (firstBlock - prevBoundary) * prevSeconds;
+        prevBoundary = firstBlock;
+        prevSeconds = seconds;
+      }
+      return ts + (block - prevBoundary) * prevSeconds;
+    };
+
+    const getBlockSpy = vi.fn(
+      async ({
+        blockTag,
+        blockNumber,
+      }: {
+        blockTag?: "latest";
+        blockNumber?: bigint;
+      }) => {
+        const number = blockTag === "latest" ? head : blockNumber;
+        if (number === undefined) {
+          throw new Error("expected blockNumber or blockTag");
+        }
+        return { number, timestamp: timestampOf(number) };
+      },
+    );
+
+    return {
+      client: { getBlock: getBlockSpy } as unknown as PublicClient,
+      getBlockSpy,
+      timestampOf,
+    };
+  }
+
+  test("regression: Moonbeam-shaped 12s→6s regime change resolves a recent timestamp (proposal-171 incident)", async () => {
+    // Moonbeam's real shape at incident time: ~10M blocks of 12s, then 6s
+    // blocks to head ~15.9M. The pre-fix implementation returned block 1 for
+    // any recent target: every interpolated probe overshot, only `hi` moved,
+    // and the unconverged `lo` was returned silently.
+    const { client, getBlockSpy, timestampOf } = makeRegimeClient(
+      1_639_798_584n,
+      15_887_017n,
+      [
+        [1n, 12n],
+        [10_000_000n, 6n],
+      ],
+    );
+
+    // ~5,400 six-second blocks before the head — the proposal-171 snapshot shape.
+    const targetBlock = 15_881_617n;
+    const result = await getBlockNumberAtTimestamp(
+      client,
+      timestampOf(targetBlock),
+    );
+
+    expect(result).toBe(targetBlock);
+    // 2 anchors + 8 interpolation + ~24 binary completion reads.
+    expect(getBlockSpy.mock.calls.length).toBeLessThanOrEqual(40);
+  });
+
+  test("invariant: ts(result) <= target < ts(result+1) across randomized block-time regimes", async () => {
+    // Deterministic LCG so failures are reproducible.
+    let seed = 0x5eedn % 2147483647n;
+    const next = (max: bigint): bigint => {
+      seed = (seed * 48271n) % 2147483647n;
+      return seed % max;
+    };
+
+    for (let run = 0; run < 25; run += 1) {
+      const eraCount = Number(next(4n)) + 1;
+      const eras: Array<[bigint, bigint]> = [[1n, next(20n) + 1n]];
+      let boundary = 1n;
+      for (let e = 1; e < eraCount; e += 1) {
+        boundary += next(4_000_000n) + 1n;
+        eras.push([boundary, next(20n) + 1n]);
+      }
+      const head = boundary + next(6_000_000n) + 10n;
+      const { client, timestampOf } = makeRegimeClient(1_000_000n, head, eras);
+
+      const target =
+        timestampOf(1n) + 1n + next(timestampOf(head) - timestampOf(1n) - 1n);
+      const result = await getBlockNumberAtTimestamp(client, target);
+
+      expect(
+        timestampOf(result) <= target,
+        `run ${run}: ts(result)=${timestampOf(result)} > target=${target}`,
+      ).toBe(true);
+      if (result < head) {
+        expect(
+          target < timestampOf(result + 1n),
+          `run ${run}: target=${target} >= ts(result+1)=${timestampOf(result + 1n)}`,
+        ).toBe(true);
+      }
+    }
+  });
 });
