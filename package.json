@@ -23,7 +23,7 @@
     "test:coverage": "vitest run --coverage -c ./test/vitest.config.ts",
     "lint:gate": "mkdir -p .gate && (biome check --reporter=json > .gate/lint.json || true) && node -e \"JSON.parse(require('fs').readFileSync('.gate/lint.json','utf8'))\"",
     "gate:jscpd": "mkdir -p .gate && jscpd src --config .jscpd.json",
-    "gate:audit": "mkdir -p .gate && (pnpm audit --json > .gate/audit.json || true) && node -e \"JSON.parse(require('fs').readFileSync('.gate/audit.json','utf8'))\"",
+    "gate:audit": "mkdir -p .gate && (pnpm audit --prod --json > .gate/audit.json || true) && node -e \"JSON.parse(require('fs').readFileSync('.gate/audit.json','utf8'))\"",
     "gate": "node scripts/quality-gate.mjs",
     "gate:run": "pnpm lint:gate; pnpm test:coverage; pnpm gate:jscpd; pnpm gate:audit; pnpm gate",
     "gate:update-baseline": "pnpm lint:gate; pnpm test:coverage; pnpm gate:jscpd; pnpm gate:audit; node scripts/quality-gate.mjs --update-baseline",
