@@ -20,20 +20,16 @@ export async function getGraphQL<T>(
 
     const json = await response.json();
     if (response.status !== 200 || json.errors) {
-      if (typeof window !== "undefined") {
-        console.debug(
-          `[Morpho GraphQL] Non-200 (${response.statusText}) or errors:`,
-          json.errors,
-        );
-      }
+      console.error(
+        `[Morpho GraphQL] Non-200 (${response.statusText}) or errors:`,
+        JSON.stringify(json.errors),
+      );
       return undefined;
     }
 
     return json.data as T;
   } catch (error) {
-    if (typeof window !== "undefined") {
-      console.debug("[Morpho GraphQL] Error fetching data:", error);
-    }
+    console.error("[Morpho GraphQL] Error fetching data:", error);
     return undefined;
   }
 }
@@ -94,20 +90,16 @@ export async function getVaultV2Apy(
 
     const json = await response.json();
     if (response.status !== 200 || json.errors) {
-      if (typeof window !== "undefined") {
-        console.debug(
-          `[Morpho V2 APY] Non-200 (${response.statusText}) or errors:`,
-          json.errors,
-        );
-      }
+      console.error(
+        `[Morpho V2 APY] Non-200 (${response.statusText}) or errors:`,
+        JSON.stringify(json.errors),
+      );
       return undefined;
     }
 
     return json.data?.vaultV2ByAddress as MorphoVaultV2ApyResponse | undefined;
   } catch (error) {
-    if (typeof window !== "undefined") {
-      console.debug("[Morpho V2 APY] Error fetching data:", error);
-    }
+    console.error("[Morpho V2 APY] Error fetching data:", error);
     return undefined;
   }
 }

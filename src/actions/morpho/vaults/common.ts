@@ -1372,11 +1372,8 @@ export async function getMorphoVaultsRewards(
         }
         id
         address
-        asset {
-          priceUsd
-        }
         state {
-          rewards {
+          allRewards {
             asset {
               address
               symbol
@@ -1387,7 +1384,6 @@ export async function getMorphoVaultsRewards(
               }
             }
             supplyApr
-            amountPerSuppliedToken
           }
         }
       }
@@ -1405,10 +1401,7 @@ export async function getMorphoVaultsRewards(
               id
             }
           }
-          uniqueKey
-          loanAsset {
-            priceUsd
-          }
+          marketId
           state {
             rewards {
               asset {
@@ -1421,7 +1414,6 @@ export async function getMorphoVaultsRewards(
                 }
               }
               supplyApr
-              amountPerSuppliedToken
             }
           }
         }
@@ -1437,11 +1429,8 @@ export async function getMorphoVaultsRewards(
         };
         id: string;
         address: Address;
-        asset: {
-          priceUsd: number;
-        };
         state: {
-          rewards: {
+          allRewards: {
             asset: {
               address: Address;
               symbol: string;
@@ -1452,7 +1441,6 @@ export async function getMorphoVaultsRewards(
               };
             };
             supplyApr: number;
-            amountPerSuppliedToken: string;
           }[];
         };
       }[];
@@ -1468,10 +1456,7 @@ export async function getMorphoVaultsRewards(
               id: number;
             };
           };
-          uniqueKey: string;
-          loanAsset: {
-            priceUsd: number;
-          };
+          marketId: string;
           state: {
             rewards: {
               asset: {
@@ -1484,7 +1469,6 @@ export async function getMorphoVaultsRewards(
                 };
               };
               supplyApr: number;
-              amountPerSuppliedToken: string;
             }[];
           };
         };
@@ -1494,22 +1478,18 @@ export async function getMorphoVaultsRewards(
 
   if (result) {
     try {
+      // Morpho removed the per-supplied-token amount fields from the API
+      // (VaultStateReward.amountPerSuppliedToken et al.), so reward amounts
+      // can no longer be computed and are reported as 0.
       const marketsRewards = result.marketPositions.items.flatMap((item) => {
         const rewards = (item.market.state?.rewards || []).map((reward) => {
-          const tokenAmountPer1000 =
-            (Number.parseFloat(reward.amountPerSuppliedToken) /
-              item.market.loanAsset.priceUsd) *
-            1000;
-          const tokenDecimals = 10 ** reward.asset.decimals;
-          const amount = Number(tokenAmountPer1000) / tokenDecimals;
-
           return {
             chainId: reward.asset.chain.id,
             vaultId: item.user.address,
-            marketId: item.market.uniqueKey,
+            marketId: item.market.marketId,
             asset: reward.asset,
             supplyApr: (reward.supplyApr || 0) * 100,
-            supplyAmount: amount,
+            supplyAmount: 0,
             borrowApr: 0,
             borrowAmount: 0,
           };
@@ -1518,21 +1498,14 @@ export async function getMorphoVaultsRewards(
       });
 
       const vaultsRewards = result.vaults.items.flatMap((item) => {
-        return (item.state?.rewards || []).map((reward) => {
-          const tokenAmountPer1000 =
-            (Number.parseFloat(reward.amountPerSuppliedToken) /
-              item.asset.priceUsd) *
-            1000;
-          const tokenDecimals = 10 ** reward.asset.decimals;
-          const amount = Number(tokenAmountPer1000) / tokenDecimals;
-
+        return (item.state?.allRewards || []).map((reward) => {
           return {
             chainId: reward.asset.chain.id,
             vaultId: item.address,
             marketId: undefined,
             asset: reward.asset,
             supplyApr: (reward.supplyApr || 0) * 100,
-            supplyAmount: amount,
+            supplyAmount: 0,
             borrowApr: 0,
             borrowAmount: 0,
           };

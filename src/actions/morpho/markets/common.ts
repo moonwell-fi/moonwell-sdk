@@ -603,13 +603,13 @@ async function getMorphoMarketRewards(
                 maxIn
                 maxOut
                 market {
-                  uniqueKey
+                  marketId
                 }
               }
             }
           }
-          allocationMarket {
-            uniqueKey
+          allocationMarket: withdrawMarket {
+            marketId
             loanAsset {
               address
             }
@@ -640,11 +640,9 @@ async function getMorphoMarketRewards(
             }
             supplyApr
             borrowApr
-            amountPerBorrowedToken
-            amountPerSuppliedToken
           }
         }
-        uniqueKey
+        marketId
       }
     }
   } `;
@@ -657,7 +655,7 @@ async function getMorphoMarketRewards(
             id: number;
           };
         };
-        uniqueKey: string;
+        marketId: string;
         reallocatableLiquidityAssets: string;
         publicAllocatorSharedLiquidity: {
           assets: string;
@@ -668,7 +666,7 @@ async function getMorphoMarketRewards(
               fee: number;
               flowCaps: {
                 market: {
-                  uniqueKey: string;
+                  marketId: string;
                 };
                 maxIn: number;
                 maxOut: number;
@@ -676,7 +674,7 @@ async function getMorphoMarketRewards(
             };
           };
           allocationMarket: {
-            uniqueKey: string;
+            marketId: string;
             loanAsset: {
               address: string;
             };
@@ -706,9 +704,7 @@ async function getMorphoMarketRewards(
               name: string;
             };
             supplyApr: number;
-            amountPerSuppliedToken: string;
             borrowApr: number;
-            amountPerBorrowedToken: string;
           }[];
         };
       }[];
@@ -720,7 +716,7 @@ async function getMorphoMarketRewards(
       const loanAssetDecimals = item.loanAsset.decimals;
       const mapping: GetMorphoMarketsRewardsReturnType = {
         chainId: item.morphoBlue.chain.id,
-        marketId: item.uniqueKey,
+        marketId: item.marketId,
         reallocatableLiquidityAssets: new Amount(
           BigInt(item.reallocatableLiquidityAssets),
           loanAssetDecimals,
@@ -742,31 +738,43 @@ async function getMorphoMarketRewards(
             vault: {
               address: item.vault.address,
               name: item.vault.name,
-              publicAllocatorConfig: item.vault.publicAllocatorConfig,
+              // The Morpho API renamed Market.uniqueKey to marketId; map it
+              // back to keep the SDK's public types unchanged.
+              publicAllocatorConfig: {
+                fee: item.vault.publicAllocatorConfig.fee,
+                flowCaps: item.vault.publicAllocatorConfig.flowCaps.map(
+                  (flowCap) => ({
+                    market: { uniqueKey: flowCap.market.marketId },
+                    maxIn: flowCap.maxIn,
+                    maxOut: flowCap.maxOut,
+                  }),
+                ),
+              },
             },
-            allocationMarket: item.allocationMarket,
+            allocationMarket: {
+              uniqueKey: item.allocationMarket.marketId,
+              loanAsset: item.allocationMarket.loanAsset,
+              ...(item.allocationMarket.collateralAsset
+                ? { collateralAsset: item.allocationMarket.collateralAsset }
+                : {}),
+              oracleAddress: item.allocationMarket.oracleAddress,
+              irmAddress: item.allocationMarket.irmAddress,
+              lltv: item.allocationMarket.lltv,
+            },
           }),
         ),
         rewards: item.state?.rewards.map((reward) => {
-          const tokenDecimals = 10 ** reward.asset.decimals;
-
           //Supply APR is used only for vaults, zeroing it for now to avoid confusion
-          //const tokenAmountPer1000 = ((parseFloat(reward.amountPerSuppliedToken) / item.loanAsset.priceUsd) * 1000) || "0"
-          //const amount = (Number(tokenAmountPer1000) / tokenDecimals)
-
-          const borrowTokenAmountPer1000 =
-            (Number.parseFloat(reward.amountPerBorrowedToken) /
-              item.loanAsset.priceUsd) *
-            1000;
-
-          const borrowAmount = borrowTokenAmountPer1000 / tokenDecimals;
+          // Morpho removed the per-token amount fields from the API
+          // (MarketStateReward.amountPerBorrowedToken et al.), so reward
+          // amounts can no longer be computed and are reported as 0.
           return {
-            marketId: item.uniqueKey,
+            marketId: item.marketId,
             asset: reward.asset,
             supplyApr: 0, //(reward.supplyApr || 0) * 100,
-            supplyAmount: 0, //amount,
+            supplyAmount: 0,
             borrowApr: (reward.borrowApr || 0) * 100 * -1,
-            borrowAmount: borrowAmount,
+            borrowAmount: 0,
           };
         }),
       };
