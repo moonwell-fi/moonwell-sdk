@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.20.1
+
+### Patch Changes
+
+- [#303](https://github.com/moonwell-fi/moonwell-sdk/pull/303) [`59d540a511cd7eb14486f8aafdf7f898d994be90`](https://github.com/moonwell-fi/moonwell-sdk/commit/59d540a511cd7eb14486f8aafdf7f898d994be90) Thanks [@lyoungblood](https://github.com/lyoungblood)! - Fix Morpho GraphQL queries broken by upstream API schema changes. The Morpho API renamed `Market.uniqueKey` to `marketId` and replaced `PublicAllocatorSharedLiquidity.allocationMarket` with `withdrawMarket`, causing the rewards and shared-liquidity queries to fail with 400 errors that were silently swallowed — every Morpho vault reported empty rewards (MOO-391). Also migrates vault rewards to `state.allRewards` and drops the deprecated `amountPerSuppliedToken`/`amountPerBorrowedToken` fields ahead of their removal (reward token amounts are now reported as 0 since the API no longer exposes them), and logs Morpho GraphQL errors in non-browser environments so failures surface in server logs.
+
 ## 0.20.0
 
 ### Minor Changes
