@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-05-15T18:20:52.039Z",
+  "generatedAt": "2026-06-15T13:36:28.427Z",
   "coverage": {
-    "lines": 81.6,
-    "statements": 81.6,
-    "functions": 51.07,
-    "branches": 81.8
+    "lines": 82.7,
+    "statements": 82.7,
+    "functions": 56.9,
+    "branches": 84.5
   },
   "lint": {
     "errors": 0,
@@ -17,8 +17,8 @@
     "low": 0
   },
   "duplication": {
-    "percentage": 9.29,
-    "clones": 101,
-    "duplicatedLines": 1980
+    "percentage": 8.95,
+    "clones": 95,
+    "duplicatedLines": 1919
   }
 }
