@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.20.2
+
+### Patch Changes
+
+- [#306](https://github.com/moonwell-fi/moonwell-sdk/pull/306) [`5c709c5d2341d06a7ee8f446a7a14abebfd1f12d`](https://github.com/moonwell-fi/moonwell-sdk/commit/5c709c5d2341d06a7ee8f446a7a14abebfd1f12d) Thanks [@bprofiro](https://github.com/bprofiro)! - Add the Ethereum `multiRewardDistributor` (MRD_PROXY `0x60142B8d76FaC5b88cfB422Ba1aA905d2171851c`, the comptroller's `rewardDistributor()`) to the Ethereum environment config, mirroring Base and Optimism (MOO-413). The SDK derives reward APRs from the `views` contract, but the frontend's reward-claim flow branches on this address: when present it claims via the comptroller's `claimReward`, and when absent it falls back to the Moonbeam `0x…0808` precompile `batchAll` path, which reverts on Ethereum. Without it, the WELL rewards MIP-X59 starts accruing on the four Ethereum Core markets (ETH, USDC, USDT, cbBTC) would be displayed but not claimable.
+
 ## 0.20.1
 
 ### Patch Changes
