@@ -1,10 +1,10 @@
 {
   "generatedAt": "2026-06-15T13:36:28.427Z",
   "coverage": {
-    "lines": 81.6,
-    "statements": 81.6,
-    "functions": 52.78,
-    "branches": 83.9
+    "lines": 82.7,
+    "statements": 82.7,
+    "functions": 56.9,
+    "branches": 84.5
   },
   "lint": {
     "errors": 0,
