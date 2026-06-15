@@ -74,6 +74,24 @@ describe("ethereum environment invariants", () => {
     expect(Object.keys(env.config.markets)).toHaveLength(4);
   });
 
+  // Ethereum's MultiRewardDistributor (the comptroller's `rewardDistributor()`,
+  // MRD_PROXY from MIP-E00) was historically omitted from this config. The SDK
+  // never reads it directly (reward APRs come from the `views` contract), but
+  // the frontend's reward-claim flow branches on its presence — absent, an
+  // Ethereum claim falls back to the Moonbeam `0x…0808` precompile path and
+  // reverts. Lock the address so dropping it fails CI rather than silently
+  // re-breaking claims (mirrors the Base/Optimism convention of defining it).
+  test("multiRewardDistributor is wired with the on-chain MRD_PROXY address", () => {
+    const env = createEnvironment();
+
+    expect(env.config.contracts.multiRewardDistributor).toBe(
+      "0x60142B8d76FaC5b88cfB422Ba1aA905d2171851c",
+    );
+    expect(env.contracts.multiRewardDistributor.address).toBe(
+      "0x60142B8d76FaC5b88cfB422Ba1aA905d2171851c",
+    );
+  });
+
   // No `publicEnvironments` entry may list `moonbeam.id` in
   // `custom.governance.chainIds` — that field is consumed as a `homeEnvironment`
   // membership predicate by core/markets/user-rewards (see
