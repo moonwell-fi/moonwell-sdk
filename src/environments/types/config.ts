@@ -236,9 +236,27 @@ export const createMorphoMarketConfig = <const tokens, const markets>(config: {
   markets: MorphoMarketsConfig<markets, tokens>;
 }) => config.markets as Prettify<markets>;
 
+// Moonwell's EVM comptroller chains (Base, Optimism, Ethereum) distribute WELL
+// rewards through a MultiRewardDistributor, so omitting `multiRewardDistributor`
+// silently breaks reward claims — the app's claim flow then falls back to the
+// Moonbeam `0x…0808` precompile path, which reverts on these chains. That gap
+// shipped once already (MOO-413: Ethereum had no MRD). The Moonbeam-family home
+// chains (Moonbeam, Moonriver) instead use the on-chain `governor` + WELL
+// precompile reward model and legitimately have no MRD. Encode the distinction:
+// a config with a `comptroller` but no `governor` is an EVM comptroller chain
+// and must define `multiRewardDistributor`, so dropping it fails to compile.
+type RequireMultiRewardDistributor<contracts> = contracts extends {
+  comptroller: Address;
+}
+  ? contracts extends { governor: Address }
+    ? unknown
+    : { multiRewardDistributor: Address }
+  : unknown;
+
 export const createContractsConfig = <const tokens, const contracts>(config: {
   tokens: TokensConfig<tokens>;
-  contracts: ContractsConfig<contracts, tokens>;
+  contracts: ContractsConfig<contracts, tokens> &
+    RequireMultiRewardDistributor<contracts>;
 }) => {
   return config.contracts as Prettify<contracts>;
 };

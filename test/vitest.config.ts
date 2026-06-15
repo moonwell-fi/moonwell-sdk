@@ -54,6 +54,7 @@ export default defineConfig({
       "src/client/createMoonwellClient.test.ts",
       "src/common/getBlockNumberAtTimestamp.test.ts",
       "src/environments/definitions/ethereum/environment.test.ts",
+      "src/environments/contracts-invariants.test.ts",
     ],
     setupFiles: [join(__dirname, "./setup.ts")],
     hookTimeout: 60_000,
