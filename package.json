@@ -69,7 +69,9 @@
       "ignoreMissing": ["node-fetch"]
     },
     "overrides": {
-      "@biconomy/abstractjs": "1.0.18"
+      "@biconomy/abstractjs": "1.0.18",
+      "ws@>=8.0.0 <8.21.0": ">=8.21.0",
+      "form-data@>=4.0.0 <4.0.6": ">=4.0.6"
     }
   },
   "engines": {
