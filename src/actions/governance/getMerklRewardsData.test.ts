@@ -588,6 +588,19 @@ describe("getMerklCampaignIds", () => {
     expect(calledUrl).not.toContain("api.merkl.xyz");
   });
 
+  test("falls back to the production lunar-indexer worker when no URL is given", async () => {
+    mockFetchResponses([
+      { ok: true, data: makeCampaignsResponse([{ campaignId: CAMPAIGN_A }]) },
+    ]);
+
+    await getMerklCampaignIds();
+
+    const calledUrl = vi.mocked(fetch).mock.calls[0]?.[0];
+    expect(calledUrl).toBe(
+      "https://lunar-services-worker.moonwell.workers.dev/api/v1/merkl/campaigns?creatorAddress=0x8b621804a7637b781e2BbD58e256a591F2dF7d51&excludeSubCampaigns=true&items=100",
+    );
+  });
+
   test("returns cached result on second call", async () => {
     mockFetchResponses([
       {

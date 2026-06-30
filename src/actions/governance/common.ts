@@ -89,6 +89,9 @@ export async function getMerklCampaignIds(
   lunarIndexerUrl?: string,
 ): Promise<string[]> {
   const now = Date.now();
+  // The cache intentionally ignores `lunarIndexerUrl`: the Moonwell campaign set
+  // is the same regardless of which proxy host serves it, so a differing URL
+  // within the TTL still returns the cached IDs.
   if (
     campaignIdsCache !== null &&
     now - campaignIdsCache.fetchedAt < CAMPAIGN_IDS_CACHE_TTL_MS
