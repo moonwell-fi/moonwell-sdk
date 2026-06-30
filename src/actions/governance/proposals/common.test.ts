@@ -226,6 +226,33 @@ describe("classifyProposalMultichain", () => {
       ),
     ).toBe(true);
   });
+
+  test("cutoff read failure (undefined) does NOT bias to multichain on a legacy-only chain (Moonriver)", () => {
+    // MOO-493: Moonriver has a legacy governor but no multichainGovernor, so the
+    // proposal-171 unknown-cutoff bias must not apply — biasing to multichain
+    // would route reads to a nonexistent multichain governor and surface a
+    // spurious `multichain` field. With hasMultichainGovernor=false it stays
+    // non-multichain and reads from the legacy governor.
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 999, chainId: 1285 },
+        undefined,
+        false,
+      ),
+    ).toBe(false);
+  });
+
+  test("cutoff read failure (undefined) still biases to multichain when the chain has a multichain governor", () => {
+    // Explicit hasMultichainGovernor=true keeps the dual-governor (Moonbeam)
+    // bias intact even when passed explicitly.
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 999, chainId: 1284 },
+        undefined,
+        true,
+      ),
+    ).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

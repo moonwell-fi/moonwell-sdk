@@ -8,11 +8,7 @@ import { type Proposal, ProposalState } from "../../../types/proposal.js";
 import { type ApiProposal, fetchAllProposals } from "../governor-api-client.js";
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
-  appendProposalExtendedData,
   formatApiProposalData,
-  getCrossChainProposalData,
-  getExtendedProposalData,
-  getProposalData,
   getProposalsOnChainData,
   readCrossChainQuorums,
 } from "./common.js";
@@ -49,10 +45,10 @@ export async function getProposals<
   const allProposals = await Promise.all(
     governanceEnvironments.map(async (governanceEnvironment) => {
       if (governanceEnvironment.chainId === moonbeam.id) {
-        // Moonbeam: Use new Governor API
+        // Moonbeam + Ethereum: Governor API (chainIds 1 and 1284)
         return getMoonbeamProposals(governanceEnvironment);
       } else {
-        // Moonriver: Use old Ponder approach
+        // Moonriver: Governor API, single legacy governor (chainId 1285)
         return getMoonriverProposals(governanceEnvironment);
       }
     }),
@@ -109,6 +105,53 @@ async function getMoonbeamProposals(
     }
   });
 
+  return buildProposals(apiProposals, governanceEnvironment);
+}
+
+/**
+ * Fetch proposals for Moonriver using the Governor API.
+ *
+ * Moonriver runs a single legacy standalone governor (no multichain governor),
+ * so we fetch only its chainId from the same lunar indexer and reuse the shared
+ * pipeline. `getProposalsOnChainData` classifies these as non-multichain and
+ * reads state/quorum from the legacy governor (via `getQuorum`).
+ */
+async function getMoonriverProposals(
+  governanceEnvironment: Environment,
+): Promise<Proposal[]> {
+  // Moonriver is a single chain, so there's no other chain to "continue with"
+  // like the Moonbeam fan-out — but a bare throw would reject the whole
+  // `Promise.all` in getProposals and drop Moonbeam/Ethereum results too. Mirror
+  // the per-chain handling getMoonbeamProposals uses: report the outage via
+  // onError and degrade to an empty Moonriver list instead of rejecting.
+  let apiProposals: ApiProposal[] = [];
+  try {
+    apiProposals = await fetchAllProposals(governanceEnvironment, {
+      chainId: moonriver.id,
+    });
+  } catch (reason) {
+    console.warn(
+      `[getProposals] Failed to fetch proposals for chainId=${moonriver.id}; continuing with an empty Moonriver list.`,
+      reason,
+    );
+    governanceEnvironment.onError?.(reason, {
+      source: "governance-proposals",
+      chainId: governanceEnvironment.chainId,
+    });
+  }
+  return buildProposals(apiProposals, governanceEnvironment);
+}
+
+/**
+ * Shared Governor-API pipeline: resolve IPFS descriptions + cross-chain quorums
+ * in parallel, read on-chain data, then map each ApiProposal to a Proposal.
+ * Used by both the Moonbeam/Ethereum and Moonriver paths so the mapping stays
+ * in one place.
+ */
+async function buildProposals(
+  apiProposals: ApiProposal[],
+  governanceEnvironment: Environment,
+): Promise<Proposal[]> {
   // IPFS resolution and cross-chain quorum reads are independent — run them in
   // parallel to save one network round-trip on the proposal list path.
   const [, crossChainQuorums] = await Promise.all([
@@ -194,29 +237,6 @@ async function getMoonbeamProposals(
 
     return proposal;
   });
-
-  return proposals;
-}
-
-/**
- * Fetch proposals for Moonriver using the old Ponder-based approach
- */
-async function getMoonriverProposals(
-  governanceEnvironment: Environment,
-): Promise<Proposal[]> {
-  const [_proposals, _xcProposals, _extendedDatas] = await Promise.all([
-    getProposalData({ environment: governanceEnvironment }),
-    getCrossChainProposalData({ environment: governanceEnvironment }),
-    getExtendedProposalData({ environment: governanceEnvironment }),
-  ]);
-
-  const proposals = [..._proposals, ..._xcProposals];
-
-  proposals.forEach((proposal) => {
-    proposal.environment = governanceEnvironment;
-  });
-
-  appendProposalExtendedData(proposals, _extendedDatas);
 
   return proposals;
 }

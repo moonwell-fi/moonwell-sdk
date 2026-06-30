@@ -21,6 +21,7 @@ const mockedOnChain = vi.mocked(getProposalsOnChainData);
 
 const ETHEREUM_CHAIN_ID = 1;
 const MOONBEAM_CHAIN_ID = 1284;
+const MOONRIVER_CHAIN_ID = 1285;
 
 const moonbeamEnv = {
   key: "moonbeam",
@@ -31,8 +32,21 @@ const moonbeamEnv = {
   config: {},
 } as unknown as Record<string, unknown>;
 
+const moonriverEnv = {
+  key: "moonriver",
+  chainId: MOONRIVER_CHAIN_ID,
+  governanceIndexerUrl: "https://mock-indexer.test",
+  contracts: {},
+  custom: {},
+  config: {},
+} as unknown as Record<string, unknown>;
+
 const client = {
   environments: { moonbeam: moonbeamEnv },
+} as unknown as MoonwellClient;
+
+const moonriverClient = {
+  environments: { moonriver: moonriverEnv },
 } as unknown as MoonwellClient;
 
 const makeApiProposal = (chainId: number, proposalId: number): ApiProposal => ({
@@ -257,6 +271,121 @@ describe("getProposals state post-processing", () => {
       expect(result[0]?.state).toBe(terminalState);
     },
   );
+});
+
+describe("getProposals Moonriver via Governor API (MOO-493)", () => {
+  test("fetches Moonriver through the Governor API with chainId 1285 (single call, no Ponder)", async () => {
+    // Moonriver runs one legacy standalone governor, so the migrated path makes
+    // exactly one fetchAllProposals call for chainId 1285 — unlike Moonbeam,
+    // which fans out to chainIds 1 and 1284. The old Ponder path
+    // (getExtendedProposalData → ponder-eu2) is gone: routing through the mocked
+    // fetchAllProposals + getProposalsOnChainData proves it isn't used.
+    mockedFetchAll.mockResolvedValueOnce([
+      makeApiProposal(MOONRIVER_CHAIN_ID, 74),
+    ]);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposals(moonriverClient, {
+      network: "moonriver",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(mockedFetchAll).toHaveBeenCalledTimes(1);
+    expect(mockedFetchAll).toHaveBeenCalledWith(moonriverEnv, {
+      chainId: MOONRIVER_CHAIN_ID,
+    });
+    // Same shared pipeline as Moonbeam — crossChainQuorums wiring reaches
+    // getProposalsOnChainData.
+    expect(mockedOnChain).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.anything(),
+      expect.objectContaining({ crossChainQuorums: expect.any(Map) }),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.chainId).toBe(MOONRIVER_CHAIN_ID);
+    expect(result[0]?.proposalId).toBe(74);
+  });
+
+  test("maps a non-multichain Moonriver proposal to the legacy Proposal shape", async () => {
+    // Moonriver has no multichain governor, so getProposalsOnChainData reports
+    // isMultichain: false → the mapped Proposal must omit the `multichain` field.
+    mockedFetchAll.mockResolvedValueOnce([
+      {
+        ...makeApiProposal(MOONRIVER_CHAIN_ID, 74),
+        proposer: "0x18275952d3ea09d80dbe446d2cba085e01e681b4",
+        description: "# MIP-R10: Test\nbody",
+      },
+    ]);
+    mockedOnChain.mockResolvedValueOnce([
+      { ...defaultOnChain, state: ProposalState.Succeeded, quorum: 123n },
+    ]);
+
+    const result = await getProposals(moonriverClient, {
+      network: "moonriver",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    const proposal = result[0];
+    expect(proposal?.chainId).toBe(MOONRIVER_CHAIN_ID);
+    expect(proposal?.id).toBe(74);
+    expect(proposal?.state).toBe(ProposalState.Succeeded);
+    expect(proposal?.proposer).toBe(
+      "0x18275952d3ea09d80dbe446d2cba085e01e681b4",
+    );
+    expect(proposal?.quorum.exponential).toBe(123n);
+    expect(proposal?.multichain).toBeUndefined();
+    expect(proposal?.environment).toBe(moonriverEnv);
+  });
+
+  test("empty Governor API response yields [] with a single chainId-1285 call", async () => {
+    mockedFetchAll.mockResolvedValueOnce([]);
+    mockedOnChain.mockResolvedValueOnce([]);
+
+    const result = await getProposals(moonriverClient, {
+      network: "moonriver",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result).toEqual([]);
+    expect(mockedFetchAll).toHaveBeenCalledTimes(1);
+    expect(mockedFetchAll).toHaveBeenCalledWith(moonriverEnv, {
+      chainId: MOONRIVER_CHAIN_ID,
+    });
+  });
+
+  test("Moonriver indexer outage degrades to [] and reports via onError (does not throw)", async () => {
+    // Regression guard: getMoonriverProposals must mirror the Moonbeam fan-out's
+    // per-chain resilience. A bare throw would reject the whole getProposals
+    // Promise.all and drop Moonbeam/Ethereum results in a combined client.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const onError = vi.fn();
+    const failingEnv = {
+      ...moonriverEnv,
+      onError,
+    } as unknown as Record<string, unknown>;
+    const failingClient = {
+      environments: { moonriver: failingEnv },
+    } as unknown as MoonwellClient;
+    mockedFetchAll.mockRejectedValueOnce(
+      new Error("503 moonriver indexer down"),
+    );
+    mockedOnChain.mockResolvedValueOnce([]);
+
+    const result = await getProposals(failingClient, {
+      network: "moonriver",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result).toEqual([]);
+    expect(onError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        source: "governance-proposals",
+        chainId: MOONRIVER_CHAIN_ID,
+      }),
+    );
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("chainId=1285"),
+      expect.anything(),
+    );
+  });
 });
 
 describe("getProposals sort + partial-failure behavior", () => {

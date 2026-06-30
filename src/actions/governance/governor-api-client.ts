@@ -12,9 +12,10 @@ const getGovernorApiUrl = (environment: Environment): string => {
 
 /**
  * Chains the governor indexer serves. Ethereum first because that's where the
- * active multigov contract lives; Moonbeam follows for the historical archive.
+ * active multigov contract lives; Moonbeam follows for the historical archive,
+ * then Moonriver (legacy standalone governor).
  */
-export const SUPPORTED_GOVERNOR_CHAIN_IDS = [1, 1284] as const;
+export const SUPPORTED_GOVERNOR_CHAIN_IDS = [1, 1284, 1285] as const;
 
 /**
  * Build the chain-prefixed proposal key the indexer requires
@@ -168,8 +169,9 @@ export type FetchProposalsOptions = PaginationOptions & {
 /**
  * Fetch proposals from Governor API
  *
- * `chainId` is required by the indexer — 1 (Ethereum multigov) or
- * 1284 (Moonbeam historical). Missing/unsupported chainId returns 400.
+ * `chainId` is required by the indexer — 1 (Ethereum multigov),
+ * 1284 (Moonbeam historical), or 1285 (Moonriver legacy). Missing/unsupported
+ * chainId returns 400.
  */
 export async function fetchProposals(
   environment: Environment,

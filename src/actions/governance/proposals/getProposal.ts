@@ -12,11 +12,7 @@ import {
 } from "../governor-api-client.js";
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
-  appendProposalExtendedData,
   formatApiProposalData,
-  getCrossChainProposalData,
-  getExtendedProposalData,
-  getProposalData,
   getProposalsOnChainData,
   readCrossChainQuorums,
 } from "./common.js";
@@ -28,7 +24,8 @@ export type GetProposalParameters<
   proposalId: number;
   /**
    * The chain the proposal lives on (1 = Ethereum multigov,
-   * 1284 = Moonbeam historical). When omitted, both are tried in turn.
+   * 1284 = Moonbeam historical, 1285 = Moonriver legacy). When omitted, the
+   * supported chains are tried in turn.
    */
   chainId?: number;
 };
@@ -51,7 +48,7 @@ export async function getProposal<
 
   // Ethereum-home multigov proposals are served by the same Governor API as
   // historical Moonbeam ones (the lunar indexer fans out both chainIds), so
-  // route them through `getMoonbeamProposal` using the Moonbeam env as the
+  // route them through `getGovernorApiProposal` using the Moonbeam env as the
   // indexer source. Without this, a caller resolving the env by `chainId: 1`
   // would bail out on the `!moonbeam && !moonriver` check below and the page
   // reload path returns undefined.
@@ -62,7 +59,7 @@ export async function getProposal<
     if (!moonbeamEnv) {
       return undefined;
     }
-    return getMoonbeamProposal(
+    return getGovernorApiProposal(
       moonbeamEnv,
       proposalId,
       args.chainId ?? mainnet.id,
@@ -77,20 +74,21 @@ export async function getProposal<
   }
 
   if (environment.chainId === moonbeam.id) {
-    return getMoonbeamProposal(environment, proposalId, args.chainId);
+    return getGovernorApiProposal(environment, proposalId, args.chainId);
   }
-  return getMoonriverProposal(environment, proposalId);
+  return getGovernorApiProposal(environment, proposalId, moonriver.id);
 }
 
 /**
- * Fetch a single proposal for Moonbeam using the Governor API.
+ * Fetch a single proposal from the Governor API (Moonbeam/Ethereum multigov or
+ * Moonriver legacy governor).
  *
  * When `chainId` is provided we hit only that chain. When omitted we try the
  * supported chains in order (Ethereum first since that's where active multigov
  * proposals live) and fall back on `NotFoundError`. Real outages (5xx, network
  * errors) propagate so callers can distinguish "missing" from "broken".
  */
-async function getMoonbeamProposal(
+async function getGovernorApiProposal(
   governanceEnvironment: Environment,
   proposalId: number,
   chainId?: number,
@@ -193,36 +191,4 @@ async function getMoonbeamProposal(
   }
 
   return proposal;
-}
-
-/**
- * Fetch a single proposal for Moonriver using the old Ponder-based approach
- */
-async function getMoonriverProposal(
-  governanceEnvironment: Environment,
-  proposalId: number,
-): Promise<Proposal | undefined> {
-  const [_proposals, _xcProposals, _extendedDatas] = await Promise.all([
-    getProposalData({ environment: governanceEnvironment, id: proposalId }),
-    getCrossChainProposalData({
-      environment: governanceEnvironment,
-      id: proposalId,
-    }),
-    getExtendedProposalData({
-      environment: governanceEnvironment,
-      id: proposalId,
-    }),
-  ]);
-
-  const proposals = [..._proposals, ..._xcProposals];
-
-  proposals.forEach((proposal) => {
-    proposal.environment = governanceEnvironment;
-  });
-
-  appendProposalExtendedData(proposals, _extendedDatas);
-
-  return proposals.find(
-    (p) => p.proposalId === proposalId || p.id === proposalId,
-  );
 }
