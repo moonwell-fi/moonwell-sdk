@@ -3,6 +3,30 @@
  */
 
 /**
+ * Default lunar-indexer worker URL, used when an environment has no
+ * `lunarIndexerUrl` configured. Mirrors the default in the environment
+ * definitions so Merkl calls still resolve to the production proxy.
+ */
+const DEFAULT_LUNAR_INDEXER_URL =
+  "https://lunar-services-worker.moonwell.workers.dev";
+
+/**
+ * Build the base URL for the Merkl proxy exposed by the lunar-indexer worker.
+ *
+ * Merkl's v4 API needs a server-side API key for production rate limits, and
+ * the SDK runs in the browser where it cannot hold that secret. So all Merkl
+ * requests go through the worker's `/api/v1/merkl` proxy, which injects the key
+ * and passes the query/response through unchanged.
+ *
+ * @param lunarIndexerUrl - The environment's lunar-indexer base URL (falls back
+ *   to the production worker when undefined)
+ * @returns The Merkl proxy base URL, with no trailing slash
+ */
+export function getMerklProxyBaseUrl(lunarIndexerUrl?: string): string {
+  return `${lunarIndexerUrl ?? DEFAULT_LUNAR_INDEXER_URL}/api/v1/merkl`;
+}
+
+/**
  * Build a marketId string from chainId and market address
  * Format: {chainId}-{marketAddress}
  * @param chainId - The chain ID

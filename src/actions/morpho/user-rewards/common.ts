@@ -1,6 +1,7 @@
 import { type Address, getContract, parseAbi, zeroAddress } from "viem";
 import { Amount } from "../../../common/amount.js";
 import { MOONWELL_FETCH_JSON_HEADERS } from "../../../common/fetch-headers.js";
+import { getMerklProxyBaseUrl } from "../../../common/lunar-indexer-helpers.js";
 import {
   type Environment,
   type TokenConfig,
@@ -339,7 +340,7 @@ async function getMerklRewardsData(
   account: Address,
   options: { throwOnError: boolean } = { throwOnError: false },
 ): Promise<MerklRewardsResponse[]> {
-  const url = `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`;
+  const url = `${getMerklProxyBaseUrl(environment.lunarIndexerUrl)}/users/${account}/rewards?chainId=${environment.chainId}&test=false&breakdownPage=0&reloadChainId=${environment.chainId}`;
 
   let response: Response;
   try {

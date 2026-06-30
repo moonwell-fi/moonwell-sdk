@@ -207,7 +207,7 @@ export async function getStakingInfo<
     ? baseTokens?.[baseStakingTokenKey]?.address
     : undefined;
   const baseStakingApr = baseStkTokenAddress
-    ? await getMerklStakingApr(baseStkTokenAddress)
+    ? await getMerklStakingApr(baseStkTokenAddress, baseEnv?.lunarIndexerUrl)
     : 0;
 
   const result = envsWithStaking.flatMap((curr, index) => {

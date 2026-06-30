@@ -170,6 +170,24 @@ describe("getMerklRewardsData", () => {
     expect(result[0]!.token.symbol).toBe("WELL");
   });
 
+  test("calls the lunar-indexer Merkl proxy, not api.merkl.xyz directly", async () => {
+    mockFetchResponses([{ ok: true, data: makeEmptyBreakdownResponse() }]);
+
+    const account = "0x1234567890abcdef1234567890abcdef12345678";
+    await getMerklRewardsData(
+      [CAMPAIGN_A],
+      8453,
+      account,
+      "https://indexer.test",
+    );
+
+    const calledUrl = vi.mocked(fetch).mock.calls[0]?.[0];
+    expect(calledUrl).toBe(
+      `https://indexer.test/api/v1/merkl/users/${account}/rewards?chainId=8453&test=false&breakdownPage=0&reloadChainId=8453`,
+    );
+    expect(calledUrl).not.toContain("api.merkl.xyz");
+  });
+
   test("finds breakdowns on page 1 when not on page 0", async () => {
     mockFetchResponses([
       // Page 0: breakdowns that don't match target campaigns
@@ -558,6 +576,18 @@ describe("getMerklCampaignIds", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  test("calls the lunar-indexer Merkl proxy for campaigns", async () => {
+    mockFetchResponses([
+      { ok: true, data: makeCampaignsResponse([{ campaignId: CAMPAIGN_A }]) },
+    ]);
+
+    await getMerklCampaignIds("https://indexer.test");
+
+    const calledUrl = vi.mocked(fetch).mock.calls[0]?.[0];
+    expect(calledUrl).toContain("https://indexer.test/api/v1/merkl/campaigns");
+    expect(calledUrl).not.toContain("api.merkl.xyz");
+  });
+
   test("returns cached result on second call", async () => {
     mockFetchResponses([
       {
@@ -656,6 +686,16 @@ describe("getMerklStakingApr", () => {
     const result = await getMerklStakingApr(STKWELL_ADDRESS);
 
     expect(result).toBe(12.5);
+  });
+
+  test("calls the lunar-indexer Merkl proxy for campaigns", async () => {
+    mockFetchResponses([{ ok: true, data: [] }]);
+
+    await getMerklStakingApr(STKWELL_ADDRESS, "https://indexer.test");
+
+    const calledUrl = vi.mocked(fetch).mock.calls[0]?.[0];
+    expect(calledUrl).toContain("https://indexer.test/api/v1/merkl/campaigns");
+    expect(calledUrl).not.toContain("api.merkl.xyz");
   });
 
   test("sums APRs when multiple campaigns for the same token are live", async () => {
