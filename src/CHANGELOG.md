@@ -1,5 +1,13 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.20.3
+
+### Patch Changes
+
+- [#309](https://github.com/moonwell-fi/moonwell-sdk/pull/309) [`9dbfe47c88676325c9263cf84e7111ade21f566a`](https://github.com/moonwell-fi/moonwell-sdk/commit/9dbfe47c88676325c9263cf84e7111ade21f566a) Thanks [@bprofiro](https://github.com/bprofiro)! - Route Merkl API calls through the lunar-indexer worker proxy instead of hitting `api.merkl.xyz` directly.
+
+  Merkl's v4 API needs a server-side API key for production rate limits, which the browser-side SDK cannot hold. Merkl campaign IDs, stkWELL staking APR, and Morpho/staking user rewards are now fetched from the lunar-indexer worker's `/api/v1/merkl` proxy (derived from each environment's `lunarIndexerUrl`), which injects the key and passes the query and response through unchanged. No public API changes — request/response shapes are identical. Consumers that enforce a network/CSP allowlist should ensure the lunar-indexer worker host is permitted (it is already used for other SDK data).
+
 ## 0.20.2
 
 ### Patch Changes
