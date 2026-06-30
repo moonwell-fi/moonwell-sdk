@@ -186,11 +186,14 @@ export async function getUserStakingInfo<
     }),
   );
 
-  const campaignIds = await getMerklCampaignIds();
+  const campaignIds = await getMerklCampaignIds(
+    baseEnvironment?.lunarIndexerUrl,
+  );
   const merklRewards = await getMerklRewardsData(
     campaignIds,
     base.id,
     userAddress,
+    baseEnvironment?.lunarIndexerUrl,
   );
 
   const result = envsWithStaking.flatMap((curr, index) => {

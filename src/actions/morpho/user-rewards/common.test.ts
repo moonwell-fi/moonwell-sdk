@@ -216,7 +216,7 @@ describe("getUserMorphoRewardsData", () => {
     expect(merklError.status).toBe(500);
     expect(merklError.statusText).toBe("Internal Server Error");
     expect(merklError.chainId).toBe(8453);
-    expect(merklError.url).toContain("api.merkl.xyz");
+    expect(merklError.url).toContain("/api/v1/merkl/");
     expect(merklError.message).toContain("chain 8453");
     expect(merklError.message).toContain("500");
   });
@@ -244,7 +244,7 @@ describe("getUserMorphoRewardsData", () => {
     expect(merklError.chainId).toBe(8453);
     expect(merklError.status).toBeUndefined();
     expect(merklError.statusText).toBeUndefined();
-    expect(merklError.url).toContain("api.merkl.xyz");
+    expect(merklError.url).toContain("/api/v1/merkl/");
     expect(merklError.message).toContain("network error");
     expect(merklError.cause).toBe(networkError);
   });

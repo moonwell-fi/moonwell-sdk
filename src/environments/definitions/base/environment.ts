@@ -1,5 +1,6 @@
 import { http, defineChain, fallback } from "viem";
 import { base as baseChain } from "viem/chains";
+import { DEFAULT_LUNAR_INDEXER_URL } from "../../../common/lunar-indexer-helpers.js";
 import {
   type Environment,
   createEnvironmentConfig,
@@ -39,8 +40,7 @@ const createEnvironment = (
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",
-    lunarIndexerUrl:
-      lunarIndexerUrl || "https://lunar-services-worker.moonwell.workers.dev",
+    lunarIndexerUrl: lunarIndexerUrl || DEFAULT_LUNAR_INDEXER_URL,
     tokens,
     markets,
     vaults,

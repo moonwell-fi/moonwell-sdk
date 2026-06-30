@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import { MOONWELL_FETCH_JSON_HEADERS } from "../../common/fetch-headers.js";
+import { getMerklProxyBaseUrl } from "../../common/lunar-indexer-helpers.js";
 
 type MerklRewardsResponse = {
   chain: {
@@ -84,8 +85,13 @@ export function resetMerklCampaignIdsCache(): void {
  * Fetches all Moonwell Merkl campaign IDs from the API.
  * Results are cached in memory for 4 hours since campaigns only change monthly.
  */
-export async function getMerklCampaignIds(): Promise<string[]> {
+export async function getMerklCampaignIds(
+  lunarIndexerUrl?: string,
+): Promise<string[]> {
   const now = Date.now();
+  // The cache intentionally ignores `lunarIndexerUrl`: the Moonwell campaign set
+  // is the same regardless of which proxy host serves it, so a differing URL
+  // within the TTL still returns the cached IDs.
   if (
     campaignIdsCache !== null &&
     now - campaignIdsCache.fetchedAt < CAMPAIGN_IDS_CACHE_TTL_MS
@@ -95,7 +101,7 @@ export async function getMerklCampaignIds(): Promise<string[]> {
 
   try {
     const response = await fetch(
-      `https://api.merkl.xyz/v4/campaigns?creatorAddress=${MOONWELL_MERKL_CREATOR}&excludeSubCampaigns=true&items=100`,
+      `${getMerklProxyBaseUrl(lunarIndexerUrl)}/campaigns?creatorAddress=${MOONWELL_MERKL_CREATOR}&excludeSubCampaigns=true&items=100`,
       { headers: MOONWELL_FETCH_JSON_HEADERS },
     );
 
@@ -120,10 +126,12 @@ export async function getMerklRewardsData(
   campaignId: string[],
   chainId: number,
   account: Address,
+  lunarIndexerUrl?: string,
 ): Promise<MerklReward[]> {
+  const merklProxyBaseUrl = getMerklProxyBaseUrl(lunarIndexerUrl);
   try {
     const page0Response = await fetch(
-      `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=0&reloadChainId=${chainId}`,
+      `${merklProxyBaseUrl}/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=0&reloadChainId=${chainId}`,
       {
         headers: MOONWELL_FETCH_JSON_HEADERS,
       },
@@ -145,7 +153,7 @@ export async function getMerklRewardsData(
     // Paginate through remaining breakdown pages to collect all breakdowns
     for (let page = 1; page < MAX_BREAKDOWN_PAGES; page++) {
       const pageResponse = await fetch(
-        `https://api.merkl.xyz/v4/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=${page}&reloadChainId=${chainId}`,
+        `${merklProxyBaseUrl}/users/${account}/rewards?chainId=${chainId}&test=false&breakdownPage=${page}&reloadChainId=${chainId}`,
         {
           headers: MOONWELL_FETCH_JSON_HEADERS,
         },
@@ -214,12 +222,13 @@ export async function getMerklRewardsData(
 
 export async function getMerklStakingApr(
   contractAddress: string,
+  lunarIndexerUrl?: string,
 ): Promise<number> {
   const now = Math.floor(Date.now() / 1000);
 
   try {
     const response = await fetch(
-      `https://api.merkl.xyz/v4/campaigns?creatorAddress=${MOONWELL_MERKL_CREATOR}&excludeSubCampaigns=true&items=100`,
+      `${getMerklProxyBaseUrl(lunarIndexerUrl)}/campaigns?creatorAddress=${MOONWELL_MERKL_CREATOR}&excludeSubCampaigns=true&items=100`,
       { headers: MOONWELL_FETCH_JSON_HEADERS },
     );
 

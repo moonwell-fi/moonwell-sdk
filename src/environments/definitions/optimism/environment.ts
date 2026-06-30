@@ -1,5 +1,6 @@
 import { http, defineChain, fallback } from "viem";
 import { optimism as optimismChain } from "viem/chains";
+import { DEFAULT_LUNAR_INDEXER_URL } from "../../../common/lunar-indexer-helpers.js";
 import { createEnvironmentConfig } from "../../types/config.js";
 import { contracts } from "./contracts.js";
 import { markets } from "./core-markets.js";
@@ -26,8 +27,7 @@ const createEnvironment = (
     transport: rpcUrls
       ? fallback(rpcUrls.map((url) => http(url)))
       : http("https://rpc.moonwell.fi/main/evm/10"),
-    lunarIndexerUrl:
-      lunarIndexerUrl || "https://lunar-services-worker.moonwell.workers.dev",
+    lunarIndexerUrl: lunarIndexerUrl || DEFAULT_LUNAR_INDEXER_URL,
     governanceIndexerUrl:
       governanceIndexerUrl ||
       "https://lunar-services-worker.moonwell.workers.dev",
