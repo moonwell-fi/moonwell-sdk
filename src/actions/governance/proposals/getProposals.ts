@@ -185,6 +185,10 @@ async function getMoonbeamProposals(
       environment: governanceEnvironment,
     };
 
+    if (apiProposal.snapshotBlocks) {
+      proposal.snapshotBlocks = apiProposal.snapshotBlocks;
+    }
+
     if (isMultichain) {
       proposal.multichain = {
         id: apiProposal.proposalId,
