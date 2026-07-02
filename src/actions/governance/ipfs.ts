@@ -50,8 +50,8 @@ export const fetchIpfsContent = async (hash: string): Promise<string> => {
  * fetches run in parallel.
  *
  * Failures are logged via console.warn AND surfaced through
- * `env.onError` (matching the convention used by `getProposalData` /
- * `getExtendedProposalData`), then swallowed per-proposal: the `ipfs://` URI
+ * `env.onError` (matching the convention used by `getProposalsOnChainData` /
+ * `readCrossChainQuorums`), then swallowed per-proposal: the `ipfs://` URI
  * is left untouched so consumers can detect (e.g. via
  * `description.startsWith("ipfs://")`) and render a fallback. The bulk call
  * never rejects, so a single bad pin doesn't kill `getProposals()` for

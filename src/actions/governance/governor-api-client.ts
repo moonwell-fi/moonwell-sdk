@@ -12,9 +12,26 @@ const getGovernorApiUrl = (environment: Environment): string => {
 
 /**
  * Chains the governor indexer serves. Ethereum first because that's where the
- * active multigov contract lives; Moonbeam follows for the historical archive.
+ * active multigov contract lives; Moonbeam follows for the historical archive,
+ * then Moonriver (legacy standalone governor).
+ *
+ * This is the fan-out set for `getUserVoteReceipt` — a bare proposalId is
+ * queried on every chain and non-empty receipts are concatenated. Do NOT use it
+ * as the single-proposal fallback in `getProposal`: Moonriver has its own
+ * explicit route there, and reaching a 1285 proposal through a Moonbeam env
+ * would surface a degraded result (see `MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS`).
  */
-export const SUPPORTED_GOVERNOR_CHAIN_IDS = [1, 1284] as const;
+export const SUPPORTED_GOVERNOR_CHAIN_IDS = [1, 1284, 1285] as const;
+
+/**
+ * Fallback chains for a single multigov proposal lookup (`getProposal` with no
+ * explicit `chainId`), tried first-hit-wins. Deliberately excludes Moonriver
+ * (1285): Moonriver proposals are fetched through their own env via an explicit
+ * chainId, so a bare Moonbeam/Ethereum lookup must never resolve to a 1285
+ * proposal — that would return `quorum: 0n` (cross-chain quorum skips
+ * governor-less chains) and the wrong `environment`.
+ */
+export const MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS = [1, 1284] as const;
 
 /**
  * Build the chain-prefixed proposal key the indexer requires
@@ -103,6 +120,13 @@ export type ApiProposal = {
   targets: string[];
   values: string[];
   calldatas: string[];
+  /**
+   * Legacy/Artemis-governor function signatures (e.g. "setDirectPrice(address,uint256)"),
+   * parallel to `targets`/`calldatas`. Present for legacy-governor proposals
+   * (Moonriver, early Moonbeam) whose calldata carries no 4-byte selector;
+   * empty/absent for multichain-governor proposals (selector is in the calldata).
+   */
+  signatures?: string[];
   votingStartTime: number;
   votingEndTime: number;
   description: string;
@@ -174,8 +198,9 @@ export type FetchProposalsOptions = PaginationOptions & {
 /**
  * Fetch proposals from Governor API
  *
- * `chainId` is required by the indexer — 1 (Ethereum multigov) or
- * 1284 (Moonbeam historical). Missing/unsupported chainId returns 400.
+ * `chainId` is required by the indexer — 1 (Ethereum multigov),
+ * 1284 (Moonbeam historical), or 1285 (Moonriver legacy). Missing/unsupported
+ * chainId returns 400.
  */
 export async function fetchProposals(
   environment: Environment,

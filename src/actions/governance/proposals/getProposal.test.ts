@@ -121,6 +121,9 @@ describe("getProposal state post-processing", () => {
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(result?.state).toBe(1); // ProposalState.Active
+    // Empty-fallback: the API omits `signatures` for multichain proposals
+    // (selector is in the calldata), so `apiProposal.signatures ?? []` yields [].
+    expect(result?.signatures).toEqual([]);
     // Regression guard against #3: the third argument carrying
     // `crossChainQuorums` must reach getProposalsOnChainData. A wiring
     // regression that drops it would still make assertions on `state` pass.
@@ -316,7 +319,7 @@ describe("getProposal fallback behavior", () => {
     expect(mockedFetchProposal.mock.calls[1]?.[1]).toBe(MOONBEAM_CHAIN_ID);
   });
 
-  test("returns undefined when both chains return NotFoundError", async () => {
+  test("returns undefined when the multigov chains (1, 1284) return NotFoundError", async () => {
     mockedFetchProposal
       .mockRejectedValueOnce(new GovernorNotFoundError(ETHEREUM_CHAIN_ID, 7))
       .mockRejectedValueOnce(new GovernorNotFoundError(MOONBEAM_CHAIN_ID, 7));
@@ -327,8 +330,42 @@ describe("getProposal fallback behavior", () => {
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(result).toBeUndefined();
+    // Only the two multigov chains are tried — Moonriver (1285) is NOT in the
+    // fallback, so the loop stops at 1284.
     expect(mockedFetchProposal).toHaveBeenCalledTimes(2);
     expect(mockedOnChain).not.toHaveBeenCalled();
+  });
+
+  test("bare Moonbeam lookup does NOT fall through to a Moonriver (1285) proposal", async () => {
+    // Regression for the review Major: 1285 must not be in the multigov fallback.
+    // A bare id that 404s on Ethereum and Moonbeam but exists on Moonriver must
+    // return undefined (not the 1285 proposal, which would carry quorum: 0n and
+    // the wrong environment when reached via the Moonbeam env). The
+    // chainId-keyed implementation would surface a 1285 proposal if the fallback
+    // ever regressed to include it — so the test fails loudly on regression.
+    mockedFetchProposal.mockImplementation(async (_env, cid) => {
+      if (cid === 1285) {
+        return { ...baseApiProposal, chainId: 1285, proposalId: 7 };
+      }
+      throw new GovernorNotFoundError(cid, 7);
+    });
+
+    const result = await getProposal(client, {
+      network: "moonbeam",
+      proposalId: 7,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result).toBeUndefined();
+    expect(mockedFetchProposal).toHaveBeenCalledTimes(2);
+    expect(mockedFetchProposal).not.toHaveBeenCalledWith(
+      expect.anything(),
+      1285,
+      expect.anything(),
+    );
+
+    // clearAllMocks (this file's afterEach) doesn't drop implementations; reset
+    // so the persistent impl doesn't leak into later tests' once-queues.
+    mockedFetchProposal.mockReset();
   });
 
   test("re-throws non-404 errors without trying the next chain (indexer outage)", async () => {
@@ -389,6 +426,75 @@ describe("getProposal fallback behavior", () => {
 
     expect(result).toBeUndefined();
     expect(mockedFetchProposal).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Moonriver routing branch (MOO-493) — single legacy governor, served by the
+// same lunar indexer Governor API, never multichain.
+// ---------------------------------------------------------------------------
+
+describe("getProposal Moonriver via Governor API (MOO-493)", () => {
+  test("routes through fetchProposal with chainId 1285 and no fallback (no Ponder)", async () => {
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      id: "1285-0000000074",
+      chainId: 1285,
+      proposalId: 74,
+    });
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposal(client, {
+      network: "moonriver",
+      proposalId: 74,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.chainId).toBe(1285);
+    expect(result?.proposalId).toBe(74);
+    // Exactly one call, pinned to chainId 1285 — Moonriver is never tried
+    // against the Ethereum/Moonbeam chains, and the old Ponder path is gone.
+    expect(mockedFetchProposal).toHaveBeenCalledTimes(1);
+    expect(mockedFetchProposal).toHaveBeenCalledWith(moonriverEnv, 1285, 74);
+    expect(mockedOnChain).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.anything(),
+      expect.objectContaining({ crossChainQuorums: expect.any(Map) }),
+    );
+  });
+
+  test("maps a non-multichain Moonriver proposal to the legacy Proposal shape", async () => {
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      id: "1285-0000000074",
+      chainId: 1285,
+      proposalId: 74,
+      description: "# MIP-R10: Test\nbody",
+      // Legacy-governor signatures (selector lives here, not in the calldata) —
+      // the mapper must pass them through for the frontend to decode the call.
+      signatures: [
+        "setDirectPrice(address,uint256)",
+        "setFeed(string,address)",
+      ],
+    });
+    mockedOnChain.mockResolvedValueOnce([
+      { ...defaultOnChain, state: ProposalState.Succeeded, quorum: 123n },
+    ]);
+
+    const result = await getProposal(client, {
+      network: "moonriver",
+      proposalId: 74,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.id).toBe(74);
+    expect(result?.state).toBe(ProposalState.Succeeded);
+    expect(result?.quorum.exponential).toBe(123n);
+    expect(result?.signatures).toEqual([
+      "setDirectPrice(address,uint256)",
+      "setFeed(string,address)",
+    ]);
+    // No multichain governor on Moonriver → the field must be absent.
+    expect(result?.multichain).toBeUndefined();
+    expect(result?.environment).toBe(moonriverEnv);
   });
 });
 

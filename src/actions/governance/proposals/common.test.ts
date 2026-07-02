@@ -226,6 +226,33 @@ describe("classifyProposalMultichain", () => {
       ),
     ).toBe(true);
   });
+
+  test("cutoff read failure (undefined) does NOT bias to multichain on a legacy-only chain (Moonriver)", () => {
+    // MOO-493: Moonriver has a legacy governor but no multichainGovernor, so the
+    // proposal-171 unknown-cutoff bias must not apply — biasing to multichain
+    // would route reads to a nonexistent multichain governor and surface a
+    // spurious `multichain` field. With hasMultichainGovernor=false it stays
+    // non-multichain and reads from the legacy governor.
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 999, chainId: 1285 },
+        undefined,
+        false,
+      ),
+    ).toBe(false);
+  });
+
+  test("cutoff read failure (undefined) still biases to multichain when the chain has a multichain governor", () => {
+    // Explicit hasMultichainGovernor=true keeps the dual-governor (Moonbeam)
+    // bias intact even when passed explicitly.
+    expect(
+      classifyProposalMultichain(
+        { targets: [LOCAL_TARGET], proposalId: 999, chainId: 1284 },
+        undefined,
+        true,
+      ),
+    ).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -755,5 +782,33 @@ describe("getProposalsOnChainData local read failure", () => {
 
     expect(data?.state).toBe(ProposalState.Executed);
     expect(data?.proposalData).toBeNull();
+  });
+
+  test("reports a swallowed quorum-read failure via onError with a distinct source", async () => {
+    // The quorum read runs once before the per-proposal loop, so an empty
+    // proposals array isolates it. On failure quorum silently stays 0n; the
+    // onError call is the only signal, and it uses a `governance-quorum` source
+    // distinct from the state/proposals reads for attributability.
+    const onError = vi.fn();
+    const env = {
+      chainId: 1285,
+      contracts: {
+        governor: {
+          read: {
+            getQuorum: vi.fn().mockRejectedValue(new Error("RPC down")),
+            proposalCount: vi.fn().mockResolvedValue(0n),
+          },
+        },
+      },
+      custom: {},
+      onError,
+    } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+    await getProposalsOnChainData([], env);
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ source: "governance-quorum", chainId: 1285 }),
+    );
   });
 });

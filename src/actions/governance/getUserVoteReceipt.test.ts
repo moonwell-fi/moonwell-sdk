@@ -17,6 +17,7 @@ const mockedFetch = vi.mocked(fetchUserVoteReceipt);
 
 const ETHEREUM_CHAIN_ID = 1;
 const MOONBEAM_CHAIN_ID = 1284;
+const MOONRIVER_CHAIN_ID = 1285;
 const USER_ADDRESS = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as const;
 
 const moonbeamEnv = {
@@ -73,7 +74,8 @@ describe("getUserVoteReceipt", () => {
   test("returns receipts from chainId=1 when only that chain has votes", async () => {
     mockedFetch
       .mockResolvedValueOnce([makeReceipt(ETHEREUM_CHAIN_ID, "1000")])
-      .mockResolvedValueOnce([]); // chainId=1284 → proposal exists, user didn't vote
+      .mockResolvedValueOnce([]) // chainId=1284 → proposal exists, user didn't vote
+      .mockResolvedValueOnce([]); // chainId=1285 → Moonriver, user didn't vote
 
     const result = await getUserVoteReceipt(client, {
       network: "moonbeam",
@@ -84,16 +86,17 @@ describe("getUserVoteReceipt", () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.voted).toBe(true);
     expect(result[0]?.chainId).toBe(ETHEREUM_CHAIN_ID);
-    expect(mockedFetch).toHaveBeenCalledTimes(2);
+    expect(mockedFetch).toHaveBeenCalledTimes(3);
   });
 
-  test("concatenates receipts from BOTH chains (proposalId collision case)", async () => {
-    // proposalId=7 happens to exist on both chains as different proposals; the
-    // same wallet voted on each. Caller should see both receipts, not just the
-    // first chain's.
+  test("concatenates receipts across chains (proposalId collision case)", async () => {
+    // proposalId=7 happens to exist on multiple chains as different proposals;
+    // the same wallet voted on each. Caller should see every receipt, not just
+    // the first chain's. Moonriver acknowledges but has no vote here.
     mockedFetch
       .mockResolvedValueOnce([makeReceipt(ETHEREUM_CHAIN_ID, "1000")])
-      .mockResolvedValueOnce([makeReceipt(MOONBEAM_CHAIN_ID, "500")]);
+      .mockResolvedValueOnce([makeReceipt(MOONBEAM_CHAIN_ID, "500")])
+      .mockResolvedValueOnce([]); // chainId=1285 → Moonriver, no vote
 
     const result = await getUserVoteReceipt(client, {
       network: "moonbeam",
@@ -108,7 +111,8 @@ describe("getUserVoteReceipt", () => {
   test("does not stop on a 200-empty response — would otherwise miss the other chain's vote", async () => {
     mockedFetch
       .mockResolvedValueOnce([]) // chainId=1: proposal exists, user didn't vote
-      .mockResolvedValueOnce([makeReceipt(MOONBEAM_CHAIN_ID, "750")]);
+      .mockResolvedValueOnce([makeReceipt(MOONBEAM_CHAIN_ID, "750")])
+      .mockResolvedValueOnce([]); // chainId=1285 → Moonriver, no vote
 
     const result = await getUserVoteReceipt(client, {
       network: "moonbeam",
@@ -120,8 +124,11 @@ describe("getUserVoteReceipt", () => {
     expect(result[0]?.chainId).toBe(MOONBEAM_CHAIN_ID);
   });
 
-  test("returns the empty-vote stub when both chains acknowledge but neither has receipts", async () => {
-    mockedFetch.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  test("returns the empty-vote stub when all chains acknowledge but none have receipts", async () => {
+    mockedFetch
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]); // chainId=1285 → Moonriver acknowledges, no vote
 
     const result = await getUserVoteReceipt(client, {
       network: "moonbeam",
@@ -134,10 +141,11 @@ describe("getUserVoteReceipt", () => {
     expect(result[0]?.account).toBe(USER_ADDRESS);
   });
 
-  test("throws GovernorNotFoundError when both chains return 404 (proposal genuinely doesn't exist)", async () => {
+  test("throws GovernorNotFoundError when all chains return 404 (proposal genuinely doesn't exist)", async () => {
     mockedFetch
       .mockRejectedValueOnce(new GovernorNotFoundError(ETHEREUM_CHAIN_ID, 7))
-      .mockRejectedValueOnce(new GovernorNotFoundError(MOONBEAM_CHAIN_ID, 7));
+      .mockRejectedValueOnce(new GovernorNotFoundError(MOONBEAM_CHAIN_ID, 7))
+      .mockRejectedValueOnce(new GovernorNotFoundError(MOONRIVER_CHAIN_ID, 7));
 
     await expect(
       getUserVoteReceipt(client, {

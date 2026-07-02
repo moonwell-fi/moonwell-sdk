@@ -23,10 +23,10 @@ export type GetUserVoteReceiptParameters<
 
   /**
    * The chain the proposal lives on (1 = Ethereum multigov,
-   * 1284 = Moonbeam historical). When omitted, every supported chain is queried
-   * and non-empty receipts are concatenated — proposalIds may collide across
-   * chains (they represent different proposals), so a single bare proposalId
-   * can have votes on both Ethereum and Moonbeam.
+   * 1284 = Moonbeam historical, 1285 = Moonriver legacy). When omitted, every
+   * supported chain is queried and non-empty receipts are concatenated —
+   * proposalIds may collide across chains (they represent different proposals),
+   * so a single bare proposalId can have votes on more than one chain.
    */
   chainId?: number;
 };
