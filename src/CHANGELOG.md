@@ -1,5 +1,15 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.20.4
+
+### Patch Changes
+
+- [#311](https://github.com/moonwell-fi/moonwell-sdk/pull/311) [`140050d40e4931cff917044c3c9f6c840aade04e`](https://github.com/moonwell-fi/moonwell-sdk/commit/140050d40e4931cff917044c3c9f6c840aade04e) Thanks [@bprofiro](https://github.com/bprofiro)! - Route Moonriver (chainId 1285) governance through the lunar-indexer Governor API instead of Ponder (`ponder-eu2.moonwell.fi`).
+
+  Moonriver proposals (`getProposals`/`getProposal`, via `fetchAllProposals`/`fetchProposal`) and vote receipts (`getUserVoteReceipt`, via `fetchUserVoteReceipt`) now come from the same lunar-indexer Governor API that already serves Moonbeam and Ethereum, using `chainId: 1285`. Moonriver runs a single legacy standalone governor (no multichain governor), so proposals are classified non-multichain and read state/quorum from the legacy governor exactly as the existing Moonbeam-historical path does. `SUPPORTED_GOVERNOR_CHAIN_IDS` now includes 1285 (additive). No public API changes — request/response shapes are identical, and Moonriver's lending `indexerUrl` is untouched. The old Ponder-based proposal fetchers have been removed.
+
+- [#312](https://github.com/moonwell-fi/moonwell-sdk/pull/312) [`d367efab44965422865dd72b41f48ebaea98b996`](https://github.com/moonwell-fi/moonwell-sdk/commit/d367efab44965422865dd72b41f48ebaea98b996) Thanks [@bprofiro](https://github.com/bprofiro)! - Surface the lunar-indexer's per-chain `snapshotBlocks` on the `Proposal` type (MOO-499). The indexer now resolves and stores the authoritative voting-power snapshot block for each chain (`mainnet`, `base`, `optimism`, `moonbeam`) on the proposal record; `getProposal`/`getProposals` now pass that map straight through. Consumers can read voting power directly at these blocks instead of resolving the snapshot timestamp to a block client-side, which is both faster and more correct (the indexer reads the real on-chain snapshot block, which can differ by one from a timestamp-derived block). The field is optional and absent for proposals indexed before it existed and for on-chain (Moonriver) proposals.
+
 ## 0.20.3
 
 ### Patch Changes
