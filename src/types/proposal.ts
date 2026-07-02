@@ -23,6 +23,17 @@ export type Proposal = {
     id: number;
     votesCollected: boolean;
   };
+  /**
+   * Authoritative per-chain voting-power snapshot blocks resolved by the
+   * lunar-indexer, keyed by chain name (`mainnet` → 1, `base` → 8453,
+   * `optimism` → 10, `moonbeam` → 1284). Block numbers are decimal strings.
+   *
+   * Present on indexer-sourced multichain proposals; absent for older
+   * proposals indexed before the field existed and for on-chain (Moonriver)
+   * proposals. Consumers reading voting power should prefer these blocks over
+   * resolving the snapshot timestamp to a block client-side.
+   */
+  snapshotBlocks?: Record<string, string>;
   //proposal extended data
   title?: string;
   subtitle?: string;

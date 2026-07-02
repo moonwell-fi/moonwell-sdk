@@ -113,6 +113,12 @@ export type ApiProposal = {
   timestamp: number;
   transactionHash: string;
   stateChanges?: ApiProposalStateChange[];
+  /**
+   * Per-chain voting-power snapshot blocks resolved by the indexer, keyed by
+   * chain name (`mainnet`, `base`, `optimism`, `moonbeam`). Decimal strings.
+   * Omitted for proposals indexed before this field existed.
+   */
+  snapshotBlocks?: Record<string, string>;
 };
 
 export type ApiVote = {

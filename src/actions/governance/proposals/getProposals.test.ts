@@ -337,3 +337,62 @@ describe("getProposals sort + partial-failure behavior", () => {
     );
   });
 });
+
+describe("getProposals snapshotBlocks passthrough", () => {
+  const snapshotBlocks = {
+    mainnet: "25395850",
+    base: "47807867",
+    optimism: "153403152",
+    moonbeam: "16179174",
+  };
+
+  test("surfaces the indexer's per-chain snapshotBlocks on each listed proposal unchanged", async () => {
+    mockedFetchAll
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { ...makeApiProposal(MOONBEAM_CHAIN_ID, 50), snapshotBlocks },
+      ]);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposals(client, {
+      network: "moonbeam",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    // Surfaced verbatim — no key normalization, no derivation from blockNumber.
+    expect(result[0]?.snapshotBlocks).toEqual(snapshotBlocks);
+  });
+
+  test("leaves snapshotBlocks undefined for proposals indexed before the field existed", async () => {
+    mockedFetchAll
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeApiProposal(MOONBEAM_CHAIN_ID, 51)]);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposals(client, {
+      network: "moonbeam",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result[0]?.snapshotBlocks).toBeUndefined();
+  });
+
+  test("passes a partial snapshotBlocks map through without filling in the missing chains", async () => {
+    // The indexer may omit a chain (e.g. it hasn't resolved that chain's
+    // snapshot yet). The SDK must not invent or backfill blocks — the frontend
+    // relies on the absence to fall back to timestamp resolution per chain.
+    const partial = { mainnet: "25395850", base: "47807867" };
+    mockedFetchAll
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { ...makeApiProposal(MOONBEAM_CHAIN_ID, 52), snapshotBlocks: partial },
+      ]);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposals(client, {
+      network: "moonbeam",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result[0]?.snapshotBlocks).toEqual(partial);
+    expect(result[0]?.snapshotBlocks?.optimism).toBeUndefined();
+    expect(result[0]?.snapshotBlocks?.moonbeam).toBeUndefined();
+  });
+});

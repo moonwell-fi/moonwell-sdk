@@ -478,3 +478,44 @@ describe("getProposal mainnet routing", () => {
     expect(mockedFetchProposal).not.toHaveBeenCalled();
   });
 });
+
+describe("getProposal snapshotBlocks passthrough", () => {
+  test("surfaces the indexer's per-chain snapshotBlocks unchanged", async () => {
+    const snapshotBlocks = {
+      mainnet: "25395850",
+      base: "47807867",
+      optimism: "153403152",
+      moonbeam: "16179174",
+    };
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      chainId: MOONBEAM_CHAIN_ID,
+      snapshotBlocks,
+    });
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposal(client, {
+      network: "moonbeam",
+      proposalId: 7,
+      chainId: MOONBEAM_CHAIN_ID,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.snapshotBlocks).toEqual(snapshotBlocks);
+  });
+
+  test("leaves snapshotBlocks undefined for proposals indexed before the field existed", async () => {
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      chainId: MOONBEAM_CHAIN_ID,
+    });
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposal(client, {
+      network: "moonbeam",
+      proposalId: 7,
+      chainId: MOONBEAM_CHAIN_ID,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result?.snapshotBlocks).toBeUndefined();
+  });
+});
