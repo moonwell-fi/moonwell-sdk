@@ -6,7 +6,7 @@ import type { Chain, Environment } from "../../../environments/index.js";
 import { type Proposal, ProposalState } from "../../../types/proposal.js";
 import {
   type ApiProposal,
-  SUPPORTED_GOVERNOR_CHAIN_IDS,
+  MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS,
   fetchProposal,
   isNotFoundError,
 } from "../governor-api-client.js";
@@ -84,16 +84,19 @@ export async function getProposal<
  * Moonriver legacy governor).
  *
  * When `chainId` is provided we hit only that chain. When omitted we try the
- * supported chains in order (Ethereum first since that's where active multigov
- * proposals live) and fall back on `NotFoundError`. Real outages (5xx, network
- * errors) propagate so callers can distinguish "missing" from "broken".
+ * multigov chains in order (Ethereum first since that's where active multigov
+ * proposals live) and fall back on `NotFoundError`. Moonriver (1285) is
+ * deliberately absent from the fallback — it has its own explicit route, and a
+ * bare lookup resolving to it through a non-Moonriver env would be degraded.
+ * Real outages (5xx, network errors) propagate so callers can distinguish
+ * "missing" from "broken".
  */
 async function getGovernorApiProposal(
   governanceEnvironment: Environment,
   proposalId: number,
   chainId?: number,
 ): Promise<Proposal | undefined> {
-  const tryChains = chainId ? [chainId] : SUPPORTED_GOVERNOR_CHAIN_IDS;
+  const tryChains = chainId ? [chainId] : MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS;
 
   let apiProposal: ApiProposal | undefined;
   for (const cid of tryChains) {

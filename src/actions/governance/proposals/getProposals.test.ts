@@ -144,6 +144,9 @@ describe("getProposals state post-processing", () => {
     } as unknown as Parameters<typeof getProposals>[1]);
 
     expect(result[0]?.state).toBe(1); // ProposalState.Active
+    // Empty-fallback: the API omits `signatures` for multichain proposals
+    // (selector is in the calldata), so `apiProposal.signatures ?? []` yields [].
+    expect(result[0]?.signatures).toEqual([]);
     // Regression guard against #3: the third argument carrying
     // `crossChainQuorums` must reach getProposalsOnChainData. A wiring
     // regression that drops it would still make the state assertion pass.

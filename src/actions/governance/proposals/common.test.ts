@@ -783,4 +783,32 @@ describe("getProposalsOnChainData local read failure", () => {
     expect(data?.state).toBe(ProposalState.Executed);
     expect(data?.proposalData).toBeNull();
   });
+
+  test("reports a swallowed quorum-read failure via onError with a distinct source", async () => {
+    // The quorum read runs once before the per-proposal loop, so an empty
+    // proposals array isolates it. On failure quorum silently stays 0n; the
+    // onError call is the only signal, and it uses a `governance-quorum` source
+    // distinct from the state/proposals reads for attributability.
+    const onError = vi.fn();
+    const env = {
+      chainId: 1285,
+      contracts: {
+        governor: {
+          read: {
+            getQuorum: vi.fn().mockRejectedValue(new Error("RPC down")),
+            proposalCount: vi.fn().mockResolvedValue(0n),
+          },
+        },
+      },
+      custom: {},
+      onError,
+    } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+    await getProposalsOnChainData([], env);
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ source: "governance-quorum", chainId: 1285 }),
+    );
+  });
 });

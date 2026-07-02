@@ -136,7 +136,7 @@ async function getMoonriverProposals(
     );
     governanceEnvironment.onError?.(reason, {
       source: "governance-proposals",
-      chainId: governanceEnvironment.chainId,
+      chainId: moonriver.id,
     });
   }
   return buildProposals(apiProposals, governanceEnvironment);

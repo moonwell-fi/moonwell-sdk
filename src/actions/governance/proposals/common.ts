@@ -384,11 +384,13 @@ export const getProposalsOnChainData = async (
           : await governanceEnvironment.contracts.governor.read.getQuorum();
     } catch (error) {
       console.warn("Failed to fetch quorum:", error);
-      // Report like the state/proposals reads below so a swallowed quorum
-      // failure (which leaves quorum at 0n) is still observable to onError-wired
-      // consumers — the legacy Moonriver path surfaced this too.
+      // Report so a swallowed quorum failure (which leaves quorum at 0n) is
+      // still observable to onError-wired consumers — the legacy Moonriver path
+      // surfaced this too. Uses a distinct `source` from the state/proposals
+      // reads (and from readCrossChainQuorums' "governance-cross-chain-quorum")
+      // so a local quorum-read failure is attributable on its own.
       governanceEnvironment.onError?.(error, {
-        source: "governance-proposals",
+        source: "governance-quorum",
         chainId: governanceEnvironment.chainId,
       });
     }
