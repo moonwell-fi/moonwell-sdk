@@ -104,6 +104,13 @@ export type ApiProposal = {
   targets: string[];
   values: string[];
   calldatas: string[];
+  /**
+   * Legacy/Artemis-governor function signatures (e.g. "setDirectPrice(address,uint256)"),
+   * parallel to `targets`/`calldatas`. Present for legacy-governor proposals
+   * (Moonriver, early Moonbeam) whose calldata carries no 4-byte selector;
+   * empty/absent for multichain-governor proposals (selector is in the calldata).
+   */
+  signatures?: string[];
   votingStartTime: number;
   votingEndTime: number;
   description: string;

@@ -314,6 +314,13 @@ describe("getProposals Moonriver via Governor API (MOO-493)", () => {
         ...makeApiProposal(MOONRIVER_CHAIN_ID, 74),
         proposer: "0x18275952d3ea09d80dbe446d2cba085e01e681b4",
         description: "# MIP-R10: Test\nbody",
+        // Legacy-governor proposals carry the function signature separately from
+        // the selector-less calldata; the mapper must pass it through so the
+        // frontend can decode the call map.
+        signatures: [
+          "setDirectPrice(address,uint256)",
+          "setFeed(string,address)",
+        ],
       },
     ]);
     mockedOnChain.mockResolvedValueOnce([
@@ -332,6 +339,10 @@ describe("getProposals Moonriver via Governor API (MOO-493)", () => {
       "0x18275952d3ea09d80dbe446d2cba085e01e681b4",
     );
     expect(proposal?.quorum.exponential).toBe(123n);
+    expect(proposal?.signatures).toEqual([
+      "setDirectPrice(address,uint256)",
+      "setFeed(string,address)",
+    ]);
     expect(proposal?.multichain).toBeUndefined();
     expect(proposal?.environment).toBe(moonriverEnv);
   });

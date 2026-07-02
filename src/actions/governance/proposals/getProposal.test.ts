@@ -433,6 +433,12 @@ describe("getProposal Moonriver via Governor API (MOO-493)", () => {
       chainId: 1285,
       proposalId: 74,
       description: "# MIP-R10: Test\nbody",
+      // Legacy-governor signatures (selector lives here, not in the calldata) —
+      // the mapper must pass them through for the frontend to decode the call.
+      signatures: [
+        "setDirectPrice(address,uint256)",
+        "setFeed(string,address)",
+      ],
     });
     mockedOnChain.mockResolvedValueOnce([
       { ...defaultOnChain, state: ProposalState.Succeeded, quorum: 123n },
@@ -446,6 +452,10 @@ describe("getProposal Moonriver via Governor API (MOO-493)", () => {
     expect(result?.id).toBe(74);
     expect(result?.state).toBe(ProposalState.Succeeded);
     expect(result?.quorum.exponential).toBe(123n);
+    expect(result?.signatures).toEqual([
+      "setDirectPrice(address,uint256)",
+      "setFeed(string,address)",
+    ]);
     // No multichain governor on Moonriver → the field must be absent.
     expect(result?.multichain).toBeUndefined();
     expect(result?.environment).toBe(moonriverEnv);

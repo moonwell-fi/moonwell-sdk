@@ -178,7 +178,10 @@ async function getGovernorApiProposal(
     description: apiProposal.description,
     targets: apiProposal.targets,
     calldatas: apiProposal.calldatas,
-    signatures: [],
+    // Legacy-governor proposals (Moonriver, early Moonbeam) carry the function
+    // signature separately from the selector-less calldata; pass it through so
+    // consumers can decode the call. Empty for multichain-governor proposals.
+    signatures: apiProposal.signatures ?? [],
     stateChanges: formattedData.stateChanges,
     environment: governanceEnvironment,
   };
