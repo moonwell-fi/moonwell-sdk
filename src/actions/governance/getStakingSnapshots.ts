@@ -9,7 +9,6 @@ import {
 import type { NetworkParameterType } from "../../common/types.js";
 import type { Chain } from "../../environments/index.js";
 import type { StakingSnapshot } from "../../types/staking.js";
-import { postWithRetry } from "../axiosWithRetry.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
@@ -47,18 +46,7 @@ export async function getStakingSnapshots<
   } = (args ?? {}) as GetStakingSnapshotsParameters<environments, undefined>;
 
   if (!environment.lunarIndexerUrl) {
-    const { startTime } = calculateTimeRange(
-      period,
-      customStartTime,
-      customEndTime,
-    );
-    return environment.indexerUrl
-      ? fetchStakingSnapshotsFromPonder(
-          environment.chainId,
-          environment.indexerUrl,
-          startTime,
-        )
-      : [];
+    return [];
   }
 
   try {
@@ -121,50 +109,4 @@ async function fetchStakingSnapshotsFromLunar(
 
   allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
   return applyGranularity(allSnapshots, granularity);
-}
-
-async function fetchStakingSnapshotsFromPonder(
-  chainId: number,
-  indexerUrl: string,
-  startTime?: number,
-): Promise<StakingSnapshot[]> {
-  try {
-    const response = await postWithRetry<{
-      data: {
-        stakingDailySnapshots: {
-          items: StakingSnapshot[];
-        };
-      };
-    }>(indexerUrl, {
-      query: `
-          query {
-            stakingDailySnapshots(
-              limit: 365,
-              orderBy: "timestamp"
-              orderDirection: "desc"
-              where: {chainId: ${chainId}}
-            ) {
-              items {
-                chainId
-                totalStaked
-                totalStakedUSD
-                timestamp
-              }
-            }
-          }
-        `,
-    });
-
-    if (response.status === 200 && response.data?.data?.stakingDailySnapshots) {
-      const items = response.data.data.stakingDailySnapshots.items;
-      return startTime
-        ? items.filter((item) => item.timestamp >= startTime)
-        : items;
-    } else {
-      return [];
-    }
-  } catch (ex) {
-    console.error("An error occured while fetching getStakingSnapshots...", ex);
-    return [];
-  }
 }
