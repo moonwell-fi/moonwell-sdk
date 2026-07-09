@@ -19,13 +19,6 @@ function createGovernanceTokensConfig<T extends GovernanceTokensType>(
 }
 
 export const GovernanceTokensConfig = createGovernanceTokensConfig({
-  WELL_TESTNET: {
-    id: "WELL_TESTNET",
-    symbol: "WELL",
-    name: "WELL (Testnet)",
-    chainIds: [] as number[],
-    testnet: true,
-  },
   WELL: {
     id: "WELL",
     symbol: "WELL",
