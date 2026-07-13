@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-15T13:36:28.427Z",
+  "generatedAt": "2026-07-13T12:14:53.108Z",
   "coverage": {
     "lines": 82.7,
     "statements": 82.7,
@@ -13,12 +13,12 @@
   "audit": {
     "critical": 0,
     "high": 0,
-    "moderate": 1,
+    "moderate": 0,
     "low": 0
   },
   "duplication": {
-    "percentage": 8.95,
-    "clones": 95,
-    "duplicatedLines": 1919
+    "percentage": 8.66,
+    "clones": 94,
+    "duplicatedLines": 1913
   }
 }
