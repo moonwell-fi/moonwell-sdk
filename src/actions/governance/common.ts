@@ -70,9 +70,23 @@ type CampaignIdsCache = {
   fetchedAt: number;
 };
 
+type MerklBreakdown =
+  MerklRewardsResponse["rewards"][number]["breakdowns"][number];
+
 const MOONWELL_MERKL_CREATOR = "0x8b621804a7637b781e2BbD58e256a591F2dF7d51";
 const CAMPAIGN_IDS_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const MAX_BREAKDOWN_PAGES = 10;
+
+/**
+ * Stable identity for a Merkl reward breakdown. The Merkl `/rewards` endpoint
+ * clamps an out-of-range `breakdownPage` back to the first page instead of
+ * returning an empty page, so appending each page's breakdowns blindly
+ * re-counts the same rewards and inflates the total by the page count (up to
+ * 10x). Keying on the full breakdown content lets us skip exact repeats while
+ * still keeping genuinely distinct distributions that share a campaignId.
+ */
+const breakdownKey = (b: MerklBreakdown): string =>
+  `${b.campaignId}|${b.reason}|${b.amount}|${b.claimed}|${b.pending}|${b.subCampaignId ?? ""}`;
 
 let campaignIdsCache: CampaignIdsCache | null = null;
 
@@ -150,6 +164,14 @@ export async function getMerklRewardsData(
       return [];
     }
 
+    // Track breakdowns already collected (seeded from page 0) so repeated
+    // pages don't double-count. See breakdownKey for why Merkl repeats them.
+    const seenBreakdowns = new Set(
+      data.flatMap((reward) =>
+        reward.rewards.flatMap((r) => r.breakdowns.map(breakdownKey)),
+      ),
+    );
+
     // Paginate through remaining breakdown pages to collect all breakdowns
     for (let page = 1; page < MAX_BREAKDOWN_PAGES; page++) {
       const pageResponse = await fetch(
@@ -173,7 +195,8 @@ export async function getMerklRewardsData(
         break;
       }
 
-      // Merge breakdowns from this page into the page-0 data
+      // Merge only breakdowns we haven't collected yet.
+      let addedNewBreakdown = false;
       for (const pageReward of pageData) {
         const baseReward = data.find((d) => d.chain.id === pageReward.chain.id);
         if (!baseReward) continue;
@@ -184,10 +207,23 @@ export async function getMerklRewardsData(
               r.token.address.toLowerCase() ===
               pageRewardEntry.token.address.toLowerCase(),
           );
-          if (baseRewardEntry) {
-            baseRewardEntry.breakdowns.push(...pageRewardEntry.breakdowns);
+          if (!baseRewardEntry) continue;
+
+          for (const breakdown of pageRewardEntry.breakdowns) {
+            const key = breakdownKey(breakdown);
+            if (seenBreakdowns.has(key)) continue;
+            seenBreakdowns.add(key);
+            baseRewardEntry.breakdowns.push(breakdown);
+            addedNewBreakdown = true;
           }
         }
+      }
+
+      // A page that only repeats breakdowns we've already seen means the API
+      // has stopped advancing (out-of-range page clamped to page 0), so
+      // continuing would just re-count the same rewards.
+      if (!addedNewBreakdown) {
+        break;
       }
     }
 

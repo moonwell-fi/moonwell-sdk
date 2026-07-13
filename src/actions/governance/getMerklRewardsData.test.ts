@@ -409,25 +409,20 @@ describe("getMerklRewardsData", () => {
   });
 
   test("stops pagination at MAX_BREAKDOWN_PAGES", async () => {
-    // Every page returns non-empty breakdowns that don't match
-    const nonMatchingPage = makeMerklResponse([
-      { campaignId: CAMPAIGN_OTHER, amount: "100", claimed: "0", pending: "0" },
-    ]);
+    // Every page returns a *distinct* non-empty, non-matching breakdown so the
+    // dedup early-stop never triggers and we exercise the hard page cap.
+    const nonMatchingPage = (amount: string) =>
+      makeMerklResponse([
+        { campaignId: CAMPAIGN_OTHER, amount, claimed: "0", pending: "0" },
+      ]);
 
-    mockFetchResponses([
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      { ok: true, data: nonMatchingPage },
-      // 11th call should never happen
-      { ok: true, data: nonMatchingPage },
-    ]);
+    mockFetchResponses(
+      // 11 pages available, but the loop must stop after fetching 10.
+      Array.from({ length: 11 }, (_, i) => ({
+        ok: true as const,
+        data: nonMatchingPage(String(100 + i)),
+      })),
+    );
 
     const result = await getMerklRewardsData(
       [CAMPAIGN_A],
@@ -438,6 +433,38 @@ describe("getMerklRewardsData", () => {
     // 1 call for page 0 + 9 calls for pages 1-9 = 10 total
     expect(fetch).toHaveBeenCalledTimes(10);
     expect(result).toHaveLength(0);
+  });
+
+  test("does not double-count breakdowns repeated on every page", async () => {
+    // Regression for MOO-587: the Merkl API clamps an out-of-range
+    // `breakdownPage` back to page 0, so it returns the *same* breakdowns on
+    // every page. Appending them blindly inflated rewards ~10x. We must count
+    // each breakdown exactly once.
+    const repeatedPage = makeMerklResponse([
+      { campaignId: CAMPAIGN_A, amount: "500", claimed: "100", pending: "0" },
+      { campaignId: CAMPAIGN_B, amount: "300", claimed: "50", pending: "0" },
+    ]);
+
+    mockFetchResponses(
+      Array.from({ length: 10 }, () => ({
+        ok: true as const,
+        data: repeatedPage,
+      })),
+    );
+
+    const result = await getMerklRewardsData(
+      [CAMPAIGN_A, CAMPAIGN_B],
+      8453,
+      "0x1234567890abcdef1234567890abcdef12345678",
+    );
+
+    // Each campaign appears exactly once, not once per page.
+    expect(result).toHaveLength(2);
+    expect(result.filter((r) => r.amount === "500")).toHaveLength(1);
+    expect(result.filter((r) => r.amount === "300")).toHaveLength(1);
+
+    // Page 0 + one repeat page detected as all-seen = 2 fetches, then stop.
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   test("returns empty array when fetch throws an exception", async () => {
