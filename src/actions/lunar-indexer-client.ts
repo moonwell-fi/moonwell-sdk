@@ -244,7 +244,7 @@ export class LunarIndexerError extends Error {
 }
 
 /**
- * Determine if an error should trigger fallback to Ponder/on-chain
+ * Determine if an error should trigger fallback to on-chain data
  */
 export function shouldFallback(error: unknown): boolean {
   if (axios.isAxiosError(error)) {
