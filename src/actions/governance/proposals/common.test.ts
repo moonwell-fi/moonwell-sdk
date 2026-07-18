@@ -812,3 +812,73 @@ describe("getProposalsOnChainData local read failure", () => {
     );
   });
 });
+
+// MOO-611: the legacy single-chain governor puts eta at tuple index 2, unlike
+// the multichain governor (index 4). See common.ts for the full bug context.
+describe("getProposalsOnChainData legacy single-chain governor eta (MOO-611)", () => {
+  const buildLegacyProposalsTuple = (eta: bigint) =>
+    [
+      0n, // id
+      "0x0000000000000000000000000000000000000001", // proposer
+      eta, // eta — legacy governor puts it at index 2
+      1_400_000_000n, // startTimestamp
+      1_500_000_000n, // endTimestamp — index 4, must NOT be read as eta
+      0n, // startBlock
+      0n, // forVotes
+      0n, // againstVotes
+      0n,
+      0n,
+      false,
+      false,
+    ] as const;
+
+  const legacyEnv = (state: bigint, proposalsTuple: unknown) =>
+    ({
+      chainId: 1285,
+      contracts: {
+        governor: {
+          read: {
+            state: vi.fn().mockResolvedValue(state),
+            proposals: vi.fn().mockResolvedValue(proposalsTuple),
+            getQuorum: vi.fn().mockResolvedValue(0n),
+            proposalCount: vi.fn().mockResolvedValue(100n),
+          },
+        },
+      },
+      custom: {},
+    }) as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+  const moonriverProposal: ApiProposal = {
+    ...baseApiProposal,
+    chainId: 1285,
+    proposalId: 42,
+    targets: [LOCAL_TARGET],
+    votingEndTime: 1_500_000_000,
+  };
+
+  test("reads eta from tuple index 2, not the index-4 endTimestamp", async () => {
+    const [data] = await getProposalsOnChainData(
+      [moonriverProposal],
+      legacyEnv(
+        BigInt(ProposalState.Queued),
+        buildLegacyProposalsTuple(1_700_000_000n),
+      ),
+    );
+
+    expect(data?.isMultichain).toBe(false);
+    expect(data?.state).toBe(ProposalState.Queued);
+    // The real timelock eta (index 2), never the voting-end endTimestamp.
+    expect(data?.eta).toBe(1_700_000_000);
+  });
+
+  test("keeps eta 0 for a legacy proposal (no multichain synthetic fallback)", async () => {
+    const [data] = await getProposalsOnChainData(
+      [moonriverProposal],
+      legacyEnv(BigInt(ProposalState.Succeeded), buildLegacyProposalsTuple(0n)),
+    );
+
+    // The votingEndTime + 1d synthesis is multichain-only; a legacy proposal
+    // that hasn't been queued yet keeps eta 0.
+    expect(data?.eta).toBe(0);
+  });
+});
