@@ -5,13 +5,11 @@ import {
   applyGranularity,
   calculateTimeRange,
   getEnvironmentFromArgs,
-  isStartOfDay,
   toApiGranularity,
 } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import type { UserPositionSnapshot } from "../../../types/userPosition.js";
-import { postWithRetry } from "../../axiosWithRetry.js";
 import {
   DEFAULT_LUNAR_TIMEOUT_MS,
   createLunarIndexerClient,
@@ -54,8 +52,7 @@ export type GetUserPositionSnapshotsReturnType = Promise<
  * @remarks
  * - Default behavior (no time parameters): Returns 365 days of history
  * - Parameter priority: Custom timestamps > period > default (365 days)
- * - When using Lunar Indexer, custom time ranges are supported
- * - Snapshots are filtered to start-of-day for "1d" granularity
+ * - Environments without a Lunar Indexer configured return an empty array
  */
 export async function getUserPositionSnapshots<
   environments,
@@ -89,23 +86,7 @@ async function fetchUserPositionSnapshots(
   granularity?: "6h" | "1d",
 ): Promise<UserPositionSnapshot[]> {
   if (!environment.lunarIndexerUrl) {
-    if (!environment.indexerUrl) return [];
-    try {
-      return await fetchUserPositionSnapshotsFromPonder(
-        userAddress,
-        environment,
-      );
-    } catch (error) {
-      console.warn(
-        `[getUserPositionSnapshots] Ponder failed for chain ${environment.chainId}:`,
-        error,
-      );
-      environment.onError?.(error, {
-        source: "user-position-snapshots-ponder",
-        chainId: environment.chainId,
-      });
-      return [];
-    }
+    return [];
   }
   try {
     return await fetchUserPositionSnapshotsFromLunar(
@@ -185,74 +166,4 @@ async function fetchUserPositionSnapshotsFromLunar(
     snapshots.slice(firstNonZeroIndex),
     resolvedGranularity,
   );
-}
-
-async function fetchUserPositionSnapshotsFromPonder(
-  userAddress: Address,
-  environment: Environment,
-): Promise<UserPositionSnapshot[]> {
-  if (!environment.indexerUrl) return [];
-
-  interface UserDailyData {
-    totalBorrowsUSD: string;
-    totalSuppliesUSD: string;
-    totalCollateralUSD: string;
-    timestamp: number;
-  }
-
-  const dailyData: UserDailyData[] = [];
-  let hasNextPage = true;
-  let endCursor: string | undefined;
-
-  while (hasNextPage) {
-    const result = await postWithRetry<{
-      data: {
-        accountDailySnapshots: {
-          items: UserDailyData[];
-          pageInfo: { hasNextPage: boolean; endCursor: string };
-        };
-      };
-    }>(environment.indexerUrl, {
-      query: `
-          query {
-            accountDailySnapshots(
-              limit: 365,
-              orderDirection: "desc",
-              orderBy: "timestamp",
-              where: { accountAddress: "${userAddress.toLowerCase()}", chainId: ${environment.chainId} }
-              ${endCursor ? `after: "${endCursor}"` : ""}
-            ) {
-              items {
-                timestamp,
-                totalBorrowsUSD,
-                totalSuppliesUSD,
-                totalCollateralUSD,
-              }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-            }
-          }
-        `,
-    });
-
-    dailyData.push(
-      ...result.data.data.accountDailySnapshots.items.filter(
-        (f: { timestamp: number }) => isStartOfDay(f.timestamp),
-      ),
-    );
-    hasNextPage = result.data.data.accountDailySnapshots.pageInfo.hasNextPage;
-    endCursor = result.data.data.accountDailySnapshots.pageInfo.endCursor;
-  }
-
-  if (dailyData.length === 0) return [];
-
-  return dailyData.map((point) => ({
-    chainId: environment.chainId,
-    timestamp: point.timestamp * 1000,
-    totalSupplyUsd: Number(point.totalSuppliesUSD),
-    totalBorrowsUsd: Number(point.totalBorrowsUSD),
-    totalCollateralUsd: Number(point.totalCollateralUSD),
-  }));
 }

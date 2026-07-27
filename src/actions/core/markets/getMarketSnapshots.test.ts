@@ -182,7 +182,7 @@ describe("trimLeadingEmptySnapshots (unit)", () => {
   });
 
   test("trims leading zero snapshots (descending order)", () => {
-    // Ponder returns newest-first; function must still work
+    // The indexer may return newest-first; function must still work
     const snapshots = [
       makeMarketSnapshot(DAY2, 100, 50),
       makeMarketSnapshot(DAY1, 0, 0),
@@ -369,107 +369,27 @@ describe("fetchIsolatedMarketSnapshots — stkWELL workaround (unit)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Core market snapshots — Ponder path (indexerUrl, no lunarIndexerUrl)
+// Core market snapshots — no lunarIndexerUrl (moonriver)
 // ---------------------------------------------------------------------------
 
-describe("core market snapshots — Ponder path (indexerUrl, no lunarIndexerUrl)", () => {
+describe("core market snapshots — no lunarIndexerUrl (moonriver)", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  const MOCK_PONDER_URL = "https://mock-ponder.test";
   const CORE_MARKET_ADDRESS =
     "0xaaaa000000000000000000000000000000000001" as `0x${string}`;
   const MOONRIVER_CHAIN_ID = 1285;
 
-  function makeMoonriverClient(): MoonwellClient {
-    return {
-      environments: {
-        moonriver: {
-          chainId: MOONRIVER_CHAIN_ID,
-          lunarIndexerUrl: undefined,
-          indexerUrl: MOCK_PONDER_URL,
-          config: {
-            markets: {},
-            tokens: {},
-            vaults: {},
-            morphoMarkets: {},
-            contracts: {},
-          },
-        } as unknown as Environment,
-      },
-    } as unknown as MoonwellClient;
-  }
-
-  test("calls axios.post with indexerUrl when no lunarIndexerUrl", async () => {
-    vi.spyOn(axios, "post").mockResolvedValueOnce({
-      data: {
-        data: {
-          marketDailySnapshots: {
-            items: [],
-            pageInfo: { hasNextPage: false, endCursor: "" },
-          },
-        },
-      },
-    });
-
-    await getMarketSnapshots(makeMoonriverClient(), {
-      chainId: MOONRIVER_CHAIN_ID,
-      type: "core",
-      marketId: CORE_MARKET_ADDRESS,
-    });
-
-    expect(vi.mocked(axios.post)).toHaveBeenCalledWith(
-      MOCK_PONDER_URL,
-      expect.objectContaining({
-        query: expect.stringContaining(CORE_MARKET_ADDRESS.toLowerCase()),
-      }),
-    );
-  });
-
-  test("returns mapped snapshots from Ponder", async () => {
-    vi.spyOn(axios, "post").mockResolvedValueOnce({
-      data: {
-        data: {
-          marketDailySnapshots: {
-            items: [
-              {
-                totalBorrows: 100,
-                totalBorrowsUSD: 100,
-                totalSupplies: 1000,
-                totalSuppliesUSD: 1000,
-                totalLiquidity: 900,
-                totalLiquidityUSD: 900,
-                baseSupplyApy: 0.05,
-                baseBorrowApy: 0.08,
-                timestamp: 1704067200, // 2024-01-01 00:00:00 UTC (start of day)
-              },
-            ],
-            pageInfo: { hasNextPage: false, endCursor: "" },
-          },
-        },
-      },
-    });
-
-    const result = await getMarketSnapshots(makeMoonriverClient(), {
-      chainId: MOONRIVER_CHAIN_ID,
-      type: "core",
-      marketId: CORE_MARKET_ADDRESS,
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]?.totalSupply).toBe(1000);
-    expect(result[0]?.totalBorrows).toBe(100);
-    expect(result[0]?.baseSupplyApy).toBe(0.05);
-  });
-
-  test("returns [] when both lunarIndexerUrl and indexerUrl are absent", async () => {
+  test("returns [] without making any HTTP call", async () => {
+    const postSpy = vi.spyOn(axios, "post");
+    const onErrorSpy = vi.fn();
     const noUrlClient = {
       environments: {
         moonriver: {
           chainId: MOONRIVER_CHAIN_ID,
           lunarIndexerUrl: undefined,
-          indexerUrl: undefined,
+          onError: onErrorSpy,
           config: {
             markets: {},
             tokens: {},
@@ -488,6 +408,9 @@ describe("core market snapshots — Ponder path (indexerUrl, no lunarIndexerUrl)
     });
 
     expect(result).toEqual([]);
-    expect(vi.mocked(axios.post)).not.toHaveBeenCalled();
+    expect(postSpy).not.toHaveBeenCalled();
+    // Guards against the empty result coming from the Lunar catch path
+    // instead of the intentional missing-lunarIndexerUrl branch.
+    expect(onErrorSpy).not.toHaveBeenCalled();
   });
 });
