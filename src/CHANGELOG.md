@@ -1,5 +1,19 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.21.0
+
+### Minor Changes
+
+- [#316](https://github.com/moonwell-fi/moonwell-sdk/pull/316) [`bc49e7975a2afca16624c42605d4b3e8f4a00c55`](https://github.com/moonwell-fi/moonwell-sdk/commit/bc49e7975a2afca16624c42605d4b3e8f4a00c55) Thanks [@james-saint](https://github.com/james-saint)! - Breaking: removed the vestigial `WELL_TESTNET` entry from `GovernanceTokensConfig`, narrowing the exported `GovernanceToken` type to `"WELL" | "MFAM"` (MOO-525). `WELL_TESTNET` had an empty `chainIds` array and was referenced by no environment, action, or test — it was dead config left over from the testnet era. Consumers passing `"WELL_TESTNET"` or reading `GovernanceTokensConfig.WELL_TESTNET` must remove those references.
+
+### Patch Changes
+
+- [#315](https://github.com/moonwell-fi/moonwell-sdk/pull/315) [`240de537d739675c655bf9994ef609fb2cdc3451`](https://github.com/moonwell-fi/moonwell-sdk/commit/240de537d739675c655bf9994ef609fb2cdc3451) Thanks [@bprofiro](https://github.com/bprofiro)! - Removed the dead Ponder indexer fetches. `getStakingSnapshots`, `getCirculatingSupplySnapshots`, `getMarketSnapshots` (core), and `getUserPositionSnapshots` now return `[]` for environments without a `lunarIndexerUrl` (Moonriver) instead of querying the decommissioned Ponder API. No public type changes — the deprecated `Environment.indexerUrl` field remains for now and its removal is tracked separately (MOO-537).
+
+- [#323](https://github.com/moonwell-fi/moonwell-sdk/pull/323) [`6630b2893ee63bb3e4e2940f2f139a512e6fd471`](https://github.com/moonwell-fi/moonwell-sdk/commit/6630b2893ee63bb3e4e2940f2f139a512e6fd471) Thanks [@bprofiro](https://github.com/bprofiro)! - Security: bump `axios` to `^1.18.1` to resolve GHSA-gcfj-64vw-6mp9 (high — Node HTTP adapter can use an inherited proxy after interceptor config cloning) and eight moderate advisories fixed in axios 1.18.x. Raising the dependency floor ensures consumers cannot resolve a vulnerable axios version.
+
+- [#321](https://github.com/moonwell-fi/moonwell-sdk/pull/321) [`21dc2b0d4e64ae43ef61e9a6a6682a0bebe73b3e`](https://github.com/moonwell-fi/moonwell-sdk/commit/21dc2b0d4e64ae43ef61e9a6a6682a0bebe73b3e) Thanks [@james-saint](https://github.com/james-saint)! - Read the Moonriver proposal `eta` from the correct `proposals()` tuple index (MOO-611). The legacy single-chain governor returns `(id, proposer, eta, startTimestamp, endTimestamp, ...)` so `eta` is at index 2, whereas the multichain governor returns `(proposer, voteSnapshotTimestamp, votingStartTime, votingEndTime, crossChainVoteCollectionEndTimestamp, ...)` where index 4 is the execution-available timestamp. The SDK was unconditionally reading index 4, so for legacy Moonriver proposals it picked up `endTimestamp` (the voting-end time, already in the past once voting closes). That made the frontend timeline flip straight to "Timelock Ready to Execute" and surface the Execute button before the timelock had actually elapsed. `eta` is now read from index 2 for legacy governors and index 4 for the multichain governor.
+
 ## 0.20.5
 
 ### Patch Changes
