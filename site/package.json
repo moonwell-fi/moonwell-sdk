@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",
-    "postcss": "^8.5.13",
+    "postcss": "^8.5.23",
     "tailwindcss": "^4.2.4"
   }
 }
