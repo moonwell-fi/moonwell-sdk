@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-06-15T13:36:28.427Z",
+  "generatedAt": "2026-07-27T18:15:34.805Z",
   "coverage": {
-    "lines": 82.7,
-    "statements": 82.7,
-    "functions": 56.9,
-    "branches": 84.5
+    "lines": 83.73,
+    "statements": 83.73,
+    "functions": 57.66,
+    "branches": 85.79
   },
   "lint": {
     "errors": 0,
@@ -13,12 +13,12 @@
   "audit": {
     "critical": 0,
     "high": 0,
-    "moderate": 1,
+    "moderate": 0,
     "low": 0
   },
   "duplication": {
-    "percentage": 8.95,
-    "clones": 95,
-    "duplicatedLines": 1919
+    "percentage": 8.73,
+    "clones": 93,
+    "duplicatedLines": 1903
   }
 }
