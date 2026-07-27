@@ -497,7 +497,18 @@ export const getProposalsOnChainData = async (
       let eta = 0;
 
       if (proposalData) {
-        const onChainEta = Number(proposalData[4]);
+        // The eta lives at a different tuple index per governor: the legacy
+        // single-chain governor's `proposals()` returns
+        // (id, proposer, eta, startTimestamp, endTimestamp, ...) so eta is at
+        // index 2, whereas the multichain governor's returns
+        // (proposer, voteSnapshotTimestamp, votingStartTime, votingEndTime,
+        // crossChainVoteCollectionEndTimestamp, ...) so its execution-available
+        // timestamp is at index 4. Reading index 4 for a legacy Moonriver
+        // proposal picked up `endTimestamp` (the voting-end time, already in the
+        // past once voting closes), which made the timeline flip straight to
+        // "Timelock Ready to Execute" and surfaced the Execute button before the
+        // timelock had actually elapsed (MOO-611).
+        const onChainEta = Number(proposalData[isMultichain ? 4 : 2]);
         if (onChainEta === 0 && isMultichain && p.votingEndTime) {
           eta = p.votingEndTime + 86400; // 1 day
         } else {
