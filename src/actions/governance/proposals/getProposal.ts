@@ -1,6 +1,5 @@
-import { mainnet, moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
+import { Amount } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import { type Proposal, ProposalState } from "../../../types/proposal.js";
@@ -15,6 +14,7 @@ import {
   formatApiProposalData,
   getProposalsOnChainData,
   readCrossChainQuorums,
+  resolveGovernanceEnvironment,
 } from "./common.js";
 
 export type GetProposalParameters<
@@ -41,42 +41,24 @@ export async function getProposal<
 ): GetProposalReturnType {
   const { proposalId } = args;
 
-  const environment = getEnvironmentFromArgs(client, args);
-  if (!environment) {
+  // `args.chainId` identifies the chain the PROPOSAL lives on, which is no longer
+  // the same thing as the environment we read through. Before the sunset it was
+  // both, and the action resolved a Moonbeam/Moonriver environment from it —
+  // which now means a `chainId: 1284` lookup would resolve nothing and the whole
+  // historical archive would 404 (MOO-551). Resolve the indexer source
+  // independently and pass `chainId` through untouched.
+  const governanceEnvironment = resolveGovernanceEnvironment(
+    Object.values(client.environments as Record<string, Environment>),
+  );
+  if (!governanceEnvironment) {
     return undefined;
   }
 
-  // Ethereum-home multigov proposals are served by the same Governor API as
-  // historical Moonbeam ones (the lunar indexer fans out both chainIds), so
-  // route them through `getGovernorApiProposal` using the Moonbeam env as the
-  // indexer source. Without this, a caller resolving the env by `chainId: 1`
-  // would bail out on the `!moonbeam && !moonriver` check below and the page
-  // reload path returns undefined.
-  if (environment.chainId === mainnet.id) {
-    const moonbeamEnv = Object.values(
-      client.environments as Record<string, Environment>,
-    ).find((e) => e.chainId === moonbeam.id);
-    if (!moonbeamEnv) {
-      return undefined;
-    }
-    return getGovernorApiProposal(
-      moonbeamEnv,
-      proposalId,
-      args.chainId ?? mainnet.id,
-    );
-  }
-
-  if (
-    environment.chainId !== moonbeam.id &&
-    environment.chainId !== moonriver.id
-  ) {
-    return undefined;
-  }
-
-  if (environment.chainId === moonbeam.id) {
-    return getGovernorApiProposal(environment, proposalId, args.chainId);
-  }
-  return getGovernorApiProposal(environment, proposalId, moonriver.id);
+  return getGovernorApiProposal(
+    governanceEnvironment,
+    proposalId,
+    args.chainId,
+  );
 }
 
 /**

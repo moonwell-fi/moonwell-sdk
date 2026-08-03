@@ -40,7 +40,7 @@
 
 - Up-to-date repository of Moonwell deployed contracts
 - First-class APIs for interacting with [Moonwell Smart Contracts](https://github.com/moonwell-fi/moonwell-contracts-v2)
-- Support for multiple networks: Base, Optimism, Moonbeam, and Moonriver
+- Support for multiple networks: Base, Optimism, and Ethereum
 - Comprehensive market data retrieval
 - User position and reward tracking
 - Governance functionality
@@ -80,8 +80,14 @@ For detailed documentation and API reference, visit our [SDK Documentation](http
 
 - Base
 - Optimism
-- Moonbeam
-- Moonriver
+- Ethereum
+- Arbitrum
+- Avalanche
+- Polygon
+
+Moonbeam and Moonriver were removed after the chains were sunset. Their
+governance proposals remain readable through `getProposals` / `getProposal`,
+served from the governance indexer.
 
 ## Key Features
 

@@ -5,8 +5,6 @@ import {
   type BaseEnvironment,
   type Environment,
   type EthereumEnvironment,
-  type MoonbeamEnvironment,
-  type MoonriverEnvironment,
   type OptimismEnvironment,
   type PolygonEnvironment,
   type SupportedChains,
@@ -15,8 +13,6 @@ import {
   base,
   createEnvironment,
   ethereum,
-  moonbeam,
-  moonriver,
   optimism,
   polygon,
 } from "../environments/index.js";
@@ -33,16 +29,6 @@ export type MoonwellClient<
         name,
         "optimism"
       >]: OptimismEnvironment;
-    } & {
-      [name in keyof environments as Extract<
-        name,
-        "moonbeam"
-      >]: MoonbeamEnvironment;
-    } & {
-      [name in keyof environments as Extract<
-        name,
-        "moonriver"
-      >]: MoonriverEnvironment;
     } & {
       [name in keyof environments as Extract<
         name,
@@ -94,17 +80,13 @@ export const createMoonwellClient = <const networks>(config: {
             ? base
             : curr === "optimism"
               ? optimism
-              : curr === "moonbeam"
-                ? moonbeam
-                : curr === "moonriver"
-                  ? moonriver
-                  : curr === "ethereum"
-                    ? ethereum
-                    : curr === "avalanche"
-                      ? avalanche
-                      : curr === "arbitrum"
-                        ? arbitrum
-                        : polygon,
+              : curr === "ethereum"
+                ? ethereum
+                : curr === "avalanche"
+                  ? avalanche
+                  : curr === "arbitrum"
+                    ? arbitrum
+                    : polygon,
         rpcUrls: networkConfig.rpcUrls,
       }),
     };
@@ -116,16 +98,6 @@ export const createMoonwellClient = <const networks>(config: {
         name,
         "optimism"
       >]: OptimismEnvironment;
-    } & {
-      [name in keyof networks as Extract<
-        name,
-        "moonbeam"
-      >]: MoonbeamEnvironment;
-    } & {
-      [name in keyof networks as Extract<
-        name,
-        "moonriver"
-      >]: MoonriverEnvironment;
     } & {
       [name in keyof networks as Extract<
         name,

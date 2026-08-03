@@ -1,16 +1,20 @@
-import { moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { Amount, getEnvironmentsFromArgs } from "../../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
 import * as logger from "../../../logger/console.js";
 import { type Proposal, ProposalState } from "../../../types/proposal.js";
-import { type ApiProposal, fetchAllProposals } from "../governor-api-client.js";
+import {
+  type ApiProposal,
+  SUPPORTED_GOVERNOR_CHAIN_IDS,
+  fetchAllProposals,
+} from "../governor-api-client.js";
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
   formatApiProposalData,
   getProposalsOnChainData,
   readCrossChainQuorums,
+  resolveGovernanceEnvironment,
 } from "./common.js";
 
 export type GetProposalsParameters<
@@ -31,30 +35,14 @@ export async function getProposals<
 
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const governanceEnvironments = environments.filter(
-    (environment) =>
-      environment.chainId === moonbeam.id ||
-      environment.chainId === moonriver.id,
-  );
+  const governanceEnvironment = resolveGovernanceEnvironment(environments);
 
-  if (governanceEnvironments.length === 0) {
+  if (!governanceEnvironment) {
     logger.end(logId);
     return [];
   }
 
-  const allProposals = await Promise.all(
-    governanceEnvironments.map(async (governanceEnvironment) => {
-      if (governanceEnvironment.chainId === moonbeam.id) {
-        // Moonbeam + Ethereum: Governor API (chainIds 1 and 1284)
-        return getMoonbeamProposals(governanceEnvironment);
-      } else {
-        // Moonriver: Governor API, single legacy governor (chainId 1285)
-        return getMoonriverProposals(governanceEnvironment);
-      }
-    }),
-  );
-
-  const proposals = allProposals.flat();
+  const proposals = await fetchGovernorProposals(governanceEnvironment);
   // Newer multigov-ethereum proposals (chainId=1) and historical Moonbeam
   // proposals (chainId=1284) restart their proposalId counters from 1, so IDs
   // may collide across chains. Sort by proposalId desc with chainId as a
@@ -70,27 +58,34 @@ export async function getProposals<
 }
 
 /**
- * Fetch proposals for Moonbeam using the Governor API.
+ * Fetch every proposal the Governor API serves, across all governance chains.
  *
- * The same indexer DO serves two chains:
- *   - chainId=1 (Ethereum) — the active multigov contract
- *   - chainId=1284 (Moonbeam) — historical proposals
+ * One indexer DO serves them all:
+ *   - chainId=1    (Ethereum)  — the active multigov contract
+ *   - chainId=1284 (Moonbeam)  — historical archive, chain halted
+ *   - chainId=1285 (Moonriver) — legacy Apollo governor, chain halted
  *
- * Uses `Promise.allSettled` so a transient outage on one chain doesn't take
- * down the other — partial results are preferred over a hard failure.
+ * The sunset chains keep appearing here on purpose: the indexer still has their
+ * proposals even though no RPC exists for them any more, so the governance
+ * record stays readable (MOO-551). What they lose is the on-chain half —
+ * `getProposalsOnChainData` finds no environment for 1284/1285 and derives their
+ * state from indexer events, leaving quorum and eta unset.
+ *
+ * `Promise.allSettled` so one chain's outage degrades to a missing slice rather
+ * than an empty list.
  */
-async function getMoonbeamProposals(
+async function fetchGovernorProposals(
   governanceEnvironment: Environment,
 ): Promise<Proposal[]> {
-  const results = await Promise.allSettled([
-    fetchAllProposals(governanceEnvironment, { chainId: 1 }),
-    fetchAllProposals(governanceEnvironment, { chainId: 1284 }),
-  ]);
+  const results = await Promise.allSettled(
+    SUPPORTED_GOVERNOR_CHAIN_IDS.map((chainId) =>
+      fetchAllProposals(governanceEnvironment, { chainId }),
+    ),
+  );
 
-  const chainsAttempted: ReadonlyArray<1 | 1284> = [1, 1284];
   const apiProposals: ApiProposal[] = [];
   results.forEach((result, index) => {
-    const chainId = chainsAttempted[index];
+    const chainId = SUPPORTED_GOVERNOR_CHAIN_IDS[index];
     if (result.status === "fulfilled") {
       apiProposals.push(...result.value);
     } else if (chainId !== undefined) {
@@ -105,40 +100,6 @@ async function getMoonbeamProposals(
     }
   });
 
-  return buildProposals(apiProposals, governanceEnvironment);
-}
-
-/**
- * Fetch proposals for Moonriver using the Governor API.
- *
- * Moonriver runs a single legacy standalone governor (no multichain governor),
- * so we fetch only its chainId from the same lunar indexer and reuse the shared
- * pipeline. `getProposalsOnChainData` classifies these as non-multichain and
- * reads state/quorum from the legacy governor (via `getQuorum`).
- */
-async function getMoonriverProposals(
-  governanceEnvironment: Environment,
-): Promise<Proposal[]> {
-  // Moonriver is a single chain, so there's no other chain to "continue with"
-  // like the Moonbeam fan-out — but a bare throw would reject the whole
-  // `Promise.all` in getProposals and drop Moonbeam/Ethereum results too. Mirror
-  // the per-chain handling getMoonbeamProposals uses: report the outage via
-  // onError and degrade to an empty Moonriver list instead of rejecting.
-  let apiProposals: ApiProposal[] = [];
-  try {
-    apiProposals = await fetchAllProposals(governanceEnvironment, {
-      chainId: moonriver.id,
-    });
-  } catch (reason) {
-    console.warn(
-      `[getProposals] Failed to fetch proposals for chainId=${moonriver.id}; continuing with an empty Moonriver list.`,
-      reason,
-    );
-    governanceEnvironment.onError?.(reason, {
-      source: "governance-proposals",
-      chainId: moonriver.id,
-    });
-  }
   return buildProposals(apiProposals, governanceEnvironment);
 }
 

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { mainnet } from "viem/chains";
 import { Amount } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
 import { publicEnvironments } from "../../../environments/index.js";
@@ -332,6 +333,26 @@ export const getEnvironmentByChainId = (
     (e) => e.chainId === chainId,
   );
 
+/**
+ * The environment that drives Governor-API reads for the whole proposal surface.
+ *
+ * Before the sunset this was the caller's Moonbeam/Moonriver environment, and
+ * both `getProposals` and `getProposal` gated on one of those being registered.
+ * Those chains are gone (MOO-551), so governance is now homed on the Ethereum
+ * multigov hub. Every environment resolves the same `governanceIndexerUrl`, so
+ * any registered chain can serve the indexer — Ethereum is merely preferred
+ * because its `multichainGovernor` also answers the live quorum/state reads.
+ *
+ * Consequence for the historical archive: Moonbeam (1284) and Moonriver (1285)
+ * proposals still list, because the indexer keeps serving them, but nothing
+ * on-chain can be read for them any more. They surface with indexer-derived
+ * state and no quorum or eta — see `getProposalsOnChainData`'s `!homeEnv` path.
+ */
+export const resolveGovernanceEnvironment = (
+  environments: Environment[],
+): Environment | undefined =>
+  environments.find((e) => e.chainId === mainnet.id) ?? environments[0];
+
 export const readCrossChainQuorums = async (
   apiProposals: ApiProposal[],
   governanceEnvironment: Environment,
@@ -376,12 +397,18 @@ export const getProposalsOnChainData = async (
 ): Promise<ProposalOnChainData[]> => {
   let quorum = 0n;
 
-  if (governanceEnvironment.contracts.governor) {
+  // The governance environment is now the Ethereum multigov hub (MOO-551), which
+  // has a `multichainGovernor` and no legacy `governor`. Read whichever the env
+  // actually wires, otherwise a hub-local proposal would report quorum 0.
+  const localQuorumRead = governanceEnvironment.contracts.governor
+    ? () => governanceEnvironment.contracts.governor?.read.getQuorum()
+    : governanceEnvironment.contracts.multichainGovernor
+      ? () => governanceEnvironment.contracts.multichainGovernor?.read.quorum()
+      : undefined;
+
+  if (localQuorumRead) {
     try {
-      quorum =
-        governanceEnvironment.chainId === 1284
-          ? await governanceEnvironment.contracts.governor.read.quorumVotes()
-          : await governanceEnvironment.contracts.governor.read.getQuorum();
+      quorum = (await localQuorumRead()) ?? 0n;
     } catch (error) {
       console.warn("Failed to fetch quorum:", error);
       // Report so a swallowed quorum failure (which leaves quorum at 0n) is

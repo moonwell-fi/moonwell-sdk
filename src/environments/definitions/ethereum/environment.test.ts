@@ -49,9 +49,12 @@ describe("ethereum environment invariants", () => {
   });
 
   test("WELL governance token is registered on every chain that holds it", () => {
+    // Moonbeam dropped with the sunset (MOO-551) — a halted chain can't answer
+    // voting-power reads, so it must not be advertised as holding WELL.
     expect(GovernanceTokensConfig.WELL.chainIds).toEqual(
-      expect.arrayContaining([moonbeam.id, base.id, optimism.id, mainnet.id]),
+      expect.arrayContaining([base.id, optimism.id, mainnet.id]),
     );
+    expect(GovernanceTokensConfig.WELL.chainIds).not.toContain(moonbeam.id);
   });
 
   // Locks the 4 launch Core markets so reverting `markets: markets` back to
@@ -92,21 +95,23 @@ describe("ethereum environment invariants", () => {
     );
   });
 
-  // No `publicEnvironments` entry may list `moonbeam.id` in
-  // `custom.governance.chainIds` — that field is consumed as a `homeEnvironment`
-  // membership predicate by core/markets/user-rewards (see
-  // src/actions/core/user-rewards/common.ts:21). Listing moonbeam.id on any env
-  // other than Moonbeam itself would re-point Moonbeam's homeEnv to that env,
-  // mispricing Moonbeam native-token rewards.
-  test("Moonbeam homeEnvironment still resolves to Moonbeam", () => {
-    const homeEnv = Object.values(publicEnvironments).find((e) => {
+  // `custom.governance.chainIds` is consumed as a `homeEnvironment` membership
+  // predicate by core/markets and user-rewards (see
+  // src/actions/core/user-rewards/common.ts:21). Moonbeam used to own Base and
+  // Optimism there, which meant their native-token reward pricing was read from
+  // Moonbeam's views contract. With Moonbeam gone (MOO-551) each chain resolves
+  // its home env to itself via the `|| environment` fallback — so no surviving
+  // env may claim another chain's markets, or it would silently re-point that
+  // chain's native-token pricing at the wrong views contract.
+  test("no environment claims a foreign chain as its governance home", () => {
+    const claimed = Object.values(publicEnvironments).flatMap((e) => {
       const chainIds: readonly number[] | undefined =
         e.custom && "governance" in e.custom
           ? e.custom.governance?.chainIds
           : undefined;
-      return chainIds?.includes(moonbeam.id);
+      return (chainIds ?? []).filter((id) => id !== e.chainId);
     });
-    expect(homeEnv?.chainId ?? moonbeam.id).toBe(moonbeam.id);
+    expect(claimed).toEqual([]);
   });
 
   // Ethereum hub MultichainGovernor (0x8769B70ac7c93AF0e75de0D69877709B66d75838)
@@ -116,7 +121,7 @@ describe("ethereum environment invariants", () => {
   // missing `wormhole` block on any of them is the bug that motivated this
   // test — Optimism previously had no wormhole config and would have been
   // silently dropped from any future satellite enumeration.
-  test("Moonbeam, Base, and Optimism are wired as Ethereum-hub satellites", () => {
+  test("Base and Optimism are wired as Ethereum-hub satellites", () => {
     const satelliteChainIds = (
       Object.values(publicEnvironments) as Array<{
         chainId: number;
@@ -132,9 +137,12 @@ describe("ethereum environment invariants", () => {
       })
       .map((env) => env.chainId);
 
+    // Moonbeam (Wormhole chain 16) is still registered on the hub contract, but
+    // the SDK no longer carries an environment for it (MOO-551), so only the two
+    // live satellites can be enumerated.
     expect(satelliteChainIds).toEqual(
-      expect.arrayContaining([moonbeam.id, base.id, optimism.id]),
+      expect.arrayContaining([base.id, optimism.id]),
     );
-    expect(satelliteChainIds).toHaveLength(3);
+    expect(satelliteChainIds).toHaveLength(2);
   });
 });

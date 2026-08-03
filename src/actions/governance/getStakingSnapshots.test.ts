@@ -193,32 +193,11 @@ describe("Testing staking snapshots (integration)", () => {
     },
   );
 
-  test("moonriver returns empty array (no Lunar Indexer URL)", async () => {
-    const snapshots = await testClient.getStakingSnapshots<
-      (typeof testClient.environments)["moonriver"]["chain"]
-    >({
-      network: "moonriver",
-      period: "3M",
-    });
-    expect(Array.isArray(snapshots)).toBe(true);
-    expect(snapshots).toHaveLength(0);
-  });
-
   test("base returns staking snapshots via Lunar Indexer", async () => {
     const snapshots = await testClient.getStakingSnapshots<
       (typeof testClient.environments)["base"]["chain"]
     >({
       network: "base",
-      period: "3M",
-    });
-    expect(snapshots.length).toBeGreaterThan(0);
-  });
-
-  test("moonbeam returns staking snapshots via Lunar Indexer", async () => {
-    const snapshots = await testClient.getStakingSnapshots<
-      (typeof testClient.environments)["moonbeam"]["chain"]
-    >({
-      network: "moonbeam",
       period: "3M",
     });
     expect(snapshots.length).toBeGreaterThan(0);

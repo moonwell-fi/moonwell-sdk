@@ -30,18 +30,12 @@ const mockedOnChain = vi.mocked(getProposalsOnChainData);
 const ETHEREUM_CHAIN_ID = 1;
 const MOONBEAM_CHAIN_ID = 1284;
 
-const moonbeamEnv = {
-  key: "moonbeam",
-  chainId: MOONBEAM_CHAIN_ID,
-  governanceIndexerUrl: "https://mock-indexer.test",
-  contracts: {},
-  custom: {},
-  config: {},
-} as unknown as Record<string, unknown>;
-
-const moonriverEnv = {
-  key: "moonriver",
-  chainId: 1285,
+// Governance is homed on the Ethereum multigov hub since the sunset removed the
+// Moonbeam/Moonriver environments (MOO-551). `args.chainId` now identifies only
+// the chain the PROPOSAL lives on — it no longer selects the environment.
+const ethereumEnv = {
+  key: "ethereum",
+  chainId: ETHEREUM_CHAIN_ID,
   governanceIndexerUrl: "https://mock-indexer.test",
   contracts: {},
   custom: {},
@@ -49,7 +43,7 @@ const moonriverEnv = {
 } as unknown as Record<string, unknown>;
 
 const client = {
-  environments: { moonbeam: moonbeamEnv, moonriver: moonriverEnv },
+  environments: { ethereum: ethereumEnv },
 } as unknown as MoonwellClient;
 
 const baseApiProposal: ApiProposal = {
@@ -92,14 +86,39 @@ const WORMHOLE_TARGET = "0xc8e2b0cd52cf01b0ce87d389daa3d414d4ce29f3";
 const LOCAL_TARGET = "0xed301cd3eb27217bdb05c4e9b820a8a3c8b665f9";
 
 describe("getProposal environment guard", () => {
-  test("returns undefined when the requested env doesn't exist in the client", async () => {
-    const result = await getProposal(client, {
-      network: "polygon", // not in the mock client.environments
+  test("returns undefined when the client has no environments at all", async () => {
+    const emptyClient = {
+      environments: {},
+    } as unknown as MoonwellClient;
+
+    const result = await getProposal(emptyClient, {
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(result).toBeUndefined();
     expect(mockedFetchProposal).not.toHaveBeenCalled();
+  });
+
+  test("resolves the indexer source independently of the requested chainId", async () => {
+    // A 1284 lookup must still work even though no Moonbeam environment exists —
+    // this is what keeps the historical archive reachable (MOO-551).
+    mockedFetchProposal.mockResolvedValueOnce({
+      ...baseApiProposal,
+      chainId: MOONBEAM_CHAIN_ID,
+    });
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposal(client, {
+      chainId: MOONBEAM_CHAIN_ID,
+      proposalId: 7,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result).toBeDefined();
+    expect(mockedFetchProposal).toHaveBeenCalledWith(
+      ethereumEnv,
+      MOONBEAM_CHAIN_ID,
+      7,
+    );
   });
 });
 
@@ -115,7 +134,6 @@ describe("getProposal state post-processing", () => {
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
       chainId: MOONBEAM_CHAIN_ID,
     } as unknown as Parameters<typeof getProposal>[1]);
@@ -156,7 +174,6 @@ describe("getProposal state post-processing", () => {
     mockedOnChain.mockResolvedValueOnce([{ ...defaultOnChain, state: 5 }]);
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
       chainId: MOONBEAM_CHAIN_ID,
     } as unknown as Parameters<typeof getProposal>[1]);
@@ -187,7 +204,6 @@ describe("getProposal state post-processing", () => {
     ]);
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
       chainId: MOONBEAM_CHAIN_ID,
     } as unknown as Parameters<typeof getProposal>[1]);
@@ -228,7 +244,6 @@ describe("getProposal state post-processing", () => {
     // No explicit chainId — default routing tries chainId 1 first and the
     // mocked fetch returns this Ethereum-homed proposal, short-circuiting.
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
@@ -287,14 +302,13 @@ describe("getProposal fallback behavior", () => {
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(result?.chainId).toBe(ETHEREUM_CHAIN_ID);
     expect(mockedFetchProposal).toHaveBeenCalledTimes(1);
     expect(mockedFetchProposal).toHaveBeenCalledWith(
-      moonbeamEnv,
+      ethereumEnv,
       ETHEREUM_CHAIN_ID,
       7,
     );
@@ -310,7 +324,6 @@ describe("getProposal fallback behavior", () => {
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
@@ -325,7 +338,6 @@ describe("getProposal fallback behavior", () => {
       .mockRejectedValueOnce(new GovernorNotFoundError(MOONBEAM_CHAIN_ID, 7));
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
@@ -351,7 +363,6 @@ describe("getProposal fallback behavior", () => {
     });
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
@@ -393,20 +404,22 @@ describe("getProposal fallback behavior", () => {
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
       chainId: MOONBEAM_CHAIN_ID,
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(mockedFetchProposal).toHaveBeenCalledTimes(1);
     expect(mockedFetchProposal).toHaveBeenCalledWith(
-      moonbeamEnv,
+      ethereumEnv,
       MOONBEAM_CHAIN_ID,
       7,
     );
   });
 
-  test("returns undefined for environments outside Moonbeam/Moonriver without calling fetcher", async () => {
+  test("serves a proposal through a non-Moonbeam environment", async () => {
+    // Used to short-circuit for any env that wasn't Moonbeam/Moonriver. Those
+    // chains are gone (MOO-551) and every env resolves the same indexer, so a
+    // Base-only client can serve the governance record.
     const baseEnv = {
       key: "base",
       chainId: 8453,
@@ -418,14 +431,20 @@ describe("getProposal fallback behavior", () => {
     const baseClient = {
       environments: { base: baseEnv },
     } as unknown as MoonwellClient;
+    mockedFetchProposal.mockResolvedValueOnce(baseApiProposal);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     const result = await getProposal(baseClient, {
       network: "base",
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
-    expect(result).toBeUndefined();
-    expect(mockedFetchProposal).not.toHaveBeenCalled();
+    expect(result).toBeDefined();
+    expect(mockedFetchProposal).toHaveBeenCalledWith(
+      baseEnv,
+      ETHEREUM_CHAIN_ID,
+      7,
+    );
   });
 });
 
@@ -435,7 +454,7 @@ describe("getProposal fallback behavior", () => {
 // ---------------------------------------------------------------------------
 
 describe("getProposal Moonriver via Governor API (MOO-493)", () => {
-  test("routes through fetchProposal with chainId 1285 and no fallback (no Ponder)", async () => {
+  test("routes through fetchProposal with an explicit chainId 1285 and no fallback", async () => {
     mockedFetchProposal.mockResolvedValueOnce({
       ...baseApiProposal,
       id: "1285-0000000074",
@@ -445,16 +464,16 @@ describe("getProposal Moonriver via Governor API (MOO-493)", () => {
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     const result = await getProposal(client, {
-      network: "moonriver",
+      chainId: 1285,
       proposalId: 74,
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(result?.chainId).toBe(1285);
     expect(result?.proposalId).toBe(74);
-    // Exactly one call, pinned to chainId 1285 — Moonriver is never tried
-    // against the Ethereum/Moonbeam chains, and the old Ponder path is gone.
+    // Exactly one call, pinned to chainId 1285: an explicit chainId skips the
+    // [1, 1284] fallback entirely, and the old Ponder path is gone.
     expect(mockedFetchProposal).toHaveBeenCalledTimes(1);
-    expect(mockedFetchProposal).toHaveBeenCalledWith(moonriverEnv, 1285, 74);
+    expect(mockedFetchProposal).toHaveBeenCalledWith(ethereumEnv, 1285, 74);
     expect(mockedOnChain).toHaveBeenCalledWith(
       expect.any(Array),
       expect.anything(),
@@ -494,19 +513,20 @@ describe("getProposal Moonriver via Governor API (MOO-493)", () => {
     ]);
     // No multichain governor on Moonriver → the field must be absent.
     expect(result?.multichain).toBeUndefined();
-    expect(result?.environment).toBe(moonriverEnv);
+    expect(result?.environment).toBe(ethereumEnv);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Mainnet routing branch — chainId=1 / network=mainnet must be served by the
-// Moonbeam env, since the lunar indexer fans out both chainIds. Without these
-// guards a future refactor of getEnvironmentFromArgs or the chainId routing
-// could silently re-break Ethereum deep-links.
+// Indexer-source resolution — chainId=1 used to be served by the Moonbeam env
+// because the lunar indexer fanned out both chainIds. Moonbeam is gone
+// (MOO-551), so the source is now the resolved governance env and `chainId`
+// only ever names the proposal's own chain. These guards stop a future refactor
+// from re-coupling the two and breaking deep-links.
 // ---------------------------------------------------------------------------
 
-describe("getProposal mainnet routing", () => {
-  const ethereumEnv = {
+describe("getProposal indexer-source resolution", () => {
+  const mainnetEnv = {
     key: "mainnet",
     chainId: ETHEREUM_CHAIN_ID,
     governanceIndexerUrl: "https://mock-indexer.test",
@@ -515,73 +535,61 @@ describe("getProposal mainnet routing", () => {
     config: {},
   } as unknown as Record<string, unknown>;
 
-  const dualClient = {
-    environments: {
-      mainnet: ethereumEnv,
-      moonbeam: moonbeamEnv,
-      moonriver: moonriverEnv,
-    },
-  } as unknown as MoonwellClient;
+  const baseEnv = {
+    key: "base",
+    chainId: 8453,
+    governanceIndexerUrl: "https://mock-indexer.test",
+    contracts: {},
+    custom: {},
+    config: {},
+  } as unknown as Record<string, unknown>;
 
-  test("chainId=1 routes through the Moonbeam env (not the Ethereum env)", async () => {
+  test("prefers the Ethereum hub as the indexer source", async () => {
+    const multiClient = {
+      environments: { base: baseEnv, mainnet: mainnetEnv },
+    } as unknown as MoonwellClient;
     mockedFetchProposal.mockResolvedValueOnce({
       ...baseApiProposal,
       chainId: ETHEREUM_CHAIN_ID,
     });
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
-    const result = await getProposal(dualClient, {
+    const result = await getProposal(multiClient, {
       chainId: ETHEREUM_CHAIN_ID,
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
     expect(result?.chainId).toBe(ETHEREUM_CHAIN_ID);
     expect(mockedFetchProposal).toHaveBeenCalledTimes(1);
+    // Ethereum wins over Base even though Base is declared first.
     expect(mockedFetchProposal).toHaveBeenCalledWith(
-      moonbeamEnv,
+      mainnetEnv,
       ETHEREUM_CHAIN_ID,
       7,
     );
-    // Critically, the Ethereum env must NOT be used as the indexer source.
-    expect(mockedFetchProposal).not.toHaveBeenCalledWith(
-      ethereumEnv,
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
-  test("network=mainnet (no chainId) hits chainId=1 only — no fallback to 1284", async () => {
+  test("no chainId falls back over the multigov chains in order", async () => {
+    const multiClient = {
+      environments: { mainnet: mainnetEnv },
+    } as unknown as MoonwellClient;
     mockedFetchProposal.mockResolvedValueOnce({
       ...baseApiProposal,
       chainId: ETHEREUM_CHAIN_ID,
     });
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
-    await getProposal(dualClient, {
-      network: "mainnet",
+    await getProposal(multiClient, {
       proposalId: 7,
     } as unknown as Parameters<typeof getProposal>[1]);
 
+    // Ethereum first — it holds the active multigov contract.
     expect(mockedFetchProposal).toHaveBeenCalledTimes(1);
     expect(mockedFetchProposal).toHaveBeenCalledWith(
-      moonbeamEnv,
+      mainnetEnv,
       ETHEREUM_CHAIN_ID,
       7,
     );
-  });
-
-  test("chainId=1 with no moonbeam env returns undefined without invoking fetchProposal", async () => {
-    const ethereumOnlyClient = {
-      environments: { mainnet: ethereumEnv },
-    } as unknown as MoonwellClient;
-
-    const result = await getProposal(ethereumOnlyClient, {
-      chainId: ETHEREUM_CHAIN_ID,
-      proposalId: 7,
-    } as unknown as Parameters<typeof getProposal>[1]);
-
-    expect(result).toBeUndefined();
-    expect(mockedFetchProposal).not.toHaveBeenCalled();
   });
 });
 
@@ -601,7 +609,6 @@ describe("getProposal snapshotBlocks passthrough", () => {
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
       chainId: MOONBEAM_CHAIN_ID,
     } as unknown as Parameters<typeof getProposal>[1]);
@@ -617,7 +624,6 @@ describe("getProposal snapshotBlocks passthrough", () => {
     mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
 
     const result = await getProposal(client, {
-      network: "moonbeam",
       proposalId: 7,
       chainId: MOONBEAM_CHAIN_ID,
     } as unknown as Parameters<typeof getProposal>[1]);

@@ -1,52 +1,16 @@
 import { describe, expect, test } from "vitest";
 import { testClient } from "../../../../test/client.js";
-import { moonbeam } from "../../../environments/index.js";
+import { base } from "../../../environments/index.js";
 
 describe("Testing markets", () => {
-  test("Test xcDOT market to have bad debt", async () => {
-    const xcDOTMarket = await testClient.getMarket({
-      chainId: moonbeam.id,
-      marketAddress:
-        testClient.environments.moonbeam.markets.MOONWELL_xcDOT.address,
+  // Was a Moonbeam xcDOT bad-debt check, plus commented-out FRAX/GLMR variants,
+  // until the sunset removed that chain (MOO-551). Re-pointed at Base so the
+  // single-market read path stays covered against a chain that still answers.
+  test("Test USDC market resolves", async () => {
+    const usdcMarket = await testClient.getMarket({
+      chainId: base.id,
+      marketAddress: testClient.environments.base.markets.MOONWELL_USDC.address,
     });
-    expect(xcDOTMarket).toBeDefined();
+    expect(usdcMarket).toBeDefined();
   });
-
-  // test("Test FRAX market to have debt", async () => {
-  //   const fraxMarket = await testClient.getMarket({
-  //     chainId: moonbeam.id,
-  //     marketAddress: testClient.environments.moonbeam.markets.MOONWELL_FRAX.address,
-  //   });
-  //   expect(fraxMarket).toBeDefined();
-  //   expect(fraxMarket?.badDebtUsd).toBeGreaterThan(0);
-  // });
-
-  // test("Test GLMR market to not have debt", async () => {
-  //   const glmrMarket = await testClient.getMarket({
-  //     chainId: moonbeam.id,
-  //     marketAddress: testClient.environments.moonbeam.markets.MOONWELL_GLMR.address,
-  //   });
-  //   expect(glmrMarket).toBeDefined();
-  //   expect(glmrMarket?.badDebtUsd).toBe(0);
-  // });
-
-  // Object.entries(testClient.environments).forEach(
-  //   ([networkKey, environment]) => {
-  //     const { chain } = environment;
-
-  //     test(`Get markets on ${chain.name}`, async () => {
-  //       const marketData = await testClient.getMarkets<typeof chain>({
-  //         network: networkKey as keyof typeof testClient.environments,
-  //       });
-  //       expect(marketData).toBeDefined();
-  //     });
-
-  //     test(`Get markets by chain id on ${chain.name}`, async () => {
-  //       const marketData = await testClient.getMarkets({
-  //         chainId: chain.id,
-  //       });
-  //       expect(marketData).toBeDefined();
-  //     });
-  //   },
-  // );
 });
