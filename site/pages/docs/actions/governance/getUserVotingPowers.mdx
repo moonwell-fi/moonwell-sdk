@@ -101,11 +101,11 @@ The network to get the user voting powers for.
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+import { ethereum } from "@moonwell-fi/moonwell-sdk/environments";
 
-const powers = await moonwellClient.getUserVotingPowers<typeof moonbeam>({
+const powers = await moonwellClient.getUserVotingPowers<typeof ethereum>({
   governanceToken: "WELL",
   userAddress: "0x0000000000000000000000000000000000000000",
-  network: "moonbeam", // [!code focus]
+  network: "ethereum", // [!code focus]
 });
 ```

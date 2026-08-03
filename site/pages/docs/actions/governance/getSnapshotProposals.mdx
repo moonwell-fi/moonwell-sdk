@@ -82,9 +82,9 @@ The network to get the proposals for.
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+import { ethereum } from "@moonwell-fi/moonwell-sdk/environments";
 
-const proposals = await moonwellClient.getSnapshotProposals<typeof moonbeam>({
-  network: "moonbeam", // [!code focus]
+const proposals = await moonwellClient.getSnapshotProposals<typeof ethereum>({
+  network: "ethereum", // [!code focus]
 });
 ```

@@ -108,11 +108,11 @@ The network to get the vote receipt for.
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+import { ethereum } from "@moonwell-fi/moonwell-sdk/environments";
 
-const receipt = await moonwellClient.getUserVoteReceipt<typeof moonbeam>({
+const receipt = await moonwellClient.getUserVoteReceipt<typeof ethereum>({
   proposalId: 1,
   userAddress: "0x0000000000000000000000000000000000000000",
-  network: "moonbeam", // [!code focus]
+  network: "ethereum", // [!code focus]
 });
 ```

@@ -74,9 +74,9 @@ The network to get the staking snapshots for.
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+import { ethereum } from "@moonwell-fi/moonwell-sdk/environments";
 
-const snapshots = await moonwellClient.getStakingSnapshots<typeof moonbeam>({
-  network: "moonbeam", // [!code focus]
+const snapshots = await moonwellClient.getStakingSnapshots<typeof ethereum>({
+  network: "ethereum", // [!code focus]
 });
 ```

@@ -70,9 +70,9 @@ The network to get the staking info for.
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+import { ethereum } from "@moonwell-fi/moonwell-sdk/environments";
 
-const info = await moonwellClient.getStakingInfo<typeof moonbeam>({
-  network: "moonbeam", // [!code focus]
+const info = await moonwellClient.getStakingInfo<typeof ethereum>({
+  network: "ethereum", // [!code focus]
 });
 ```
