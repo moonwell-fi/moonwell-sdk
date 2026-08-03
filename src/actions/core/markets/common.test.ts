@@ -223,6 +223,20 @@ function makeLunarMarket(overrides: Record<string, unknown> = {}) {
   };
 }
 
+// Non-null priceUsd/supplyApr/borrowApr keeps `needsRpcPrices` false, so the
+// fixture exercises the incentive loop without any RPC price reads.
+function makeIncentive(overrides: Record<string, unknown> = {}) {
+  return {
+    token: "0x3333333333333333333333333333333333333333",
+    priceUsd: "1",
+    supplyApr: "2",
+    borrowApr: "1",
+    borrowIncentivesPerSec: "1000",
+    supplyIncentivesPerSec: "2000",
+    ...overrides,
+  };
+}
+
 describe("malformed Lunar market records", () => {
   test("skips a malformed record but keeps the valid ones", async () => {
     mockListMarkets.mockResolvedValue({
@@ -237,7 +251,70 @@ describe("malformed Lunar market records", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.totalSupply.value).toBe(100);
+    // The partial case returns successfully, so without its own onError the
+    // vanished markets would leave nothing behind but a console line — the
+    // MOONWELL-FRONTEND-12J incident class becoming invisible rather than
+    // visible. Distinct source so it is attributable apart from the total
+    // failure that reports through "markets".
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 malformed market record(s)"),
+      }),
+      { source: "markets-malformed-records", chainId: MOCK_CHAIN_ID },
+    );
+  });
+
+  test("reports nothing and still returns markets when the env wires no onError", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [
+        makeLunarMarket({
+          incentives: [makeIncentive({ borrowIncentivesPerSec: undefined })],
+        }),
+        makeLunarMarket({ totalSupply: undefined }),
+      ],
+    });
+    const env = {
+      ...makeMarketEnvironment(),
+      onError: undefined,
+    } as unknown as Environment;
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.rewards).toEqual([]);
     expect(mockOnError).not.toHaveBeenCalled();
+  });
+
+  // A rewards-only indexer incident must cost the reward entry, not the market.
+  // The record-level try spans three BigInt() calls on incentive fields, so
+  // without an inner guard one bad reward discards an otherwise-valid market.
+  test("keeps the market when a single incentive is malformed", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [
+        makeLunarMarket({
+          incentives: [
+            makeIncentive(),
+            // Missing numeric field → BigInt(undefined) throws inside the loop
+            makeIncentive({ borrowIncentivesPerSec: undefined }),
+          ],
+        }),
+      ],
+    });
+    const env = makeMarketEnvironment();
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.rewards).toHaveLength(1);
+    expect(result[0]?.rewards[0]?.token.symbol).toBe("MOCK");
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 malformed incentive record(s)"),
+      }),
+      { source: "markets-malformed-incentives", chainId: MOCK_CHAIN_ID },
+    );
   });
 
   test("falls back to on-chain and reports once when every record is malformed", async () => {

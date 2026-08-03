@@ -178,14 +178,24 @@ export type ApiProposalFormatted = {
 /**
  * Derive a ProposalState value from API data alone (no on-chain read).
  *
- * Used for proposals whose chainId doesn't match the governance environment's
- * chainId — e.g. chainId=1 (Ethereum multigov) proposals reached through the
- * Moonbeam governance environment, where on-chain reads against Moonbeam's
- * governor would be meaningless.
+ * Used for proposals whose chainId has no resolvable environment, or whose
+ * on-chain state read failed. Since the sunset (MOO-551) this is the permanent
+ * — not transient — route for every Moonbeam (1284) and Moonriver (1285)
+ * proposal, because no environment exists for those chains any more.
  *
- * Precedence (highest wins): Executed → Canceled → Queued → Active → Pending.
+ * Precedence (highest wins):
+ * Executed → Canceled → Queued → Active → Succeeded/Defeated → Pending.
  * Executed wins over Canceled because the SDK treats EXECUTED state changes as
  * the terminal truth even when an earlier CANCELED event is present.
+ *
+ * Once voting has closed with no terminal state change, the outcome is decided
+ * from the tallies. Without that branch every defeated archive proposal fell
+ * through to `Pending` and listed as perpetually pending — the pre-sunset
+ * Moonbeam governor read used to report the real `Defeated`. The tallies are
+ * the only signal available here: quorum needs an RPC and reports 0 for the
+ * archive, so a for-majority that missed quorum reads as Succeeded rather than
+ * Defeated. That is the same degradation quorum already carries, and it is
+ * strictly closer to the truth than Pending.
  */
 export const deriveProposalStateFromApi = (
   formatted: ApiProposalFormatted,
@@ -200,6 +210,11 @@ export const deriveProposalStateFromApi = (
   if (hasQueued) return ProposalState.Queued;
   if (now >= apiProposal.votingStartTime && now <= apiProposal.votingEndTime) {
     return ProposalState.Active;
+  }
+  if (now > apiProposal.votingEndTime) {
+    return formatted.forVotes.exponential > formatted.againstVotes.exponential
+      ? ProposalState.Succeeded
+      : ProposalState.Defeated;
   }
   return ProposalState.Pending;
 };

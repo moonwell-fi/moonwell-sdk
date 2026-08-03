@@ -526,6 +526,7 @@ async function fetchMarketsFromLunar(
 
   const markets: Market[] = [];
   let malformedCount = 0;
+  let malformedIncentiveCount = 0;
 
   for (const lunarMarket of lunarMarkets) {
     const marketFound = findMarketByAddress(
@@ -653,81 +654,97 @@ async function fetchMarketsFromLunar(
       };
 
       for (const incentive of lunarMarket.incentives) {
-        const token = findTokenByAddress(
-          environment,
-          incentive.token as `0x${string}`,
-        );
-        if (!token) {
-          continue;
-        }
-
-        let supplyApr: number;
-        let borrowApr: number;
-
-        // On-chain contracts use borrowIncentivesPerSec=1 (1 wei) as a
-        // placeholder when there are no active borrow incentives, because
-        // setting it to 0 triggers a known smart contract bug. Treat as zero.
-        const isBorrowPlaceholder =
-          BigInt(incentive.borrowIncentivesPerSec) === 1n;
-
-        if (
-          incentive.priceUsd !== null &&
-          incentive.supplyApr !== null &&
-          incentive.borrowApr !== null
-        ) {
-          supplyApr = Number(incentive.supplyApr);
-          borrowApr = isBorrowPlaceholder ? 0 : -Number(incentive.borrowApr);
-        } else {
-          const isGovernanceToken =
-            token.symbol === environment.custom?.governance?.token;
-          const isNativeToken = token.address === zeroAddress;
-
-          const price = isNativeToken
-            ? nativeTokenPrice?.value
-            : isGovernanceToken
-              ? governanceTokenPrice?.value
-              : undefined;
-
-          if (!price) {
+        // A malformed incentive costs its own reward entry, not the market.
+        // `BigInt()` runs on three reward fields below, so a rewards-only
+        // indexer incident would otherwise throw out to the record-level catch
+        // and drop an otherwise-valid market — the same blast radius this fix
+        // set out to shrink, one level down. Matches the loop's existing
+        // skip-the-unusable-entry idiom (`if (!token) continue`).
+        try {
+          const token = findTokenByAddress(
+            environment,
+            incentive.token as `0x${string}`,
+          );
+          if (!token) {
             continue;
           }
 
-          const borrowIncentivesPerSec = isBorrowPlaceholder
-            ? 0n
-            : BigInt(incentive.borrowIncentivesPerSec);
-          const supplyIncentivesPerSec = BigInt(
-            incentive.supplyIncentivesPerSec,
+          let supplyApr: number;
+          let borrowApr: number;
+
+          // On-chain contracts use borrowIncentivesPerSec=1 (1 wei) as a
+          // placeholder when there are no active borrow incentives, because
+          // setting it to 0 triggers a known smart contract bug. Treat as zero.
+          const isBorrowPlaceholder =
+            BigInt(incentive.borrowIncentivesPerSec) === 1n;
+
+          if (
+            incentive.priceUsd !== null &&
+            incentive.supplyApr !== null &&
+            incentive.borrowApr !== null
+          ) {
+            supplyApr = Number(incentive.supplyApr);
+            borrowApr = isBorrowPlaceholder ? 0 : -Number(incentive.borrowApr);
+          } else {
+            const isGovernanceToken =
+              token.symbol === environment.custom?.governance?.token;
+            const isNativeToken = token.address === zeroAddress;
+
+            const price = isNativeToken
+              ? nativeTokenPrice?.value
+              : isGovernanceToken
+                ? governanceTokenPrice?.value
+                : undefined;
+
+            if (!price) {
+              continue;
+            }
+
+            const borrowIncentivesPerSec = isBorrowPlaceholder
+              ? 0n
+              : BigInt(incentive.borrowIncentivesPerSec);
+            const supplyIncentivesPerSec = BigInt(
+              incentive.supplyIncentivesPerSec,
+            );
+
+            const supplyRewardsPerDayUsd =
+              perDay(new Amount(supplyIncentivesPerSec, token.decimals).value) *
+              price;
+            const borrowRewardsPerDayUsd =
+              perDay(new Amount(borrowIncentivesPerSec, token.decimals).value) *
+              price;
+
+            supplyApr =
+              Number(lunarMarket.totalSupplyUsd) === 0
+                ? 0
+                : (supplyRewardsPerDayUsd /
+                    Number(lunarMarket.totalSupplyUsd)) *
+                  DAYS_PER_YEAR *
+                  100;
+            // Negative: borrow reward APR reduces the effective borrowing cost
+            borrowApr =
+              Number(lunarMarket.totalBorrowsUsd) === 0
+                ? 0
+                : (borrowRewardsPerDayUsd /
+                    Number(lunarMarket.totalBorrowsUsd)) *
+                  DAYS_PER_YEAR *
+                  100 *
+                  -1;
+          }
+
+          market.rewards.push({
+            liquidStakingApr: 0,
+            borrowApr,
+            supplyApr,
+            token,
+          });
+        } catch (error) {
+          malformedIncentiveCount++;
+          console.warn(
+            `[fetchMarketsFromLunar] Skipping malformed incentive ${incentive.token} on market ${lunarMarket.address} (chain ${environment.chainId}):`,
+            error,
           );
-
-          const supplyRewardsPerDayUsd =
-            perDay(new Amount(supplyIncentivesPerSec, token.decimals).value) *
-            price;
-          const borrowRewardsPerDayUsd =
-            perDay(new Amount(borrowIncentivesPerSec, token.decimals).value) *
-            price;
-
-          supplyApr =
-            Number(lunarMarket.totalSupplyUsd) === 0
-              ? 0
-              : (supplyRewardsPerDayUsd / Number(lunarMarket.totalSupplyUsd)) *
-                DAYS_PER_YEAR *
-                100;
-          // Negative: borrow reward APR reduces the effective borrowing cost
-          borrowApr =
-            Number(lunarMarket.totalBorrowsUsd) === 0
-              ? 0
-              : (borrowRewardsPerDayUsd / Number(lunarMarket.totalBorrowsUsd)) *
-                DAYS_PER_YEAR *
-                100 *
-                -1;
         }
-
-        market.rewards.push({
-          liquidStakingApr: 0,
-          borrowApr,
-          supplyApr,
-          token,
-        });
       }
 
       market.totalSupplyApr = market.rewards.reduce(
@@ -755,6 +772,36 @@ async function fetchMarketsFromLunar(
   if (malformedCount > 0 && markets.length === 0) {
     throw new Error(
       `Lunar Indexer returned only malformed market records for chain ${environment.chainId} (${malformedCount} skipped)`,
+    );
+  }
+
+  // A partial incident is the likeliest shape, and it is the one that returns
+  // successfully — without this, markets vanishing from the response would
+  // leave nothing behind but a console line, making the incident class this fix
+  // exists for (MOONWELL-FRONTEND-12J) invisible rather than visible. Distinct
+  // `source` values so a degraded result is attributable separately from the
+  // total failure that routes through `getMarketsData`'s own "markets" source.
+  if (malformedCount > 0) {
+    environment.onError?.(
+      new Error(
+        `Lunar Indexer returned ${malformedCount} malformed market record(s) for chain ${environment.chainId}; those markets were skipped (${markets.length} returned)`,
+      ),
+      {
+        source: "markets-malformed-records",
+        chainId: environment.chainId,
+      },
+    );
+  }
+
+  if (malformedIncentiveCount > 0) {
+    environment.onError?.(
+      new Error(
+        `Lunar Indexer returned ${malformedIncentiveCount} malformed incentive record(s) for chain ${environment.chainId}; those rewards were skipped`,
+      ),
+      {
+        source: "markets-malformed-incentives",
+        chainId: environment.chainId,
+      },
     );
   }
 

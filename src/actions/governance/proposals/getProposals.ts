@@ -104,10 +104,13 @@ async function fetchGovernorProposals(
 }
 
 /**
- * Shared Governor-API pipeline: resolve IPFS descriptions + cross-chain quorums
- * in parallel, read on-chain data, then map each ApiProposal to a Proposal.
- * Used by both the Moonbeam/Ethereum and Moonriver paths so the mapping stays
- * in one place.
+ * Governor-API pipeline: resolve IPFS descriptions + cross-chain quorums in
+ * parallel, read on-chain data, then map each ApiProposal to a Proposal.
+ *
+ * Single caller (`fetchGovernorProposals`) since the sunset removed the separate
+ * `getMoonbeamProposals` / `getMoonriverProposals` entry points (MOO-551) —
+ * kept as its own function because it is the list-shaped counterpart to
+ * `getProposal`'s single-proposal pipeline, and the two are read together.
  */
 async function buildProposals(
   apiProposals: ApiProposal[],
@@ -125,13 +128,21 @@ async function buildProposals(
     { crossChainQuorums },
   );
 
-  const proposals: Proposal[] = apiProposals.map((apiProposal, index) =>
-    mapApiProposalToProposal(
-      apiProposal,
-      onChainDataList[index]!,
-      governanceEnvironment,
-    ),
-  );
+  // `getProposalsOnChainData` maps 1:1 over its input, so every index resolves —
+  // guard rather than assert, so the invariant is enforced instead of asserted
+  // away if that ever stops holding.
+  const proposals: Proposal[] = apiProposals.flatMap((apiProposal, index) => {
+    const onChainData = onChainDataList[index];
+    return onChainData
+      ? [
+          mapApiProposalToProposal(
+            apiProposal,
+            onChainData,
+            governanceEnvironment,
+          ),
+        ]
+      : [];
+  });
 
   return proposals;
 }

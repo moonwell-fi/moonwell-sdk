@@ -356,10 +356,76 @@ describe("deriveProposalStateFromApi", () => {
     ).toBe(ProposalState.Pending);
   });
 
-  test("Pending after voting ends with no terminal events (indexer hasn't surfaced outcome yet)", () => {
+  // Once voting closes with no terminal state change, the outcome comes from the
+  // tallies. Before this, every defeated archive proposal fell through to
+  // Pending — and since the sunset (MOO-551) this is the *permanent* route for
+  // 1284/1285, not a transient degradation, so they listed as perpetually
+  // pending instead of Defeated.
+  test("Defeated after voting ends when against outweighs for", () => {
+    expect(
+      deriveProposalStateFromApi(
+        {
+          ...emptyFormatted,
+          forVotes: new Amount(100n, 18),
+          againstVotes: new Amount(900n, 18),
+        },
+        baseApiProposal,
+        3_000,
+      ),
+    ).toBe(ProposalState.Defeated);
+  });
+
+  test("Succeeded after voting ends when for outweighs against", () => {
+    expect(
+      deriveProposalStateFromApi(
+        {
+          ...emptyFormatted,
+          forVotes: new Amount(900n, 18),
+          againstVotes: new Amount(100n, 18),
+        },
+        baseApiProposal,
+        3_000,
+      ),
+    ).toBe(ProposalState.Succeeded);
+  });
+
+  test("Defeated on a tie, and when no votes were cast at all", () => {
+    expect(
+      deriveProposalStateFromApi(
+        {
+          ...emptyFormatted,
+          forVotes: new Amount(500n, 18),
+          againstVotes: new Amount(500n, 18),
+        },
+        baseApiProposal,
+        3_000,
+      ),
+    ).toBe(ProposalState.Defeated);
     expect(
       deriveProposalStateFromApi(emptyFormatted, baseApiProposal, 3_000),
-    ).toBe(ProposalState.Pending);
+    ).toBe(ProposalState.Defeated);
+  });
+
+  test("terminal state changes still win over the tallies", () => {
+    const forMajority = {
+      ...emptyFormatted,
+      forVotes: new Amount(900n, 18),
+      againstVotes: new Amount(100n, 18),
+    };
+    expect(
+      deriveProposalStateFromApi(
+        { ...forMajority, canceled: true },
+        baseApiProposal,
+        3_000,
+      ),
+    ).toBe(ProposalState.Canceled);
+    expect(
+      deriveProposalStateFromApi(
+        forMajority,
+        { ...baseApiProposal, stateChanges: [queuedChange] },
+        3_000,
+      ),
+    ).toBe(ProposalState.Queued);
   });
 });
 
@@ -431,6 +497,144 @@ describe("getProposalsOnChainData unmapped chain", () => {
       crossChainQuorums: new Map([[42, 1n]]),
     });
     expect(missingEntry?.quorum).toBe(0n);
+  });
+});
+
+// ─── Archive chains, post-sunset ─────────────────────────────────────────────
+// The real production shape after MOO-551: a governance environment for chain 1
+// only, and Moonbeam/Moonriver proposals still served by the indexer with no
+// environment behind them. `resolveHomeEnv` returns undefined for 1284/1285, so
+// the `!homeEnv` branch is their *permanent* route, not a transient
+// degradation — everything below is what an archive proposal looks like now.
+const MOONBEAM_CHAIN_ID = 1284;
+const MOONRIVER_CHAIN_ID = 1285;
+
+describe("getProposalsOnChainData archive chains (no environment exists)", () => {
+  // Hub env with no contracts wired: nothing local to read, which is exactly the
+  // situation for a proposal whose home chain is gone.
+  const hubEnv = {
+    chainId: 1,
+    contracts: {},
+    custom: {},
+  } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+  const archiveProposal = (
+    chainId: number,
+    overrides: Partial<ApiProposal> = {},
+  ): ApiProposal => ({
+    ...baseApiProposal,
+    chainId,
+    proposalId: 42,
+    // Voting long closed — every archive proposal is in the past.
+    votingStartTime: 1_000,
+    votingEndTime: 2_000,
+    stateChanges: [],
+    ...overrides,
+  });
+
+  const now = Math.floor(Date.now() / 1000);
+
+  test.each([MOONBEAM_CHAIN_ID, MOONRIVER_CHAIN_ID])(
+    "chainId %i resolves no home env: null proposalData, quorum 0, eta 0",
+    async (chainId) => {
+      const [onChainData] = await getProposalsOnChainData(
+        [archiveProposal(chainId)],
+        hubEnv,
+      );
+
+      expect(onChainData?.proposalData).toBeNull();
+      expect(onChainData?.quorum).toBe(0n);
+      expect(onChainData?.eta).toBe(0);
+      expect(onChainData?.votesCollected).toBe(false);
+      // No env means no multichainGovernor to route to, so the unknown-cutoff
+      // bias must not fire — an archive proposal with local-only targets stays
+      // non-multichain and therefore carries no `multichain` field.
+      expect(onChainData?.isMultichain).toBe(false);
+    },
+  );
+
+  test("executed archive proposal derives Executed", async () => {
+    const [onChainData] = await getProposalsOnChainData(
+      [
+        archiveProposal(MOONBEAM_CHAIN_ID, {
+          stateChanges: [
+            { ...queuedChange, state: "EXECUTED", chainId: MOONBEAM_CHAIN_ID },
+          ],
+        }),
+      ],
+      hubEnv,
+    );
+    expect(onChainData?.state).toBe(ProposalState.Executed);
+  });
+
+  test("canceled archive proposal derives Canceled", async () => {
+    const [onChainData] = await getProposalsOnChainData(
+      [
+        archiveProposal(MOONRIVER_CHAIN_ID, {
+          stateChanges: [
+            { ...queuedChange, state: "CANCELED", chainId: MOONRIVER_CHAIN_ID },
+          ],
+        }),
+      ],
+      hubEnv,
+    );
+    expect(onChainData?.state).toBe(ProposalState.Canceled);
+  });
+
+  // The regression this suite exists for: with no governor to read, a defeated
+  // archive proposal used to fall through every branch and surface as Pending —
+  // perpetually pending in the UI, for every defeated proposal in the archive.
+  test("defeated archive proposal derives Defeated, not Pending", async () => {
+    const [onChainData] = await getProposalsOnChainData(
+      [
+        archiveProposal(MOONBEAM_CHAIN_ID, {
+          forVotes: "100",
+          againstVotes: "900",
+        }),
+      ],
+      hubEnv,
+    );
+    expect(onChainData?.state).toBe(ProposalState.Defeated);
+  });
+
+  test("succeeded-but-unexecuted archive proposal derives Succeeded", async () => {
+    const [onChainData] = await getProposalsOnChainData(
+      [
+        archiveProposal(MOONBEAM_CHAIN_ID, {
+          forVotes: "900",
+          againstVotes: "100",
+        }),
+      ],
+      hubEnv,
+    );
+    expect(onChainData?.state).toBe(ProposalState.Succeeded);
+  });
+
+  test("queued archive proposal keeps Queued over the tallies", async () => {
+    const [onChainData] = await getProposalsOnChainData(
+      [
+        archiveProposal(MOONBEAM_CHAIN_ID, {
+          forVotes: "100",
+          againstVotes: "900",
+          stateChanges: [{ ...queuedChange, chainId: MOONBEAM_CHAIN_ID }],
+        }),
+      ],
+      hubEnv,
+    );
+    expect(onChainData?.state).toBe(ProposalState.Queued);
+  });
+
+  test("an archive proposal still mid-window derives Active", async () => {
+    const [onChainData] = await getProposalsOnChainData(
+      [
+        archiveProposal(MOONBEAM_CHAIN_ID, {
+          votingStartTime: now - 100,
+          votingEndTime: now + 100,
+        }),
+      ],
+      hubEnv,
+    );
+    expect(onChainData?.state).toBe(ProposalState.Active);
   });
 });
 

@@ -21,12 +21,23 @@ export async function getGovernanceTokenInfo(
   _client: MoonwellClient,
   // Retained for API compatibility, but WELL is the only governance token left
   // now that MFAM went with Moonriver (MOO-551), so there is nothing to branch on.
-  _args: GetGovernanceTokenInfoParameters,
+  args: GetGovernanceTokenInfoParameters,
 ): GetGovernanceTokenInfoReturnType {
   const logId = logger.start(
     "getGovernanceTokenInfo",
     "Starting to get governance token info...",
   );
+
+  // TypeScript already narrows `GovernanceToken` to "WELL", but a JS consumer
+  // still passing "MFAM" would otherwise receive WELL's supply as a normal
+  // success — silently wrong data where TS consumers get a compile error.
+  // Reject it rather than let the removed token look like it still resolves.
+  if (args.governanceToken !== undefined && args.governanceToken !== "WELL") {
+    logger.end(logId);
+    throw new Error(
+      `Unsupported governance token "${args.governanceToken}". MFAM was removed with the Moonriver sunset (MOO-551); WELL is the only governance token.`,
+    );
+  }
 
   // WELL supply used to be read from Moonbeam, the original mint. That chain is
   // halted (MOO-551), so the read now targets the Ethereum multigov hub — the

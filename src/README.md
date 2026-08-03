@@ -40,7 +40,7 @@
 
 - Up-to-date repository of Moonwell deployed contracts
 - First-class APIs for interacting with [Moonwell Smart Contracts](https://github.com/moonwell-fi/moonwell-contracts-v2)
-- Support for multiple networks: Base, Optimism, and Ethereum
+- Support for multiple networks: Base, Optimism, Ethereum, Arbitrum, Avalanche, and Polygon
 - Comprehensive market data retrieval
 - User position and reward tracking
 - Governance functionality

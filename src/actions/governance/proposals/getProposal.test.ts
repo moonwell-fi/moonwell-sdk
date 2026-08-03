@@ -120,6 +120,21 @@ describe("getProposal environment guard", () => {
       7,
     );
   });
+
+  // `getProposalsOnChainData` maps 1:1 over its input, so this cannot happen
+  // today — the point is that the mapping guards the invariant instead of
+  // asserting it away with `!`, and degrades to "not found" if it ever breaks.
+  test("returns undefined when no on-chain data comes back for the proposal", async () => {
+    mockedFetchProposal.mockResolvedValueOnce(baseApiProposal);
+    mockedOnChain.mockResolvedValueOnce([]);
+
+    const result = await getProposal(client, {
+      chainId: ETHEREUM_CHAIN_ID,
+      proposalId: 7,
+    } as unknown as Parameters<typeof getProposal>[1]);
+
+    expect(result).toBeUndefined();
+  });
 });
 
 describe("getProposal state post-processing", () => {

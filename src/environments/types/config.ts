@@ -175,6 +175,20 @@ export type CustomConfigType = {
   };
   governance?: {
     token: GovernanceToken;
+    /**
+     * Satellite chains this environment acts as the governance home for.
+     *
+     * Consumed as a `homeEnvironment` membership test — a satellite prices its
+     * native-token rewards through whichever environment claims its chainId.
+     * Only Moonbeam ever claimed any, so since the sunset (MOO-551) every
+     * surviving environment ships `[]` and each chain resolves to itself via
+     * the call sites' `|| environment` fallback. The
+     * `ethereum/environment.test.ts` invariant keeps it that way.
+     *
+     * Kept as an extension point for a future hub that genuinely fronts other
+     * chains; collapsing the lookups and retiring the field is a separate
+     * cleanup, since it would change `Environment["custom"]`.
+     */
     chainIds: number[];
     proposalIdOffset?: number;
     snapshotEnsName?: string;

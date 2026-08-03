@@ -118,6 +118,54 @@ describe("getProposals empty-env short-circuit", () => {
     expect(mockedFetchAll).not.toHaveBeenCalled();
   });
 
+  // `chainId` is a public parameter, and `getProposal`'s docblock teaches
+  // callers to pass the chain a proposal lives on — 1284/1285 included. Those
+  // ids matched a registrable environment before the sunset; now they match
+  // nothing. An unmatched selector must reach this action's own `return []`
+  // guard rather than crashing on a `[undefined]` array.
+  test.each([MOONBEAM_CHAIN_ID, MOONRIVER_CHAIN_ID, 999_999])(
+    "returns [] instead of throwing when chainId %i matches no environment",
+    async (chainId) => {
+      await expect(
+        getProposals(client, {
+          chainId,
+        } as unknown as Parameters<typeof getProposals>[1]),
+      ).resolves.toEqual([]);
+
+      expect(mockedFetchAll).not.toHaveBeenCalled();
+    },
+  );
+
+  test("returns [] when a network key matches no registered environment", async () => {
+    await expect(
+      getProposals(client, {
+        network: "moonbeam",
+      } as unknown as Parameters<typeof getProposals>[1]),
+    ).resolves.toEqual([]);
+
+    expect(mockedFetchAll).not.toHaveBeenCalled();
+  });
+
+  // Same invariant as getProposal: getProposalsOnChainData maps 1:1, so the
+  // mapping guards rather than asserting with `!`. A short list drops the
+  // unmatched proposals instead of constructing one from `undefined`.
+  test("drops proposals with no matching on-chain data instead of asserting", async () => {
+    mockedFetchAll
+      .mockResolvedValueOnce([
+        makeApiProposal(ETHEREUM_CHAIN_ID, 3),
+        makeApiProposal(ETHEREUM_CHAIN_ID, 4),
+      ])
+      .mockResolvedValue([]);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposals(client, {
+      network: "ethereum",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.proposalId).toBe(3);
+  });
+
   test("serves governance from a non-Moonbeam environment", async () => {
     mockedFetchAll.mockResolvedValue([]);
     mockedOnChain.mockResolvedValueOnce([]);

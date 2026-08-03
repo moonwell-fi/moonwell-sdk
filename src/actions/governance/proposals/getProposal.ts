@@ -105,9 +105,17 @@ async function getGovernorApiProposal(
     { crossChainQuorums },
   );
 
+  // `getProposalsOnChainData` maps 1:1 over its input, so the single entry is
+  // always present — guard rather than assert, so the invariant is enforced
+  // instead of asserted away if that ever stops holding.
+  const onChainData = onChainDataList[0];
+  if (!onChainData) {
+    return undefined;
+  }
+
   return mapApiProposalToProposal(
     apiProposal,
-    onChainDataList[0]!,
+    onChainData,
     governanceEnvironment,
   );
 }

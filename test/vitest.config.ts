@@ -39,6 +39,7 @@ export default defineConfig({
       "src/actions/core/markets/common.test.ts",
       "src/actions/morpho/**/*.test.ts",
       "src/actions/lunar-indexer-client.test.ts",
+      "src/actions/governance/getGovernanceTokenInfo.test.ts",
       "src/actions/governance/getMerklRewardsData.test.ts",
       "src/actions/governance/getCirculatingSupplySnapshots.test.ts",
       "src/actions/governance/getStakingSnapshots.test.ts",
