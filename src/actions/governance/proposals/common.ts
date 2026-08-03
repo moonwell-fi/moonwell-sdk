@@ -6,6 +6,7 @@ import { publicEnvironments } from "../../../environments/index.js";
 import {
   MultichainProposalState,
   MultichainProposalStateMapping,
+  type Proposal,
   ProposalState,
 } from "../../../types/proposal.js";
 import type { ApiProposal } from "../governor-api-client.js";
@@ -597,4 +598,94 @@ export const getProposalsOnChainData = async (
   );
 
   return onChainDataList;
+};
+
+/**
+ * Map an indexer proposal plus its on-chain data onto the public `Proposal`.
+ *
+ * `getProposal` and `getProposals` both used to carry their own copy of this
+ * block, and both carried a comment warning the other not to drift from it —
+ * jscpd measured 69 duplicated lines between them. One implementation removes
+ * the drift risk those comments were describing.
+ */
+export const mapApiProposalToProposal = (
+  apiProposal: ApiProposal,
+  onChainData: ProposalOnChainData,
+  governanceEnvironment: Environment,
+): Proposal => {
+  const formattedData = formatApiProposalData(apiProposal);
+  // getProposalsOnChainData already classified this proposal and routed its
+  // reads accordingly; re-classifying here would drift and drop `multichain`.
+  const isMultichain = onChainData.isMultichain;
+
+  const now = Math.floor(Date.now() / 1000);
+  let proposalState = onChainData.state;
+
+  if (
+    proposalState === ProposalState.Pending &&
+    now >= apiProposal.votingStartTime &&
+    now <= apiProposal.votingEndTime
+  ) {
+    proposalState = ProposalState.Active;
+  }
+
+  if (formattedData.executed) {
+    proposalState = ProposalState.Executed;
+  } else if (
+    isMultichain &&
+    onChainData.votesCollected &&
+    now > apiProposal.votingEndTime &&
+    proposalState === ProposalState.Succeeded
+  ) {
+    // Succeeded with collection done means "awaiting execution" — surface as
+    // Queued so the frontend renders the "Ready to Execute" timeline step.
+    // Defeated/Canceled/Executed must NOT be promoted: under the
+    // state-machine-based votesCollected those terminal states also satisfy
+    // `votesCollected: true`, so a `< Queued` gate would mislabel them.
+    proposalState = ProposalState.Queued;
+  }
+
+  const proposal: Proposal = {
+    id: apiProposal.proposalId,
+    chainId: apiProposal.chainId,
+    proposalId: apiProposal.proposalId,
+    proposer: apiProposal.proposer as `0x${string}`,
+    eta: onChainData.eta,
+    startTimestamp: apiProposal.votingStartTime,
+    endTimestamp: apiProposal.votingEndTime,
+    startBlock: Number(apiProposal.blockNumber),
+    forVotes: formattedData.forVotes,
+    againstVotes: formattedData.againstVotes,
+    abstainVotes: formattedData.abstainVotes,
+    totalVotes: formattedData.totalVotes,
+    canceled: formattedData.canceled,
+    executed: formattedData.executed,
+    quorum: new Amount(onChainData.quorum, 18),
+    state: proposalState,
+    // Extended data
+    title: formattedData.title,
+    subtitle: formattedData.subtitle,
+    description: apiProposal.description,
+    targets: apiProposal.targets,
+    calldatas: apiProposal.calldatas,
+    // Legacy-governor proposals (Moonriver, early Moonbeam) carry the function
+    // signature separately from the selector-less calldata; pass it through so
+    // consumers can decode the call. Empty for multichain-governor proposals.
+    signatures: apiProposal.signatures ?? [],
+    stateChanges: formattedData.stateChanges,
+    environment: governanceEnvironment,
+  };
+
+  if (apiProposal.snapshotBlocks) {
+    proposal.snapshotBlocks = apiProposal.snapshotBlocks;
+  }
+
+  if (isMultichain) {
+    proposal.multichain = {
+      id: apiProposal.proposalId,
+      votesCollected: onChainData.votesCollected,
+    };
+  }
+
+  return proposal;
 };

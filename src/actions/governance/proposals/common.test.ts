@@ -784,6 +784,87 @@ describe("getProposalsOnChainData local read failure", () => {
     expect(data?.proposalData).toBeNull();
   });
 
+  // MOO-551: the governance environment is now the Ethereum multigov hub, which
+  // wires a `multichainGovernor` and no legacy `governor`. The local quorum read
+  // has to follow whichever contract the env actually has, or every hub-local
+  // proposal would report quorum 0.
+  describe("local quorum source selection", () => {
+    const makeProposal = () =>
+      ({
+        chainId: 1,
+        proposalId: 5,
+        targets: [],
+        // `description` is required: when the state read is unavailable the
+        // pipeline derives state from the API payload, which formats the title.
+        description: "# Test proposal",
+        forVotes: "0",
+        againstVotes: "0",
+        abstainVotes: "0",
+        votingStartTime: 0,
+        votingEndTime: 0,
+      }) as unknown as Parameters<typeof getProposalsOnChainData>[0][number];
+
+    test("reads multichainGovernor.quorum on a hub env with no legacy governor", async () => {
+      const quorum = vi.fn().mockResolvedValue(4_200n);
+      const env = {
+        chainId: 1,
+        contracts: {
+          multichainGovernor: {
+            read: {
+              quorum,
+              state: vi.fn().mockResolvedValue(4),
+              proposals: vi.fn().mockResolvedValue(null),
+            },
+          },
+        },
+        custom: {},
+      } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+      const [data] = await getProposalsOnChainData([makeProposal()], env);
+
+      expect(quorum).toHaveBeenCalled();
+      expect(data?.quorum).toBe(4_200n);
+    });
+
+    test("prefers the legacy governor's getQuorum when the env wires one", async () => {
+      const getQuorum = vi.fn().mockResolvedValue(7n);
+      const mgQuorum = vi.fn().mockResolvedValue(999n);
+      const env = {
+        chainId: 1,
+        contracts: {
+          governor: {
+            read: {
+              getQuorum,
+              proposalCount: vi.fn().mockResolvedValue(0n),
+              state: vi.fn().mockResolvedValue(4),
+              proposals: vi.fn().mockResolvedValue(null),
+            },
+          },
+          multichainGovernor: { read: { quorum: mgQuorum } },
+        },
+        custom: {},
+      } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+      const [data] = await getProposalsOnChainData([makeProposal()], env);
+
+      expect(getQuorum).toHaveBeenCalled();
+      expect(mgQuorum).not.toHaveBeenCalled();
+      expect(data?.quorum).toBe(7n);
+    });
+
+    test("leaves quorum at 0 when the env wires neither governor", async () => {
+      const env = {
+        chainId: 1,
+        contracts: {},
+        custom: {},
+      } as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+      const [data] = await getProposalsOnChainData([makeProposal()], env);
+
+      expect(data?.quorum).toBe(0n);
+    });
+  });
+
   test("reports a swallowed quorum-read failure via onError with a distinct source", async () => {
     // The quorum read runs once before the per-proposal loop, so an empty
     // proposals array isolates it. On failure quorum silently stays 0n; the

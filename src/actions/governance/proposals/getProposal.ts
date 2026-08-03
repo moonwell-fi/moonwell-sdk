@@ -1,8 +1,7 @@
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { Amount } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
-import { type Proposal, ProposalState } from "../../../types/proposal.js";
+import type { Proposal } from "../../../types/proposal.js";
 import {
   type ApiProposal,
   MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS,
@@ -11,8 +10,8 @@ import {
 } from "../governor-api-client.js";
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
-  formatApiProposalData,
   getProposalsOnChainData,
+  mapApiProposalToProposal,
   readCrossChainQuorums,
   resolveGovernanceEnvironment,
 } from "./common.js";
@@ -100,87 +99,15 @@ async function getGovernorApiProposal(
     readCrossChainQuorums([apiProposal], governanceEnvironment),
   ]);
 
-  const formattedData = formatApiProposalData(apiProposal);
   const onChainDataList = await getProposalsOnChainData(
     [apiProposal],
     governanceEnvironment,
     { crossChainQuorums },
   );
-  const onChainData = onChainDataList[0]!;
-  // Single source of truth: getProposalsOnChainData already classified this
-  // proposal with the caller env's Artemis cutoff and used it to route the
-  // on-chain reads. Reusing it avoids the drift that left Moonbeam-homed
-  // local-target proposals (and hub-local Ethereum ones) without `multichain`.
-  const isMultichain = onChainData.isMultichain;
 
-  const now = Math.floor(Date.now() / 1000);
-  let proposalState = onChainData.state;
-
-  if (
-    proposalState === ProposalState.Pending &&
-    now >= apiProposal.votingStartTime &&
-    now <= apiProposal.votingEndTime
-  ) {
-    proposalState = ProposalState.Active;
-  }
-
-  if (formattedData.executed) {
-    proposalState = ProposalState.Executed;
-  } else if (
-    isMultichain &&
-    onChainData.votesCollected &&
-    now > apiProposal.votingEndTime &&
-    proposalState === ProposalState.Succeeded
-  ) {
-    // Succeeded with collection done means "awaiting execution" — surface as
-    // Queued so the frontend renders the "Ready to Execute" timeline step.
-    // Defeated/Canceled/Executed must NOT be promoted: under the new
-    // state-machine-based votesCollected, those terminal states also satisfy
-    // `votesCollected: true`, so a `< Queued` gate would mislabel them.
-    proposalState = ProposalState.Queued;
-  }
-
-  const proposal: Proposal = {
-    id: apiProposal.proposalId,
-    chainId: apiProposal.chainId,
-    proposalId: apiProposal.proposalId,
-    proposer: apiProposal.proposer as `0x${string}`,
-    eta: onChainData.eta,
-    startTimestamp: apiProposal.votingStartTime,
-    endTimestamp: apiProposal.votingEndTime,
-    startBlock: Number(apiProposal.blockNumber),
-    forVotes: formattedData.forVotes,
-    againstVotes: formattedData.againstVotes,
-    abstainVotes: formattedData.abstainVotes,
-    totalVotes: formattedData.totalVotes,
-    canceled: formattedData.canceled,
-    executed: formattedData.executed,
-    quorum: new Amount(onChainData.quorum, 18),
-    state: proposalState,
-    // Extended data
-    title: formattedData.title,
-    subtitle: formattedData.subtitle,
-    description: apiProposal.description,
-    targets: apiProposal.targets,
-    calldatas: apiProposal.calldatas,
-    // Legacy-governor proposals (Moonriver, early Moonbeam) carry the function
-    // signature separately from the selector-less calldata; pass it through so
-    // consumers can decode the call. Empty for multichain-governor proposals.
-    signatures: apiProposal.signatures ?? [],
-    stateChanges: formattedData.stateChanges,
-    environment: governanceEnvironment,
-  };
-
-  if (apiProposal.snapshotBlocks) {
-    proposal.snapshotBlocks = apiProposal.snapshotBlocks;
-  }
-
-  if (isMultichain) {
-    proposal.multichain = {
-      id: apiProposal.proposalId,
-      votesCollected: onChainData.votesCollected,
-    };
-  }
-
-  return proposal;
+  return mapApiProposalToProposal(
+    apiProposal,
+    onChainDataList[0]!,
+    governanceEnvironment,
+  );
 }
