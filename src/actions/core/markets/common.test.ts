@@ -153,3 +153,113 @@ describe("RPC fallback after Lunar failure", () => {
     expect(result).toEqual([]);
   });
 });
+
+// ─── Malformed Lunar records ─────────────────────────────────────────────────
+// A record with missing numeric fields turns into NaN, which BigInt() rejects
+// with a RangeError. One bad record must not take down the whole chain's
+// market list (seen chain-wide on the sunset Moonbeam deployment,
+// MOONWELL-FRONTEND-12J).
+
+const MARKET_ADDRESS = "0x1111111111111111111111111111111111111111";
+
+function makeMarketEnvironment(): Environment {
+  return makeEnvironment({
+    markets: { MOCK: { address: MARKET_ADDRESS } },
+    config: {
+      markets: {
+        MOCK: {
+          marketToken: "mMOCK",
+          underlyingToken: "MOCK",
+          deprecated: false,
+        },
+      },
+      tokens: {
+        mMOCK: {
+          address: "0x2222222222222222222222222222222222222222",
+          decimals: 8,
+          symbol: "mMOCK",
+          name: "Moonwell Mock",
+        },
+        MOCK: {
+          address: "0x3333333333333333333333333333333333333333",
+          decimals: 18,
+          symbol: "MOCK",
+          name: "Mock",
+        },
+      },
+      vaults: {},
+      morphoMarkets: {},
+      contracts: {},
+    },
+  } as unknown as Partial<Environment>);
+}
+
+function makeLunarMarket(overrides: Record<string, unknown> = {}) {
+  return {
+    address: MARKET_ADDRESS,
+    totalSupply: "100",
+    totalBorrows: "50",
+    totalReserves: "1",
+    cash: "49",
+    badDebt: "0",
+    supplyCap: "1000",
+    borrowCap: "500",
+    reserveFactor: "100000000000000000",
+    seizePaused: false,
+    transferPaused: false,
+    mintPaused: false,
+    borrowPaused: false,
+    collateralFactor: "0.8",
+    exchangeRate: "1.02",
+    priceUsd: "1",
+    totalSupplyUsd: "100",
+    totalBorrowsUsd: "50",
+    totalReservesUsd: "1",
+    badDebtUsd: "0",
+    baseSupplyApy: "1.5",
+    baseBorrowApy: "3.0",
+    incentives: [],
+    ...overrides,
+  };
+}
+
+describe("malformed Lunar market records", () => {
+  test("skips a malformed record but keeps the valid ones", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [
+        makeLunarMarket(),
+        // Missing numeric field → Number(undefined) → NaN → BigInt throws
+        makeLunarMarket({ totalSupply: undefined }),
+      ],
+    });
+
+    const result = await getMarketsData(makeMarketEnvironment());
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.totalSupply.value).toBe(100);
+    expect(mockOnError).not.toHaveBeenCalled();
+  });
+
+  test("falls back to on-chain and reports once when every record is malformed", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [
+        makeLunarMarket({ totalSupply: undefined }),
+        makeLunarMarket({ cash: undefined }),
+      ],
+    });
+    const env = makeMarketEnvironment();
+
+    const result = await getMarketsData(env);
+
+    // Existing catch in getMarketsData: one onError with the aggregate error,
+    // then the on-chain fallback (whose mock returns no markets).
+    expect(result).toEqual([]);
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("malformed"),
+      }),
+      { source: "markets", chainId: MOCK_CHAIN_ID },
+    );
+  });
+});
