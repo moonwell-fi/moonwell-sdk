@@ -20,15 +20,10 @@ const MOONBEAM_CHAIN_ID = 1284;
 const MOONRIVER_CHAIN_ID = 1285;
 const USER_ADDRESS = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as const;
 
-const moonbeamEnv = {
-  key: "moonbeam",
-  chainId: MOONBEAM_CHAIN_ID,
-  governanceIndexerUrl: "https://mock-indexer.test",
-  contracts: {},
-  custom: {},
-  config: {},
-} as unknown as Record<string, unknown>;
-
+// Governance is homed on the Ethereum multigov hub since the sunset removed the
+// Moonbeam/Moonriver environments (MOO-551), so no registrable client can carry
+// a 1284/1285 environment any more. `args.chainId` names only the chain the
+// PROPOSAL lives on — it no longer selects the environment we read through.
 const ethereumEnv = {
   key: "ethereum",
   chainId: ETHEREUM_CHAIN_ID,
@@ -39,7 +34,7 @@ const ethereumEnv = {
 } as unknown as Record<string, unknown>;
 
 const client = {
-  environments: { moonbeam: moonbeamEnv, ethereum: ethereumEnv },
+  environments: { ethereum: ethereumEnv },
 } as unknown as MoonwellClient;
 
 const makeReceipt = (chainId: number, votes: string): ApiVoteReceipt => ({
@@ -58,15 +53,52 @@ afterEach(() => {
 });
 
 describe("getUserVoteReceipt environment guards", () => {
-  test("returns [] when the requested env doesn't exist in the client (no fetcher call)", async () => {
-    const result = await getUserVoteReceipt(client, {
-      network: "polygon", // not in the mock client.environments
+  test("returns [] when the client has no environments at all (no fetcher call)", async () => {
+    const emptyClient = {
+      environments: {},
+    } as unknown as MoonwellClient;
+
+    const result = await getUserVoteReceipt(emptyClient, {
       proposalId: 7,
       userAddress: USER_ADDRESS,
     } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
 
     expect(result).toEqual([]);
     expect(mockedFetch).not.toHaveBeenCalled();
+  });
+
+  test("resolves the indexer source independently of the requested chainId", async () => {
+    // An archive lookup must still reach the indexer with no Moonbeam
+    // environment present — resolving the environment from `chainId` here is
+    // what made every historical receipt read as "didn't vote" (MOO-551).
+    mockedFetch.mockResolvedValueOnce([makeReceipt(MOONBEAM_CHAIN_ID, "1000")]);
+
+    const result = await getUserVoteReceipt(client, {
+      proposalId: 7,
+      userAddress: USER_ADDRESS,
+      chainId: MOONBEAM_CHAIN_ID,
+    } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.voted).toBe(true);
+    expect(result[0]?.chainId).toBe(MOONBEAM_CHAIN_ID);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
+    expect(mockedFetch.mock.calls[0]?.[0]).toBe(ethereumEnv);
+    expect(mockedFetch.mock.calls[0]?.[1]).toBe(MOONBEAM_CHAIN_ID);
+  });
+
+  test("the didn't-vote stub reports the requested proposal chain, not the hub", async () => {
+    mockedFetch.mockResolvedValueOnce([]);
+
+    const result = await getUserVoteReceipt(client, {
+      proposalId: 7,
+      userAddress: USER_ADDRESS,
+      chainId: MOONBEAM_CHAIN_ID,
+    } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.voted).toBe(false);
+    expect(result[0]?.chainId).toBe(MOONBEAM_CHAIN_ID);
   });
 });
 
@@ -78,7 +110,6 @@ describe("getUserVoteReceipt", () => {
       .mockResolvedValueOnce([]); // chainId=1285 → Moonriver, user didn't vote
 
     const result = await getUserVoteReceipt(client, {
-      network: "moonbeam",
       proposalId: 7,
       userAddress: USER_ADDRESS,
     } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
@@ -99,7 +130,6 @@ describe("getUserVoteReceipt", () => {
       .mockResolvedValueOnce([]); // chainId=1285 → Moonriver, no vote
 
     const result = await getUserVoteReceipt(client, {
-      network: "moonbeam",
       proposalId: 7,
       userAddress: USER_ADDRESS,
     } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
@@ -115,7 +145,6 @@ describe("getUserVoteReceipt", () => {
       .mockResolvedValueOnce([]); // chainId=1285 → Moonriver, no vote
 
     const result = await getUserVoteReceipt(client, {
-      network: "moonbeam",
       proposalId: 7,
       userAddress: USER_ADDRESS,
     } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
@@ -131,7 +160,6 @@ describe("getUserVoteReceipt", () => {
       .mockResolvedValueOnce([]); // chainId=1285 → Moonriver acknowledges, no vote
 
     const result = await getUserVoteReceipt(client, {
-      network: "moonbeam",
       proposalId: 7,
       userAddress: USER_ADDRESS,
     } as unknown as Parameters<typeof getUserVoteReceipt>[1]);
@@ -149,7 +177,6 @@ describe("getUserVoteReceipt", () => {
 
     await expect(
       getUserVoteReceipt(client, {
-        network: "moonbeam",
         proposalId: 7,
         userAddress: USER_ADDRESS,
       } as unknown as Parameters<typeof getUserVoteReceipt>[1]),
@@ -162,7 +189,6 @@ describe("getUserVoteReceipt", () => {
 
     await expect(
       getUserVoteReceipt(client, {
-        network: "moonbeam",
         proposalId: 7,
         userAddress: USER_ADDRESS,
       } as unknown as Parameters<typeof getUserVoteReceipt>[1]),
@@ -178,7 +204,6 @@ describe("getUserVoteReceipt", () => {
 
     await expect(
       getUserVoteReceipt(client, {
-        network: "moonbeam",
         proposalId: 7,
         userAddress: USER_ADDRESS,
         chainId: ETHEREUM_CHAIN_ID,

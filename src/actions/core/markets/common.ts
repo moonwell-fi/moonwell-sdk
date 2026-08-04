@@ -460,6 +460,29 @@ async function getMarketsFromMTokenFallback(
 }
 
 /**
+ * Parse a numeric field from a Lunar record, rejecting `NaN`.
+ *
+ * `Number()` wrapping is defensive — Lunar may return numeric fields as strings
+ * — but a missing or non-numeric field yields `NaN`, and only the fields that go
+ * on to reach `BigInt()` fail loudly. The rest (USD totals, prices, caps, APYs)
+ * flowed into `Market` as `NaN` and silently poisoned every downstream
+ * aggregate: a single bad `totalSupplyUsd` turns a chain's summed TVL into
+ * `NaN`. Throwing puts both field classes on the same record-level guard, so a
+ * dropped field costs its record and is reported, instead of returning a market
+ * with holes in it. Names the field, which `BigInt()`'s bare "NaN cannot be
+ * converted to a BigInt" never did.
+ */
+const toLunarNumber = (value: unknown, field: string): number => {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) {
+    throw new Error(
+      `Lunar field "${field}" is not a number (received ${JSON.stringify(value)})`,
+    );
+  }
+  return parsed;
+};
+
+/**
  * Fetch markets data from Lunar Indexer (hybrid approach)
  *
  * Uses Lunar for core market data and conditionally:
@@ -547,15 +570,19 @@ async function fetchMarketsFromLunar(
     // chain-wide on the sunset Moonbeam deployment after the indexer stopped
     // backfilling it (MOONWELL-FRONTEND-12J). Skip the record instead; the
     // all-malformed case still throws below so `getMarketsData` keeps its
-    // on-chain fallback.
+    // on-chain fallback. `toLunarNumber` routes the fields that never reach
+    // `BigInt()` into this same guard, so a dropped field can't leave `NaN` in a
+    // returned market either.
     try {
-      // Transform Lunar decimal numbers to SDK Amount types
-      // Note: Number() wrapping is defensive — the Lunar API may return numeric
-      // fields as strings, which would break BigInt conversion via Math.floor.
+      // Transform Lunar decimal numbers to SDK Amount types. `toLunarNumber`
+      // absorbs the string-encoded numbers Lunar may return, and rejects the
+      // `NaN` a dropped field produces — see its docblock for why the fields
+      // that never reach `BigInt()` need the same guard.
       const totalSupply = new Amount(
         BigInt(
           Math.floor(
-            Number(lunarMarket.totalSupply) * 10 ** underlyingToken.decimals,
+            toLunarNumber(lunarMarket.totalSupply, "totalSupply") *
+              10 ** underlyingToken.decimals,
           ),
         ),
         underlyingToken.decimals,
@@ -564,7 +591,8 @@ async function fetchMarketsFromLunar(
       const totalBorrows = new Amount(
         BigInt(
           Math.floor(
-            Number(lunarMarket.totalBorrows) * 10 ** underlyingToken.decimals,
+            toLunarNumber(lunarMarket.totalBorrows, "totalBorrows") *
+              10 ** underlyingToken.decimals,
           ),
         ),
         underlyingToken.decimals,
@@ -573,7 +601,8 @@ async function fetchMarketsFromLunar(
       const totalReserves = new Amount(
         BigInt(
           Math.floor(
-            Number(lunarMarket.totalReserves) * 10 ** underlyingToken.decimals,
+            toLunarNumber(lunarMarket.totalReserves, "totalReserves") *
+              10 ** underlyingToken.decimals,
           ),
         ),
         underlyingToken.decimals,
@@ -581,7 +610,10 @@ async function fetchMarketsFromLunar(
 
       const cash = new Amount(
         BigInt(
-          Math.floor(Number(lunarMarket.cash) * 10 ** underlyingToken.decimals),
+          Math.floor(
+            toLunarNumber(lunarMarket.cash, "cash") *
+              10 ** underlyingToken.decimals,
+          ),
         ),
         underlyingToken.decimals,
       );
@@ -589,7 +621,8 @@ async function fetchMarketsFromLunar(
       const badDebt = new Amount(
         BigInt(
           Math.floor(
-            Number(lunarMarket.badDebt) * 10 ** underlyingToken.decimals,
+            toLunarNumber(lunarMarket.badDebt, "badDebt") *
+              10 ** underlyingToken.decimals,
           ),
         ),
         underlyingToken.decimals,
@@ -598,7 +631,8 @@ async function fetchMarketsFromLunar(
       const supplyCaps = new Amount(
         BigInt(
           Math.floor(
-            Number(lunarMarket.supplyCap) * 10 ** underlyingToken.decimals,
+            toLunarNumber(lunarMarket.supplyCap, "supplyCap") *
+              10 ** underlyingToken.decimals,
           ),
         ),
         underlyingToken.decimals,
@@ -607,7 +641,8 @@ async function fetchMarketsFromLunar(
       const borrowCaps = new Amount(
         BigInt(
           Math.floor(
-            Number(lunarMarket.borrowCap) * 10 ** underlyingToken.decimals,
+            toLunarNumber(lunarMarket.borrowCap, "borrowCap") *
+              10 ** underlyingToken.decimals,
           ),
         ),
         underlyingToken.decimals,
@@ -627,27 +662,47 @@ async function fetchMarketsFromLunar(
         deprecated: marketConfig.deprecated === true,
         borrowCaps,
         borrowCapsUsd:
-          Number(lunarMarket.borrowCap) * Number(lunarMarket.priceUsd),
+          toLunarNumber(lunarMarket.borrowCap, "borrowCap") *
+          toLunarNumber(lunarMarket.priceUsd, "priceUsd"),
         cash,
-        collateralFactor: Number(lunarMarket.collateralFactor),
-        exchangeRate: Number(lunarMarket.exchangeRate),
+        collateralFactor: toLunarNumber(
+          lunarMarket.collateralFactor,
+          "collateralFactor",
+        ),
+        exchangeRate: toLunarNumber(lunarMarket.exchangeRate, "exchangeRate"),
         marketToken,
         reserveFactor,
         supplyCaps,
         supplyCapsUsd:
-          Number(lunarMarket.supplyCap) * Number(lunarMarket.priceUsd),
+          toLunarNumber(lunarMarket.supplyCap, "supplyCap") *
+          toLunarNumber(lunarMarket.priceUsd, "priceUsd"),
         badDebt,
-        badDebtUsd: Number(lunarMarket.badDebtUsd),
+        badDebtUsd: toLunarNumber(lunarMarket.badDebtUsd, "badDebtUsd"),
         totalBorrows,
-        totalBorrowsUsd: Number(lunarMarket.totalBorrowsUsd),
+        totalBorrowsUsd: toLunarNumber(
+          lunarMarket.totalBorrowsUsd,
+          "totalBorrowsUsd",
+        ),
         totalReserves,
-        totalReservesUsd: Number(lunarMarket.totalReservesUsd),
+        totalReservesUsd: toLunarNumber(
+          lunarMarket.totalReservesUsd,
+          "totalReservesUsd",
+        ),
         totalSupply,
-        totalSupplyUsd: Number(lunarMarket.totalSupplyUsd),
-        underlyingPrice: Number(lunarMarket.priceUsd),
+        totalSupplyUsd: toLunarNumber(
+          lunarMarket.totalSupplyUsd,
+          "totalSupplyUsd",
+        ),
+        underlyingPrice: toLunarNumber(lunarMarket.priceUsd, "priceUsd"),
         underlyingToken,
-        baseBorrowApy: Number(lunarMarket.baseBorrowApy),
-        baseSupplyApy: Number(lunarMarket.baseSupplyApy),
+        baseBorrowApy: toLunarNumber(
+          lunarMarket.baseBorrowApy,
+          "baseBorrowApy",
+        ),
+        baseSupplyApy: toLunarNumber(
+          lunarMarket.baseSupplyApy,
+          "baseSupplyApy",
+        ),
         totalBorrowApr: 0,
         totalSupplyApr: 0,
         rewards: [],
@@ -683,8 +738,13 @@ async function fetchMarketsFromLunar(
             incentive.supplyApr !== null &&
             incentive.borrowApr !== null
           ) {
-            supplyApr = Number(incentive.supplyApr);
-            borrowApr = isBorrowPlaceholder ? 0 : -Number(incentive.borrowApr);
+            supplyApr = toLunarNumber(
+              incentive.supplyApr,
+              "incentive.supplyApr",
+            );
+            borrowApr = isBorrowPlaceholder
+              ? 0
+              : -toLunarNumber(incentive.borrowApr, "incentive.borrowApr");
           } else {
             const isGovernanceToken =
               token.symbol === environment.custom?.governance?.token;
@@ -715,18 +775,25 @@ async function fetchMarketsFromLunar(
               price;
 
             supplyApr =
-              Number(lunarMarket.totalSupplyUsd) === 0
+              toLunarNumber(lunarMarket.totalSupplyUsd, "totalSupplyUsd") === 0
                 ? 0
                 : (supplyRewardsPerDayUsd /
-                    Number(lunarMarket.totalSupplyUsd)) *
+                    toLunarNumber(
+                      lunarMarket.totalSupplyUsd,
+                      "totalSupplyUsd",
+                    )) *
                   DAYS_PER_YEAR *
                   100;
             // Negative: borrow reward APR reduces the effective borrowing cost
             borrowApr =
-              Number(lunarMarket.totalBorrowsUsd) === 0
+              toLunarNumber(lunarMarket.totalBorrowsUsd, "totalBorrowsUsd") ===
+              0
                 ? 0
                 : (borrowRewardsPerDayUsd /
-                    Number(lunarMarket.totalBorrowsUsd)) *
+                    toLunarNumber(
+                      lunarMarket.totalBorrowsUsd,
+                      "totalBorrowsUsd",
+                    )) *
                   DAYS_PER_YEAR *
                   100 *
                   -1;

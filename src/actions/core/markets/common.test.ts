@@ -317,6 +317,82 @@ describe("malformed Lunar market records", () => {
     );
   });
 
+  // The BigInt-reaching fields were only half the class. `totalSupplyUsd`,
+  // `priceUsd`, the caps and the APYs feed a plain Number(), so a dropped field
+  // used to land in the returned Market as NaN — and a single NaN turns every
+  // downstream aggregate (a chain's summed TVL) into NaN with no error anywhere.
+  test.each([
+    ["totalSupplyUsd", "totalSupplyUsd"],
+    ["priceUsd", "priceUsd"],
+    ["collateralFactor", "collateralFactor"],
+    ["baseSupplyApy", "baseSupplyApy"],
+  ])(
+    "skips a record whose %s is dropped rather than returning NaN",
+    async (field) => {
+      mockListMarkets.mockResolvedValue({
+        results: [makeLunarMarket(), makeLunarMarket({ [field]: undefined })],
+      });
+
+      const result = await getMarketsData(makeMarketEnvironment());
+
+      expect(result).toHaveLength(1);
+      expect(
+        Object.values(result[0] ?? {}).some(
+          (v) => typeof v === "number" && Number.isNaN(v),
+        ),
+      ).toBe(false);
+      expect(mockOnError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("1 malformed market record(s)"),
+        }),
+        { source: "markets-malformed-records", chainId: MOCK_CHAIN_ID },
+      );
+    },
+  );
+
+  test("names the offending field so the incident is diagnosable", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [makeLunarMarket({ totalSupplyUsd: undefined })],
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await getMarketsData(makeMarketEnvironment());
+
+    expect(
+      warn.mock.calls.some((call) =>
+        call.some(
+          (arg) =>
+            arg instanceof Error && arg.message.includes('"totalSupplyUsd"'),
+        ),
+      ),
+    ).toBe(true);
+    warn.mockRestore();
+  });
+
+  // A NaN APR must cost its own reward entry, not the market — the same tiering
+  // the BigInt incentive fields already get.
+  test("keeps the market when only an incentive's APR is dropped", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [
+        makeLunarMarket({
+          incentives: [makeIncentive(), makeIncentive({ supplyApr: "oops" })],
+        }),
+      ],
+    });
+
+    const result = await getMarketsData(makeMarketEnvironment());
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.rewards).toHaveLength(1);
+    expect(Number.isNaN(result[0]?.totalSupplyApr)).toBe(false);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 malformed incentive record(s)"),
+      }),
+      { source: "markets-malformed-incentives", chainId: MOCK_CHAIN_ID },
+    );
+  });
+
   test("falls back to on-chain and reports once when every record is malformed", async () => {
     mockListMarkets.mockResolvedValue({
       results: [
