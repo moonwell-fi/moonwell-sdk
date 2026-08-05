@@ -16,18 +16,6 @@ import {
 } from "./definitions/base/environment.js";
 
 import {
-  createEnvironment as createMoonbeamEnvironment,
-  type markets as moonbeamMarkets,
-  type tokens as moonbeamTokens,
-} from "./definitions/moonbeam/environment.js";
-
-import {
-  createEnvironment as createMoonriverEnvironment,
-  type markets as moonriverMarkets,
-  type tokens as moonriverTokens,
-} from "./definitions/moonriver/environment.js";
-
-import {
   createEnvironment as createOptimismEnvironment,
   type markets as optimismMarkets,
   type morphoMarkets as optimismMorphoMarkets,
@@ -60,7 +48,7 @@ import {
   type tokens as polygonTokens,
 } from "./definitions/polygon/environment.js";
 
-import { moonbeam, moonriver, optimism } from "viem/chains";
+import { optimism } from "viem/chains";
 import type { Environment, TokenConfig } from "./types/config.js";
 
 export {
@@ -69,8 +57,6 @@ export {
   base,
   ethereum,
   GovernanceTokensConfig,
-  moonbeam,
-  moonriver,
   optimism,
   polygon,
   supportedChains,
@@ -92,8 +78,6 @@ export type {
 const supportedChainsIds: { [id: number]: keyof typeof supportedChains } = {
   [base.id]: "base",
   [optimism.id]: "optimism",
-  [moonriver.id]: "moonriver",
-  [moonbeam.id]: "moonbeam",
   [ethereum.id]: "ethereum",
   [avalanche.id]: "avalanche",
   [arbitrum.id]: "arbitrum",
@@ -103,8 +87,6 @@ const supportedChainsIds: { [id: number]: keyof typeof supportedChains } = {
 const supportedChains = {
   base: base,
   optimism: optimism,
-  moonriver: moonriver,
-  moonbeam: moonbeam,
   ethereum: ethereum,
   avalanche: avalanche,
   arbitrum: arbitrum,
@@ -115,10 +97,6 @@ type SupportedChains = Prettify<keyof typeof supportedChains>;
 type SupportedChainsIds = Prettify<keyof typeof supportedChainsIds>;
 
 export type BaseEnvironment = ReturnType<typeof createBaseEnvironment>;
-export type MoonbeamEnvironment = ReturnType<typeof createMoonbeamEnvironment>;
-export type MoonriverEnvironment = ReturnType<
-  typeof createMoonriverEnvironment
->;
 export type OptimismEnvironment = ReturnType<typeof createOptimismEnvironment>;
 export type EthereumEnvironment = ReturnType<typeof createEthereumEnvironment>;
 export type AvalancheEnvironment = ReturnType<
@@ -129,21 +107,17 @@ export type PolygonEnvironment = ReturnType<typeof createPolygonEnvironment>;
 
 export type GetEnvironment<chain> = chain extends typeof base
   ? BaseEnvironment
-  : chain extends typeof moonbeam
-    ? MoonbeamEnvironment
-    : chain extends typeof moonriver
-      ? MoonriverEnvironment
-      : chain extends typeof optimism
-        ? OptimismEnvironment
-        : chain extends typeof ethereum
-          ? EthereumEnvironment
-          : chain extends typeof avalanche
-            ? AvalancheEnvironment
-            : chain extends typeof arbitrum
-              ? ArbitrumEnvironment
-              : chain extends typeof polygon
-                ? PolygonEnvironment
-                : undefined;
+  : chain extends typeof optimism
+    ? OptimismEnvironment
+    : chain extends typeof ethereum
+      ? EthereumEnvironment
+      : chain extends typeof avalanche
+        ? AvalancheEnvironment
+        : chain extends typeof arbitrum
+          ? ArbitrumEnvironment
+          : chain extends typeof polygon
+            ? PolygonEnvironment
+            : undefined;
 
 export const createEnvironment = <const chain extends Chain>(config: {
   chain: chain;
@@ -152,12 +126,6 @@ export const createEnvironment = <const chain extends Chain>(config: {
   switch (config.chain.id) {
     case base.id:
       return createBaseEnvironment(config.rpcUrls) as GetEnvironment<chain>;
-    case moonbeam.id:
-      return createMoonbeamEnvironment(config.rpcUrls) as GetEnvironment<chain>;
-    case moonriver.id:
-      return createMoonriverEnvironment(
-        config.rpcUrls,
-      ) as GetEnvironment<chain>;
     case optimism.id:
       return createOptimismEnvironment(config.rpcUrls) as GetEnvironment<chain>;
     case ethereum.id:
@@ -177,8 +145,6 @@ export const createEnvironment = <const chain extends Chain>(config: {
 
 export const publicEnvironments = {
   base: createBaseEnvironment(),
-  moonbeam: createMoonbeamEnvironment(),
-  moonriver: createMoonriverEnvironment(),
   optimism: createOptimismEnvironment(),
   ethereum: createEthereumEnvironment(),
   avalanche: createAvalancheEnvironment(),
@@ -188,33 +154,25 @@ export const publicEnvironments = {
 
 export type TokensType<environment> = environment extends BaseEnvironment
   ? typeof baseTokens
-  : environment extends MoonbeamEnvironment
-    ? typeof moonbeamTokens
-    : environment extends MoonriverEnvironment
-      ? typeof moonriverTokens
-      : environment extends OptimismEnvironment
-        ? typeof optimismTokens
-        : environment extends EthereumEnvironment
-          ? typeof ethereumTokens
-          : environment extends AvalancheEnvironment
-            ? typeof avalancheTokens
-            : environment extends ArbitrumEnvironment
-              ? typeof arbitrumTokens
-              : environment extends PolygonEnvironment
-                ? typeof polygonTokens
-                : undefined;
+  : environment extends OptimismEnvironment
+    ? typeof optimismTokens
+    : environment extends EthereumEnvironment
+      ? typeof ethereumTokens
+      : environment extends AvalancheEnvironment
+        ? typeof avalancheTokens
+        : environment extends ArbitrumEnvironment
+          ? typeof arbitrumTokens
+          : environment extends PolygonEnvironment
+            ? typeof polygonTokens
+            : undefined;
 
 export type MarketsType<environment> = environment extends BaseEnvironment
   ? typeof baseMarkets
-  : environment extends MoonbeamEnvironment
-    ? typeof moonbeamMarkets
-    : environment extends MoonriverEnvironment
-      ? typeof moonriverMarkets
-      : environment extends OptimismEnvironment
-        ? typeof optimismMarkets
-        : environment extends EthereumEnvironment
-          ? typeof ethereumMarkets
-          : undefined;
+  : environment extends OptimismEnvironment
+    ? typeof optimismMarkets
+    : environment extends EthereumEnvironment
+      ? typeof ethereumMarkets
+      : undefined;
 
 export type VaultsType<environment> = environment extends BaseEnvironment
   ? typeof baseVaults

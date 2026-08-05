@@ -21,12 +21,7 @@ import { getEnvironmentsFromArgs } from "../../common/index.js";
 import marketTokenAbi from "../../environments/abis/marketTokenAbi.js";
 import morphoBlueAbi from "../../environments/abis/morphoBlueAbi.js";
 import morphoVaultAbi from "../../environments/abis/morphoVaultAbi.js";
-import {
-  type Chain,
-  type Environment,
-  moonbeam,
-  moonriver,
-} from "../../environments/index.js";
+import type { Chain, Environment } from "../../environments/index.js";
 import type {
   GetBeamQuoteParameters,
   GetBeamQuoteReturnType,
@@ -156,9 +151,9 @@ export async function getQuote<environments, Network extends Chain | undefined>(
   client: MoonwellClient,
   args: GetBeamQuoteParameters<environments, Network>,
 ): GetBeamQuoteReturnType {
-  const envs = getEnvironmentsFromArgs(client, undefined, false).filter(
-    (env) => env.chainId !== moonbeam.id && env.chainId !== moonriver.id,
-  );
+  // No filter needed: the sunset Moonbeam/Moonriver chains this used to exclude
+  // can no longer be registered on a client at all (MOO-551).
+  const envs = getEnvironmentsFromArgs(client, undefined, false);
 
   const chains = Object.values(envs).map((env) => env.chain);
 

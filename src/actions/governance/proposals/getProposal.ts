@@ -1,9 +1,7 @@
-import { mainnet, moonbeam, moonriver } from "viem/chains";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
-import { Amount, getEnvironmentFromArgs } from "../../../common/index.js";
 import type { NetworkParameterType } from "../../../common/types.js";
 import type { Chain, Environment } from "../../../environments/index.js";
-import { type Proposal, ProposalState } from "../../../types/proposal.js";
+import type { Proposal } from "../../../types/proposal.js";
 import {
   type ApiProposal,
   MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS,
@@ -12,9 +10,10 @@ import {
 } from "../governor-api-client.js";
 import { resolveIpfsDescriptions } from "../ipfs.js";
 import {
-  formatApiProposalData,
   getProposalsOnChainData,
+  mapApiProposalToProposal,
   readCrossChainQuorums,
+  resolveGovernanceEnvironment,
 } from "./common.js";
 
 export type GetProposalParameters<
@@ -41,42 +40,24 @@ export async function getProposal<
 ): GetProposalReturnType {
   const { proposalId } = args;
 
-  const environment = getEnvironmentFromArgs(client, args);
-  if (!environment) {
+  // `args.chainId` identifies the chain the PROPOSAL lives on, which is no longer
+  // the same thing as the environment we read through. Before the sunset it was
+  // both, and the action resolved a Moonbeam/Moonriver environment from it —
+  // which now means a `chainId: 1284` lookup would resolve nothing and the whole
+  // historical archive would 404 (MOO-551). Resolve the indexer source
+  // independently and pass `chainId` through untouched.
+  const governanceEnvironment = resolveGovernanceEnvironment(
+    Object.values(client.environments as Record<string, Environment>),
+  );
+  if (!governanceEnvironment) {
     return undefined;
   }
 
-  // Ethereum-home multigov proposals are served by the same Governor API as
-  // historical Moonbeam ones (the lunar indexer fans out both chainIds), so
-  // route them through `getGovernorApiProposal` using the Moonbeam env as the
-  // indexer source. Without this, a caller resolving the env by `chainId: 1`
-  // would bail out on the `!moonbeam && !moonriver` check below and the page
-  // reload path returns undefined.
-  if (environment.chainId === mainnet.id) {
-    const moonbeamEnv = Object.values(
-      client.environments as Record<string, Environment>,
-    ).find((e) => e.chainId === moonbeam.id);
-    if (!moonbeamEnv) {
-      return undefined;
-    }
-    return getGovernorApiProposal(
-      moonbeamEnv,
-      proposalId,
-      args.chainId ?? mainnet.id,
-    );
-  }
-
-  if (
-    environment.chainId !== moonbeam.id &&
-    environment.chainId !== moonriver.id
-  ) {
-    return undefined;
-  }
-
-  if (environment.chainId === moonbeam.id) {
-    return getGovernorApiProposal(environment, proposalId, args.chainId);
-  }
-  return getGovernorApiProposal(environment, proposalId, moonriver.id);
+  return getGovernorApiProposal(
+    governanceEnvironment,
+    proposalId,
+    args.chainId,
+  );
 }
 
 /**
@@ -118,87 +99,23 @@ async function getGovernorApiProposal(
     readCrossChainQuorums([apiProposal], governanceEnvironment),
   ]);
 
-  const formattedData = formatApiProposalData(apiProposal);
   const onChainDataList = await getProposalsOnChainData(
     [apiProposal],
     governanceEnvironment,
     { crossChainQuorums },
   );
-  const onChainData = onChainDataList[0]!;
-  // Single source of truth: getProposalsOnChainData already classified this
-  // proposal with the caller env's Artemis cutoff and used it to route the
-  // on-chain reads. Reusing it avoids the drift that left Moonbeam-homed
-  // local-target proposals (and hub-local Ethereum ones) without `multichain`.
-  const isMultichain = onChainData.isMultichain;
 
-  const now = Math.floor(Date.now() / 1000);
-  let proposalState = onChainData.state;
-
-  if (
-    proposalState === ProposalState.Pending &&
-    now >= apiProposal.votingStartTime &&
-    now <= apiProposal.votingEndTime
-  ) {
-    proposalState = ProposalState.Active;
+  // `getProposalsOnChainData` maps 1:1 over its input, so the single entry is
+  // always present — guard rather than assert, so the invariant is enforced
+  // instead of asserted away if that ever stops holding.
+  const onChainData = onChainDataList[0];
+  if (!onChainData) {
+    return undefined;
   }
 
-  if (formattedData.executed) {
-    proposalState = ProposalState.Executed;
-  } else if (
-    isMultichain &&
-    onChainData.votesCollected &&
-    now > apiProposal.votingEndTime &&
-    proposalState === ProposalState.Succeeded
-  ) {
-    // Succeeded with collection done means "awaiting execution" — surface as
-    // Queued so the frontend renders the "Ready to Execute" timeline step.
-    // Defeated/Canceled/Executed must NOT be promoted: under the new
-    // state-machine-based votesCollected, those terminal states also satisfy
-    // `votesCollected: true`, so a `< Queued` gate would mislabel them.
-    proposalState = ProposalState.Queued;
-  }
-
-  const proposal: Proposal = {
-    id: apiProposal.proposalId,
-    chainId: apiProposal.chainId,
-    proposalId: apiProposal.proposalId,
-    proposer: apiProposal.proposer as `0x${string}`,
-    eta: onChainData.eta,
-    startTimestamp: apiProposal.votingStartTime,
-    endTimestamp: apiProposal.votingEndTime,
-    startBlock: Number(apiProposal.blockNumber),
-    forVotes: formattedData.forVotes,
-    againstVotes: formattedData.againstVotes,
-    abstainVotes: formattedData.abstainVotes,
-    totalVotes: formattedData.totalVotes,
-    canceled: formattedData.canceled,
-    executed: formattedData.executed,
-    quorum: new Amount(onChainData.quorum, 18),
-    state: proposalState,
-    // Extended data
-    title: formattedData.title,
-    subtitle: formattedData.subtitle,
-    description: apiProposal.description,
-    targets: apiProposal.targets,
-    calldatas: apiProposal.calldatas,
-    // Legacy-governor proposals (Moonriver, early Moonbeam) carry the function
-    // signature separately from the selector-less calldata; pass it through so
-    // consumers can decode the call. Empty for multichain-governor proposals.
-    signatures: apiProposal.signatures ?? [],
-    stateChanges: formattedData.stateChanges,
-    environment: governanceEnvironment,
-  };
-
-  if (apiProposal.snapshotBlocks) {
-    proposal.snapshotBlocks = apiProposal.snapshotBlocks;
-  }
-
-  if (isMultichain) {
-    proposal.multichain = {
-      id: apiProposal.proposalId,
-      votesCollected: onChainData.votesCollected,
-    };
-  }
-
-  return proposal;
+  return mapApiProposalToProposal(
+    apiProposal,
+    onChainData,
+    governanceEnvironment,
+  );
 }

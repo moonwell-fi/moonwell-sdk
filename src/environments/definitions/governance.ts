@@ -1,4 +1,4 @@
-import { base, mainnet, moonbeam, moonriver, optimism } from "viem/chains";
+import { base, mainnet, optimism } from "viem/chains";
 
 export interface GovernanceTokenInfo {
   id: string;
@@ -23,14 +23,10 @@ export const GovernanceTokensConfig = createGovernanceTokensConfig({
     id: "WELL",
     symbol: "WELL",
     name: "WELL",
-    chainIds: [moonbeam.id, base.id, optimism.id, mainnet.id] as number[],
-    testnet: false,
-  },
-  MFAM: {
-    id: "MFAM",
-    symbol: "MFAM",
-    name: "MFAM",
-    chainIds: [moonriver.id] as number[],
+    // Moonbeam (1284) dropped with the sunset (MOO-551): the chain is halted, so
+    // it can no longer serve voting-power reads. MFAM/Moonriver is gone for the
+    // same reason — Apollo governance ended with the chain.
+    chainIds: [base.id, optimism.id, mainnet.id] as number[],
     testnet: false,
   },
 });

@@ -1,7 +1,8 @@
 import type { Address, Chain } from "viem";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
-import { Amount, getEnvironmentFromArgs } from "../../common/index.js";
+import { Amount } from "../../common/index.js";
 import type { NetworkParameterType } from "../../common/types.js";
+import type { Environment } from "../../environments/index.js";
 import type { VoteReceipt } from "../../types/voteReceipt.js";
 import {
   type ApiVoteReceipt,
@@ -10,6 +11,7 @@ import {
   fetchUserVoteReceipt,
   isNotFoundError,
 } from "./governor-api-client.js";
+import { resolveGovernanceEnvironment } from "./proposals/common.js";
 
 export type GetUserVoteReceiptParameters<
   environments,
@@ -50,8 +52,17 @@ export async function getUserVoteReceipt<
 ): GetUserVoteReceiptReturnType {
   const { proposalId, userAddress, chainId } = args;
 
-  const environment = getEnvironmentFromArgs(client, args);
-  if (!environment) {
+  // `args.chainId` identifies the chain the PROPOSAL lives on, not the
+  // environment we read through — the same distinction `getProposal` draws
+  // (MOO-551). Resolving the environment from it meant an archive lookup
+  // (1284/1285) matched no registered environment post-sunset and returned `[]`,
+  // a third shape callers don't handle: every historical vote read as "didn't
+  // vote". Resolve the indexer source independently and pass `chainId` through
+  // untouched.
+  const governanceEnvironment = resolveGovernanceEnvironment(
+    Object.values(client.environments as Record<string, Environment>),
+  );
+  if (!governanceEnvironment) {
     return [];
   }
 
@@ -64,7 +75,7 @@ export async function getUserVoteReceipt<
   for (const cid of tryChains) {
     try {
       const apiVoteReceipts = await fetchUserVoteReceipt(
-        environment,
+        governanceEnvironment,
         cid,
         proposalId,
         userAddress,
@@ -87,7 +98,10 @@ export async function getUserVoteReceipt<
   if (collected.length === 0) {
     return [
       {
-        chainId: environment.chainId,
+        // An explicit request names the chain the stub is about; a bare lookup
+        // queried every supported chain, so the source we read through is the
+        // only chain it can honestly claim.
+        chainId: chainId ?? governanceEnvironment.chainId,
         proposalId,
         account: userAddress,
         voted: false,

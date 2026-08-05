@@ -1,5 +1,5 @@
 import { isAddress } from "viem";
-import { base, mainnet, moonbeam, optimism } from "viem/chains";
+import { base, mainnet, optimism } from "viem/chains";
 import type { MoonwellClient } from "../../client/createMoonwellClient.js";
 import {
   type Environment,
@@ -23,17 +23,17 @@ export async function getDelegates(
 ): GetDelegatesReturnType {
   const logId = logger.start("getDelegates", "Starting to get delegates...");
 
-  const governanceEnvironment = publicEnvironments.moonbeam;
+  // Any environment resolves the same `governanceIndexerUrl`; the Ethereum hub
+  // replaces Moonbeam here now that the sunset chain is gone (MOO-551).
+  const governanceEnvironment = publicEnvironments.ethereum;
 
   const apiVoters = await fetchAllVoters(governanceEnvironment);
   const forumProfiles = await getForumProfiles();
 
-  const targetChainIds = [
-    moonbeam.id,
-    base.id,
-    optimism.id,
-    mainnet.id,
-  ] as const;
+  // Moonbeam dropped with the sunset: the chain is halted, so it can no longer
+  // serve `getUserVotingPower`. Delegate totals therefore no longer include any
+  // WELL that remained on Moonbeam.
+  const targetChainIds = [base.id, optimism.id, mainnet.id] as const;
   const envs = Object.values(client.environments as Environment[]).filter(
     (env) =>
       env.contracts.views !== undefined &&

@@ -10,20 +10,12 @@ export const testRpcUrls = {
   arbitrum: moonwellRpc(42161),
   avalanche: moonwellRpc(43114),
   polygon: moonwellRpc(137),
-  moonbeam: moonwellRpc(1284),
-  moonriver: moonwellRpc(1285),
 };
 
 export const testClient = createMoonwellClient({
   networks: {
     base: {
       rpcUrls: [testRpcUrls.base],
-    },
-    moonbeam: {
-      rpcUrls: [testRpcUrls.moonbeam],
-    },
-    moonriver: {
-      rpcUrls: [testRpcUrls.moonriver],
     },
     optimism: {
       rpcUrls: [testRpcUrls.optimism],

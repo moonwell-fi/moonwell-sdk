@@ -9,8 +9,8 @@ export const moonwellClient = createMoonwellClient({
         "https://api-base-mainnet-archive.n.dwellir.com/5f017d19-2181-4eac-97c9-0f7574323e35",
       ],
     },
-    moonbeam: {
-      rpcUrls: ["https://rpc.moonwell.fi/main/evm/1284"],
+    ethereum: {
+      rpcUrls: ["https://rpc.moonwell.fi/main/evm/1"],
     },
   },
 });

@@ -91,10 +91,10 @@ The network to get the user staking info for.
 ```ts twoslash
 // [!include ~/snippets/moonClient.ts]
 // ---cut---
-import { moonbeam } from "@moonwell-fi/moonwell-sdk/environments";
+import { ethereum } from "@moonwell-fi/moonwell-sdk/environments";
 
-const info = await moonwellClient.getUserStakingInfo<typeof moonbeam>({
+const info = await moonwellClient.getUserStakingInfo<typeof ethereum>({
   userAddress: "0x0000000000000000000000000000000000000000",
-  network: "moonbeam", // [!code focus]
+  network: "ethereum", // [!code focus]
 });
 ```

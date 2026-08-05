@@ -5,8 +5,6 @@ import {
   type BaseEnvironment,
   type Environment,
   type EthereumEnvironment,
-  type MoonbeamEnvironment,
-  type MoonriverEnvironment,
   type OptimismEnvironment,
   type PolygonEnvironment,
   type SupportedChains,
@@ -15,10 +13,9 @@ import {
   base,
   createEnvironment,
   ethereum,
-  moonbeam,
-  moonriver,
   optimism,
   polygon,
+  supportedChains,
 } from "../environments/index.js";
 import { actions } from "./createActions.js";
 
@@ -33,16 +30,6 @@ export type MoonwellClient<
         name,
         "optimism"
       >]: OptimismEnvironment;
-    } & {
-      [name in keyof environments as Extract<
-        name,
-        "moonbeam"
-      >]: MoonbeamEnvironment;
-    } & {
-      [name in keyof environments as Extract<
-        name,
-        "moonriver"
-      >]: MoonriverEnvironment;
     } & {
       [name in keyof environments as Extract<
         name,
@@ -86,25 +73,40 @@ export const createMoonwellClient = <const networks>(config: {
     config.networks as NetworksConfig<SupportedChains>,
   ).reduce((prev, [curr, networkConfig]) => {
     if (!networkConfig) return prev;
+
+    // Every supported key gets its own branch and unknown keys throw. The old
+    // shape ended in a bare `: polygon` fallthrough, so a key TypeScript would
+    // have rejected — `moonbeam`/`moonriver` after the sunset (MOO-551), or any
+    // typo from a JS consumer — silently built a *Polygon* environment stored
+    // under that key, wired with Polygon addresses over the caller's RPC. Fail
+    // loudly instead, matching `createEnvironment`'s "Unsupported chainId".
+    const chain =
+      curr === "base"
+        ? base
+        : curr === "optimism"
+          ? optimism
+          : curr === "ethereum"
+            ? ethereum
+            : curr === "avalanche"
+              ? avalanche
+              : curr === "arbitrum"
+                ? arbitrum
+                : curr === "polygon"
+                  ? polygon
+                  : undefined;
+
+    if (!chain) {
+      throw new Error(
+        `Unsupported network "${curr}". Supported networks: ${Object.keys(
+          supportedChains,
+        ).join(", ")}.`,
+      );
+    }
+
     return {
       ...prev,
       [curr]: createEnvironment({
-        chain:
-          curr === "base"
-            ? base
-            : curr === "optimism"
-              ? optimism
-              : curr === "moonbeam"
-                ? moonbeam
-                : curr === "moonriver"
-                  ? moonriver
-                  : curr === "ethereum"
-                    ? ethereum
-                    : curr === "avalanche"
-                      ? avalanche
-                      : curr === "arbitrum"
-                        ? arbitrum
-                        : polygon,
+        chain,
         rpcUrls: networkConfig.rpcUrls,
       }),
     };
@@ -116,16 +118,6 @@ export const createMoonwellClient = <const networks>(config: {
         name,
         "optimism"
       >]: OptimismEnvironment;
-    } & {
-      [name in keyof networks as Extract<
-        name,
-        "moonbeam"
-      >]: MoonbeamEnvironment;
-    } & {
-      [name in keyof networks as Extract<
-        name,
-        "moonriver"
-      >]: MoonriverEnvironment;
     } & {
       [name in keyof networks as Extract<
         name,

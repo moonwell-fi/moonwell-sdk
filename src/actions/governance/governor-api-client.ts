@@ -15,11 +15,20 @@ const getGovernorApiUrl = (environment: Environment): string => {
  * active multigov contract lives; Moonbeam follows for the historical archive,
  * then Moonriver (legacy standalone governor).
  *
- * This is the fan-out set for `getUserVoteReceipt` — a bare proposalId is
- * queried on every chain and non-empty receipts are concatenated. Do NOT use it
- * as the single-proposal fallback in `getProposal`: Moonriver has its own
- * explicit route there, and reaching a 1285 proposal through a Moonbeam env
- * would surface a degraded result (see `MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS`).
+ * The fan-out set for two consumers: `getUserVoteReceipt` (a bare proposalId is
+ * queried on every chain and non-empty receipts are concatenated) and
+ * `getProposals` (every chain's list is fetched and merged, so the archive stays
+ * listable after the sunset).
+ *
+ * Since MOO-551 no Moonbeam/Moonriver environment exists, so 1284 and 1285 are
+ * served through whichever governance environment resolved — reporting
+ * `quorum: 0` and no `eta` because nothing on-chain can be read for a halted
+ * chain. That degradation is the accepted post-sunset design here, not a bug.
+ *
+ * Still do NOT use this set as the *single-proposal* fallback in `getProposal`:
+ * a bare lookup must not silently resolve to a 1285 proposal it wasn't asked
+ * for — that stays an explicit `chainId` route (see
+ * `MULTIGOV_PROPOSAL_FALLBACK_CHAIN_IDS`).
  */
 export const SUPPORTED_GOVERNOR_CHAIN_IDS = [1, 1284, 1285] as const;
 

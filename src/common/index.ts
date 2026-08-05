@@ -136,6 +136,17 @@ export const getEnvironmentFromArgs = (
   return undefined;
 };
 
+/**
+ * Resolve the environments an action should run against.
+ *
+ * A `chainId`/`network` that matches no registered environment yields an EMPTY
+ * array, not `[undefined]`. The single-element-holding-undefined shape used to
+ * leak out of here and every caller dereferences what it gets back, so an
+ * unmatched selector crashed with an opaque `Cannot read properties of
+ * undefined` instead of hitting the caller's own "nothing to do" guard. That
+ * became reachable on ordinary input once Moonbeam/Moonriver stopped being
+ * registrable (MOO-551) while `getProposal` still teaches callers to pass 1284.
+ */
 export const getEnvironmentsFromArgs = (
   client: MoonwellClient,
   args?: { chainId?: number; network?: any },
@@ -150,15 +161,15 @@ export const getEnvironmentsFromArgs = (
     };
 
     if (Number.isInteger(chainId)) {
-      return [
-        Object.values(client.environments).find(
-          (env) => env.chainId === chainId,
-        ),
-      ] as Environment[];
+      const matched = Object.values(client.environments).find(
+        (env) => env.chainId === chainId,
+      );
+      return matched ? [matched] : [];
     }
 
     if (network) {
-      return [client.environments[network]] as Environment[];
+      const matched = client.environments[network];
+      return matched ? [matched] : [];
     }
   }
   return Object.values(client.environments as Environment[]).filter((r) =>
