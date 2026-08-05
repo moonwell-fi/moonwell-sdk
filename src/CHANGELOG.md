@@ -1,5 +1,46 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.22.0
+
+### Minor Changes
+
+- [#324](https://github.com/moonwell-fi/moonwell-sdk/pull/324) [`2cf9ba8d0474330ff88826e89a5847ad4f84b0d0`](https://github.com/moonwell-fi/moonwell-sdk/commit/2cf9ba8d0474330ff88826e89a5847ad4f84b0d0) Thanks [@bprofiro](https://github.com/bprofiro)! - **Breaking:** remove the sunset Moonbeam and Moonriver chains (MOO-551). Both chains are halted and their RPC endpoints are being decommissioned, so nothing on-chain can be read for them any more.
+
+  Governance history is preserved. `getProposals`, `getProposal` and `getUserVoteReceipt` now source every governance chain — Ethereum (1), Moonbeam (1284) and Moonriver (1285) — from the governance indexer via whichever environment is registered, preferring the Ethereum multigov hub. Previously these actions required a Moonbeam or Moonriver environment and returned `[]` / `undefined` without one, so removing the chains would otherwise have emptied the entire proposal surface.
+
+  On `getProposal` and `getUserVoteReceipt`, `chainId` now names only the chain the proposal lives on — it no longer selects the environment to read through. For `getUserVoteReceipt` this is what keeps archive receipts readable: a `chainId: 1284` lookup previously resolved no environment post-sunset and returned `[]`, a third shape alongside the didn't-vote stub and `GovernorNotFoundError`, so every vote on a historical MIP would have read as "didn't vote". Its didn't-vote stub reports the requested `chainId` when one is given, and the indexer source's chain otherwise.
+
+  Sunset-chain proposals lose only their on-chain half: they surface with indexer-derived state, votes, timestamps and state changes, but no `quorum` (reported as 0), no `eta`, and no `multichain` field unless their targets identify them as bridged. Their state is derived from indexer events, which now includes the `Succeeded` / `Defeated` outcome once voting has closed with no terminal event — previously those proposals fell through to `Pending`. Because quorum needs an RPC and reports 0 for these chains, a for-majority that missed quorum reads as `Succeeded`.
+
+  Removed from the public API:
+
+  - `moonbeam` / `moonriver` chain exports, and `MoonbeamEnvironment` / `MoonriverEnvironment` types
+  - `publicEnvironments.moonbeam` / `.moonriver`; `createEnvironment({ chain: moonbeam })` now throws
+  - `networks.moonbeam` / `networks.moonriver` on `createMoonwellClient` — `SupportedChains` and `SupportedChainsIds` narrow accordingly
+  - `GovernanceTokensConfig.MFAM`, narrowing `GovernanceToken` from `"WELL" | "MFAM"` to `"WELL"`; `WELL.chainIds` no longer lists 1284
+
+  Behavior changes on surviving chains:
+
+  - `getGovernanceTokenInfo` reads WELL total supply from the Ethereum hub instead of Moonbeam, so the reported figure is the hub's xWELL supply rather than Moonbeam's historical total
+  - `getDelegates` and `getUserVotingPowers` no longer include Moonbeam, so voting-power totals exclude any WELL that remained there
+  - Base and Optimism previously resolved their `homeEnvironment` to Moonbeam and priced native-token reward incentives from Moonbeam's views contract; each chain now resolves to itself
+
+  Runtime guards for consumers who reach the removed surface without TypeScript:
+
+  - `createMoonwellClient` throws `Unsupported network "<key>"` for any network key it doesn't recognise. Unrecognised keys previously fell through to Polygon, so `networks: { moonbeam: ... }` silently built a Polygon environment filed under `moonbeam` and wired with Polygon contract addresses
+  - `getGovernanceTokenInfo` throws when `governanceToken` is anything other than `"WELL"`, rather than returning WELL's supply for a `"MFAM"` request
+  - Actions that take `chainId` / `network` now return an empty result when the selector matches no registered environment, instead of throwing a `TypeError`. `getProposals({ chainId: 1284 })` is the case this PR makes reachable
+
+### Patch Changes
+
+- [#324](https://github.com/moonwell-fi/moonwell-sdk/pull/324) [`743d03c228e6daa7c34e97fe777c097e27f5e273`](https://github.com/moonwell-fi/moonwell-sdk/commit/743d03c228e6daa7c34e97fe777c097e27f5e273) Thanks [@bprofiro](https://github.com/bprofiro)! - Skip malformed Lunar indexer market records instead of rejecting the whole chain's market list. A record with missing numeric fields produced `NaN`, which `BigInt()` rejects with a RangeError that previously took down every market on the chain (observed chain-wide on the sunset Moonbeam deployment). Valid records are now kept; when every record is malformed, `getMarketsData` reports one aggregate error and falls back to on-chain reads.
+
+  Every numeric field is validated on the way in, not just the ones that reach `BigInt()`. `totalSupplyUsd`, `priceUsd`, the caps, `collateralFactor` and the APYs went through a plain `Number()`, so a dropped field used to land in the returned `Market` as `NaN` and silently poison any aggregate built from it — a single bad record turned a chain's summed TVL into `NaN` with no error raised anywhere. Those records are now skipped and reported like any other malformed record, and the error names the offending field.
+
+  A malformed _incentive_ costs only its own reward entry — the market is still returned with its remaining rewards — rather than discarding the whole record, so a rewards-only indexer incident degrades APRs instead of emptying the chain.
+
+  Skipped records and skipped incentives are reported through `onError` with the `markets-malformed-records` and `markets-malformed-incentives` sources. A partial incident returns successfully, so without this it left no trace beyond a console warning.
+
 ## 0.21.0
 
 ### Minor Changes
