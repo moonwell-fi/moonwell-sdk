@@ -22,27 +22,29 @@ export type GetUserBalancesParameters<
 
 export type GetUserBalancesReturnType = Promise<UserBalance[]>;
 
+/**
+ * Reads one token balance. Rejects when the read fails — it must never resolve
+ * to a zero, which is what it did before MOO-832: an RPC failure surfaced to
+ * consumers as a "successful" empty wallet. The Moonwell frontend gates repay-all
+ * on this figure, so a transient RPC hiccup on a 5s refetch read as "wallet is
+ * empty" and disabled the confirm button for 59 users (Sentry
+ * MOONWELL-FRONTEND-195). Callers settle these with `Promise.allSettled` and
+ * omit the rejected tokens, so a consumer that finds no entry knows the balance
+ * is UNKNOWN rather than zero. The failure is routed to `environment.onError`
+ * (source `user-balances-token-read`) so Sentry-wired consumers can see the
+ * degraded read.
+ */
 const getTokenBalance = async (
   environment: Environment,
   userAddress: Address,
   tokenAddress: Address,
-) => {
+): Promise<{ amount: bigint; token: `0x${string}` }> => {
   try {
     if (tokenAddress === zeroAddress) {
-      return new Promise<{ amount: bigint; token: `0x${string}` }>(
-        (resolve) => {
-          environment.publicClient
-            .getBalance({
-              address: userAddress,
-            })
-            .then((balance) => {
-              resolve({ amount: BigInt(balance), token: tokenAddress });
-            })
-            .catch(() => {
-              resolve({ amount: 0n, token: tokenAddress });
-            });
-        },
-      );
+      const balance = await environment.publicClient.getBalance({
+        address: userAddress,
+      });
+      return { amount: BigInt(balance), token: tokenAddress };
     }
 
     const erc20Abi = parseAbi([
@@ -55,23 +57,15 @@ const getTokenBalance = async (
       client: environment.publicClient,
     });
 
-    const result = new Promise<{ amount: bigint; token: `0x${string}` }>(
-      (resolve) => {
-        erc20Contract.read
-          .balanceOf([userAddress])
-          .then((balance) => {
-            resolve({ amount: BigInt(balance), token: tokenAddress });
-          })
-          .catch(() => {
-            resolve({ amount: 0n, token: tokenAddress });
-          });
-      },
-    );
-
-    return result;
+    const balance = await erc20Contract.read.balanceOf([userAddress]);
+    return { amount: BigInt(balance), token: tokenAddress };
   } catch (error) {
-    console.error("getTokenBalance error", error);
-    return { amount: 0n, token: tokenAddress };
+    environment.onError?.(error, {
+      source: "user-balances-token-read",
+      chainId: environment.chainId,
+      token: tokenAddress,
+    });
+    throw error;
   }
 };
 

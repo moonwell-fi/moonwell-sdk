@@ -278,7 +278,7 @@ export const createEnvironmentConfig = <
   lunarIndexerUrl?: string;
   onError?: (
     error: unknown,
-    context: { source: string; chainId: number },
+    context: { source: string; chainId: number; token?: Address },
   ) => void;
   tokens: TokensConfig<tokens>;
   markets: MarketsConfig<markets, tokens>;
@@ -483,7 +483,7 @@ export type Environment<
   lunarIndexerUrl?: string;
   onError?: (
     error: unknown,
-    context: { source: string; chainId: number },
+    context: { source: string; chainId: number; token?: Address },
   ) => void;
   tokens: {
     [name in keyof tokens]: TokenContractReturnType;
