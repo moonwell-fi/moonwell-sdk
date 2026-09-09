@@ -52,6 +52,7 @@ export default defineConfig({
       "src/actions/governance/proposals/getProposals.test.ts",
       "src/actions/governance/proposals/readCrossChainQuorums.test.ts",
       "src/actions/core/user-positions/getUserPositionSnapshots.test.ts",
+      "src/actions/core/getUserBalances.unit.test.ts",
       "src/client/createMoonwellClient.test.ts",
       "src/common/getBlockNumberAtTimestamp.test.ts",
       "src/environments/definitions/ethereum/environment.test.ts",
