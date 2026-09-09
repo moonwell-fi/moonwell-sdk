@@ -25,6 +25,18 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("Axios interceptor retries with real config merging", () => {
+  it.each([new Error("adapter bug"), new AxiosError("missing request config")])(
+    "propagates failures that cannot be replayed",
+    async (error) => {
+      const adapter = vi.fn().mockRejectedValue(error);
+      const instance = axios.create({ adapter });
+      attachRetryInterceptor(instance);
+      await expect(instance.get("/markets")).rejects.toBe(error);
+      expect(adapter).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
   it("stops after three attempts, including 250ms/500ms backoff", async () => {
     const configs: InternalAxiosRequestConfig[] = [];
     const times: number[] = [];

@@ -26,3 +26,17 @@ it("adds deadlines locally and preserves explicit overrides", async () => {
     { timeout: 5000 },
   );
 });
+
+it("preserves POST options, request data and an explicit disabled timeout", async () => {
+  const post = vi.spyOn(axios, "post").mockResolvedValue({ data: {} });
+  const controller = new AbortController();
+  const body = { query: "proposal" };
+  const config = {
+    timeout: 0,
+    signal: controller.signal,
+    headers: { "X-Request-Id": "test" },
+  };
+  await postWithRetry("/post", body, config);
+  expect(post).toHaveBeenCalledTimes(1);
+  expect(post).toHaveBeenCalledWith("/post", body, config);
+});

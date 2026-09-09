@@ -80,6 +80,55 @@ afterEach(() => {
 });
 
 describe("independent isolated-market loading", () => {
+  it("returns empty input without an allocator request", async () => {
+    const get = api();
+    expect(
+      await client.getMorphoMarketsSharedLiquidity({
+        chainId: 8453,
+        markets: [],
+      }),
+    ).toEqual([]);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("rejects environments without an independent liquidity endpoint", async () => {
+    const rpcOnly = createMoonwellClient({
+      networks: { base: { rpcUrls: ["https://rpc.invalid"] } },
+    });
+    rpcOnly.environments.base.lunarIndexerUrl = "";
+    const get = api();
+    await expect(
+      rpcOnly.getMorphoMarketsSharedLiquidity({ chainId: 8453, markets: [] }),
+    ).rejects.toThrow("configured Lunar Indexer");
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("does not issue a request or report an error for an already aborted query", async () => {
+    const onError = vi.fn();
+    const cancelClient = createMoonwellClient({
+      networks: { base: { rpcUrls: ["https://rpc.invalid"] } },
+      onError,
+    });
+    const get = api();
+    const markets = await client.getMorphoMarkets({
+      chainId: 8453,
+      includeSharedLiquidity: false,
+    });
+    get.mockClear();
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    controller.abort();
+    const request = cancelClient.getMorphoMarketsSharedLiquidity({
+      chainId: 8453,
+      markets,
+      signal: controller.signal,
+    });
+    expect(axios.isCancel(await request.catch((error) => error))).toBe(true);
+    expect(onError).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("returns base balances, collateral and reward APRs without any allocator request when opted out", async () => {
     const get = api();
     const markets = await client.getMorphoMarkets({
@@ -377,45 +426,183 @@ function fallbackEnvironment(): Environment {
     },
   } as unknown as Environment;
 }
-function morphoFetch() {
-  return vi.fn().mockResolvedValue({
-    status: 200,
-    json: async () => ({
-      data: {
-        markets: {
-          items: [
-            {
-              marketId: id,
-              morphoBlue: { chain: { id: 8453 } },
-              collateralAsset: { decimals: 18 },
-              loanAsset: { decimals: 18, priceUsd: 2000 },
-              reallocatableLiquidityAssets: "0",
-              publicAllocatorSharedLiquidity: [],
-              state: {
-                collateralAssets: "25000000000000000000",
-                collateralAssetsUsd: 60000,
-                rewards: [
-                  {
-                    asset: {
-                      address: "0x0000000000000000000000000000000000000003",
-                      symbol: "RWD",
-                      name: "Reward",
-                      decimals: 18,
-                    },
-                    supplyApr: 0,
-                    borrowApr: 0.01,
-                  },
-                ],
+function morphoFetch({
+  nullCollateral = false,
+  missingEnrichment = false,
+} = {}) {
+  return vi.fn(async (_url: string, options: { body: string }) => {
+    const query: string = JSON.parse(options.body).query;
+    return {
+      status: 200,
+      json: async () => ({
+        data: {
+          markets: {
+            items: [
+              {
+                marketId: id,
+                morphoBlue: { chain: { id: 8453 } },
+                collateralAsset: { decimals: 18 },
+                loanAsset: { decimals: 18, priceUsd: 2000 },
+                ...(query.includes("publicAllocatorSharedLiquidity")
+                  ? {
+                      reallocatableLiquidityAssets: "8000000000000000000",
+                      publicAllocatorSharedLiquidity: missingEnrichment
+                        ? null
+                        : [
+                            {
+                              assets: "8000000000000000000",
+                              vault: {
+                                address: "0xvault",
+                                name: "Vault",
+                                publicAllocatorConfig: {
+                                  fee: 0,
+                                  flowCaps: [
+                                    {
+                                      maxIn: 100,
+                                      maxOut: 80,
+                                      market: { marketId: id },
+                                    },
+                                  ],
+                                },
+                              },
+                              allocationMarket: {
+                                marketId: id,
+                                loanAsset: { address: row.loanToken.address },
+                                oracleAddress: row.oracle,
+                                irmAddress: row.irm,
+                                lltv: "945000000000000000",
+                              },
+                            },
+                          ],
+                    }
+                  : {}),
+                state: {
+                  collateralAssets: nullCollateral
+                    ? null
+                    : "25000000000000000000",
+                  collateralAssetsUsd: nullCollateral ? null : 60000,
+                  ...(query.includes("rewards {")
+                    ? {
+                        rewards: missingEnrichment
+                          ? null
+                          : [
+                              {
+                                asset: {
+                                  address:
+                                    "0x0000000000000000000000000000000000000003",
+                                  symbol: "RWD",
+                                  name: "Reward",
+                                  decimals: 18,
+                                },
+                                supplyApr: 0,
+                                borrowApr: 0.01,
+                              },
+                            ],
+                      }
+                    : {}),
+                },
               },
-            },
-          ],
+            ],
+          },
         },
-      },
-    }),
+      }),
+    };
   });
 }
 
 describe("on-chain fallback", () => {
+  it.each([false, true])(
+    "preserves enriched defaults, allocation units and reward signs (rewards=%s)",
+    async (includeRewards) => {
+      const fetch = morphoFetch();
+      vi.stubGlobal("fetch", fetch);
+      const markets = await getMorphoMarketsData({
+        environments: [fallbackEnvironment()],
+        includeRewards,
+      });
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(markets[0]).toMatchObject({
+        sharedLiquidityStatus: "available",
+        totalBorrowApr: includeRewards ? 4 : 5,
+        availableLiquidityUsd: 120000,
+        collateralAssetsUsd: 60000,
+        marketParams: {
+          lltv: 945000000000000000n,
+          loanToken: row.loanToken.address,
+        },
+        publicAllocatorSharedLiquidity: [
+          {
+            assets: 8,
+            vault: {
+              publicAllocatorConfig: {
+                flowCaps: [{ market: { uniqueKey: id } }],
+              },
+            },
+            allocationMarket: { uniqueKey: id, lltv: "945000000000000000" },
+          },
+        ],
+      });
+      expect(markets[0]?.availableLiquidity.value).toBe(60);
+      expect(markets[0]?.collateralAssets?.value).toBe(25);
+      expect(markets[0]?.rewards).toHaveLength(includeRewards ? 1 : 0);
+    },
+  );
+
+  it("preserves null collateral and marks missing enrichment unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      morphoFetch({ nullCollateral: true, missingEnrichment: true }),
+    );
+    const markets = await getMorphoMarketsData({
+      environments: [fallbackEnvironment()],
+      includeRewards: true,
+    });
+    expect(markets[0]).toMatchObject({
+      collateralAssets: null,
+      collateralAssetsUsd: null,
+      sharedLiquidityStatus: "unavailable",
+      publicAllocatorSharedLiquidity: [],
+      rewards: [],
+      totalBorrowApr: 5,
+      availableLiquidityUsd: 120000,
+    });
+  });
+
+  it("keeps base balances usable when GraphQL enrichment fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("GraphQL unavailable")),
+    );
+    const markets = await getMorphoMarketsData({
+      environments: [fallbackEnvironment()],
+      includeRewards: true,
+    });
+    expect(markets[0]).toMatchObject({
+      collateralAssets: null,
+      sharedLiquidityStatus: "unavailable",
+      publicAllocatorSharedLiquidity: [],
+      rewards: [],
+      totalBorrowApr: 5,
+      availableLiquidityUsd: 120000,
+    });
+  });
+
+  it("returns an empty result without enrichment when RPC fails", async () => {
+    const environment = fallbackEnvironment();
+    vi.mocked(
+      environment.contracts.morphoViews!.read.getMorphoBlueMarketsInfo,
+    ).mockRejectedValue(new Error("RPC unavailable"));
+    const fetch = morphoFetch();
+    vi.stubGlobal("fetch", fetch);
+    expect(
+      await getMorphoMarketsData({
+        environments: [environment],
+        includeRewards: true,
+      }),
+    ).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it.each([false, true])(
     "fetches collateral and optional rewards once, without allocator fields (rewards=%s)",
     async (includeRewards) => {

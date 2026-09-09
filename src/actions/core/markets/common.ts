@@ -876,22 +876,30 @@ async function fetchMarketsFromLunar(
 }
 
 const fetchFromGenericCacheApi = async <T>(uri: string): Promise<T> => {
-  const response = await fetch(
-    "https://generic-api-cache.moonwell.workers.dev/",
-    {
-      method: "POST",
-      body: `{"uri":"${uri}","cacheDuration":"300"}`,
-      signal: AbortSignal.timeout(5_000),
-      headers: {
-        ...MOONWELL_FETCH_JSON_HEADERS,
-        "Content-Type": "text/plain",
+  // AbortSignal.timeout is not available in every browser supported by SDK
+  // consumers. Keep the timeout local and release it after reading the body.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const response = await fetch(
+      "https://generic-api-cache.moonwell.workers.dev/",
+      {
+        method: "POST",
+        body: `{"uri":"${uri}","cacheDuration":"300"}`,
+        signal: controller.signal,
+        headers: {
+          ...MOONWELL_FETCH_JSON_HEADERS,
+          "Content-Type": "text/plain",
+        },
       },
-    },
-  );
+    );
 
-  if (!response.ok)
-    throw new Error(`Staking APR request failed: ${response.status}`);
-  return response.json();
+    if (!response.ok)
+      throw new Error(`Staking APR request failed: ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 export const fetchLiquidStakingRewards = async (): Promise<{
