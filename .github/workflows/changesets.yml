@@ -75,9 +75,24 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/install-dependencies
-      
- 
+        with:
+          # npm trusted publishing needs Node >= 22.14 and npm >= 11.5.1. The
+          # composite default (22.5.1 / npm 10.8.2) is too old to even run npm 11.
+          node-version: 22
+
+      # Publishing authenticates with npm Trusted Publishing (OIDC) instead of a
+      # long-lived NPM_TOKEN: `changeset publish` -> `pnpm publish` -> `npm publish`,
+      # and npm >= 11.5.1 exchanges the job's GitHub OIDC token (id-token: write)
+      # for a short-lived publish token and attaches provenance automatically.
+      # The trusted publisher for @moonwell-fi/moonwell-sdk on npmjs.com must point
+      # at this repository and the workflow file `changesets.yml`.
+      - name: Use npm 11 for trusted publishing
+        run: |
+          npm install -g npm@11
+          npm --version
+
       - name: Publish to NPM
+        id: changesets
         uses: changesets/action@v1
         with:
           setupGitUser: false
@@ -86,16 +101,13 @@ jobs:
           version: pnpm changeset:version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish Prerelease
         if: steps.changesets.outputs.published != 'true'
         continue-on-error: true
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npm config set "//registry.npmjs.org/:_authToken" "$NPM_TOKEN"
           git reset --hard origin/main
           pnpm clean
           pnpm changeset version --no-git-tag --snapshot canary
