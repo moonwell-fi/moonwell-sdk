@@ -4,6 +4,7 @@ import type { MultichainReturnType } from "../../../common/types.js";
 import type { Environment } from "../../../environments/index.js";
 import type {
   MorphoMarket,
+  MorphoMarketSharedLiquidity,
   PublicAllocatorSharedLiquidityType,
 } from "../../../types/morphoMarket.js";
 import type { MorphoReward } from "../../../types/morphoReward.js";
@@ -45,14 +46,34 @@ export interface LunarSharedLiquidityResponse {
   markets: Record<string, LunarMarketLiveData>;
 }
 
-async function fetchSharedLiquidityFromLunar(
+export async function fetchSharedLiquidityFromLunar(
   lunarIndexerUrl: string,
   chainId: number,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<LunarSharedLiquidityResponse> {
-  const response = await getWithRetry<LunarSharedLiquidityResponse>(
-    `${lunarIndexerUrl}/api/v1/isolated/shared-liquidity/${chainId}`,
-  );
-  return response.data;
+  // One budget for the request AND its retries. The endpoint often takes more
+  // than five seconds, so let it finish instead of restarting the same work.
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new RangeError(
+      "Shared-liquidity timeoutMs must be positive and finite",
+    );
+  }
+  const controller = new AbortController();
+  const abort = (): void => controller.abort();
+  if (options.signal?.aborted) abort();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(abort, timeoutMs);
+  try {
+    const response = await getWithRetry<LunarSharedLiquidityResponse>(
+      `${lunarIndexerUrl}/api/v1/isolated/shared-liquidity/${chainId}`,
+      { timeout: timeoutMs, signal: controller.signal },
+    );
+    return response.data;
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", abort);
+  }
 }
 
 export function computeSharedLiquidityFromLunar(
@@ -69,7 +90,7 @@ export function computeSharedLiquidityFromLunar(
     }
   >,
   chainId: number,
-): GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[] {
+): MorphoMarketSharedLiquidity[] {
   return targetMarkets.map((targetMarket) => {
     const targetId = targetMarket.toLowerCase();
     const r: PublicAllocatorSharedLiquidityType[] = [];
@@ -219,6 +240,7 @@ export async function getMorphoMarketsData(params: {
   environments: Environment[];
   markets?: string[] | undefined;
   includeRewards?: boolean | undefined;
+  includeSharedLiquidity?: boolean | undefined;
 }): Promise<MorphoMarket[]> {
   const { environments } = params;
 
@@ -240,6 +262,7 @@ async function getMorphoMarketsDataFromOnChain(params: {
   environments: Environment[];
   markets?: string[] | undefined;
   includeRewards?: boolean | undefined;
+  includeSharedLiquidity?: boolean | undefined;
 }): Promise<MorphoMarket[]> {
   const { environments } = params;
 
@@ -281,7 +304,11 @@ async function getMorphoMarketsDataFromOnChain(params: {
       : [],
   );
 
-  const initialMarkets: MorphoMarket[] = [];
+  const initialMarkets: {
+    chainId: number;
+    marketId: string;
+    marketKey: string;
+  }[] = [];
   fulfilledMarketsInfo.forEach(({ environment, marketsInfo }) => {
     marketsInfo.forEach((marketInfo) => {
       const marketKey = Object.keys(environment.config.morphoMarkets).find(
@@ -298,7 +325,7 @@ async function getMorphoMarketsDataFromOnChain(params: {
         chainId: environment.chainId,
         marketId: marketInfo.marketId,
         marketKey,
-      } as MorphoMarket);
+      });
     });
   });
 
@@ -308,6 +335,7 @@ async function getMorphoMarketsDataFromOnChain(params: {
   const rewardsData = await getMorphoMarketRewards(
     rewardEnvironment,
     initialMarkets,
+    params,
   );
   const rewardsDataByChainAndMarket = new Map<
     string,
@@ -493,6 +521,10 @@ async function getMorphoMarketsDataFromOnChain(params: {
           rewards: [],
           publicAllocatorSharedLiquidity:
             marketRewardData?.publicAllocatorSharedLiquidity ?? [],
+          sharedLiquidityStatus:
+            params.includeSharedLiquidity === false
+              ? "not-requested"
+              : (marketRewardData?.sharedLiquidityStatus ?? "unavailable"),
         };
 
         return [mapping];
@@ -516,17 +548,11 @@ async function getMorphoMarketsDataFromOnChain(params: {
         return environment?.custom.morpho?.minimalDeployment === false;
       });
 
-    const rewards = await getMorphoMarketRewards(
-      params.environments.find((env) => env.custom?.morpho?.apiUrl) ??
-        params.environments[0],
-      markets,
-    );
-
     markets.forEach((market) => {
-      const marketReward = rewards.find(
-        (reward) =>
-          reward.marketId === market.marketId &&
-          reward.chainId === market.chainId,
+      // Collateral, rewards and optional liquidity came from the same GraphQL
+      // response above. Do not repeat that expensive enrichment request.
+      const marketReward = rewardsDataByChainAndMarket.get(
+        `${market.chainId}-${market.marketId.toLowerCase()}`,
       );
       if (marketReward) {
         market.rewards = marketReward.rewards;
@@ -556,13 +582,6 @@ async function getMorphoMarketsDataFromOnChain(params: {
   });
 }
 
-type GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType = {
-  chainId: number;
-  marketId: string;
-  reallocatableLiquidityAssets: Amount;
-  publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
-};
-
 type GetMorphoMarketsRewardsReturnType = {
   chainId: number;
   marketId: string;
@@ -571,11 +590,16 @@ type GetMorphoMarketsRewardsReturnType = {
   reallocatableLiquidityAssets: Amount;
   publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
   rewards: Required<MorphoReward>[];
+  sharedLiquidityStatus: "available" | "unavailable" | "not-requested";
 };
 
 async function getMorphoMarketRewards(
   environment: Environment,
   markets: { marketId: string; chainId: number }[],
+  options: {
+    includeRewards?: boolean | undefined;
+    includeSharedLiquidity?: boolean | undefined;
+  },
 ): Promise<GetMorphoMarketsRewardsReturnType[]> {
   if (markets.length === 0) {
     return [];
@@ -591,7 +615,10 @@ async function getMorphoMarketRewards(
             id
           }
         }
-        reallocatableLiquidityAssets
+        ${
+          options.includeSharedLiquidity === false
+            ? ""
+            : `reallocatableLiquidityAssets
         publicAllocatorSharedLiquidity {
           assets
           vault {
@@ -621,6 +648,8 @@ async function getMorphoMarketRewards(
             lltv
           }
         }
+        `
+        }
         collateralAsset {
           decimals
         }
@@ -631,7 +660,9 @@ async function getMorphoMarketRewards(
         state {
           collateralAssets
           collateralAssetsUsd
-          rewards {
+          ${
+            options.includeRewards
+              ? `rewards {
             asset {
               address
               symbol
@@ -640,6 +671,8 @@ async function getMorphoMarketRewards(
             }
             supplyApr
             borrowApr
+          }`
+              : ""
           }
         }
         marketId
@@ -718,7 +751,7 @@ async function getMorphoMarketRewards(
         chainId: item.morphoBlue.chain.id,
         marketId: item.marketId,
         reallocatableLiquidityAssets: new Amount(
-          BigInt(item.reallocatableLiquidityAssets),
+          BigInt(item.reallocatableLiquidityAssets ?? "0"),
           loanAssetDecimals,
         ),
         // Note: The Morpho GraphQL API may return null for collateralAssets and
@@ -732,38 +765,49 @@ async function getMorphoMarketRewards(
               )
             : null,
         collateralAssetsUsd: item.state.collateralAssetsUsd ?? null,
-        publicAllocatorSharedLiquidity: item.publicAllocatorSharedLiquidity.map(
-          (item) => ({
-            assets: Number(item.assets) / 10 ** loanAssetDecimals,
-            vault: {
-              address: item.vault.address,
-              name: item.vault.name,
-              // The Morpho API renamed Market.uniqueKey to marketId; map it
-              // back to keep the SDK's public types unchanged.
-              publicAllocatorConfig: {
-                fee: item.vault.publicAllocatorConfig.fee,
-                flowCaps: item.vault.publicAllocatorConfig.flowCaps.map(
-                  (flowCap) => ({
-                    market: { uniqueKey: flowCap.market.marketId },
-                    maxIn: flowCap.maxIn,
-                    maxOut: flowCap.maxOut,
-                  }),
-                ),
-              },
+        sharedLiquidityStatus:
+          options.includeSharedLiquidity === false
+            ? "not-requested"
+            : item.publicAllocatorSharedLiquidity
+              ? "available"
+              : "unavailable",
+        publicAllocatorSharedLiquidity: (options.includeSharedLiquidity ===
+        false
+          ? []
+          : (item.publicAllocatorSharedLiquidity ?? [])
+        ).map((item) => ({
+          assets: Number(item.assets) / 10 ** loanAssetDecimals,
+          vault: {
+            address: item.vault.address,
+            name: item.vault.name,
+            // The Morpho API renamed Market.uniqueKey to marketId; map it
+            // back to keep the SDK's public types unchanged.
+            publicAllocatorConfig: {
+              fee: item.vault.publicAllocatorConfig.fee,
+              flowCaps: item.vault.publicAllocatorConfig.flowCaps.map(
+                (flowCap) => ({
+                  market: { uniqueKey: flowCap.market.marketId },
+                  maxIn: flowCap.maxIn,
+                  maxOut: flowCap.maxOut,
+                }),
+              ),
             },
-            allocationMarket: {
-              uniqueKey: item.allocationMarket.marketId,
-              loanAsset: item.allocationMarket.loanAsset,
-              ...(item.allocationMarket.collateralAsset
-                ? { collateralAsset: item.allocationMarket.collateralAsset }
-                : {}),
-              oracleAddress: item.allocationMarket.oracleAddress,
-              irmAddress: item.allocationMarket.irmAddress,
-              lltv: item.allocationMarket.lltv,
-            },
-          }),
-        ),
-        rewards: item.state?.rewards.map((reward) => {
+          },
+          allocationMarket: {
+            uniqueKey: item.allocationMarket.marketId,
+            loanAsset: item.allocationMarket.loanAsset,
+            ...(item.allocationMarket.collateralAsset
+              ? { collateralAsset: item.allocationMarket.collateralAsset }
+              : {}),
+            oracleAddress: item.allocationMarket.oracleAddress,
+            irmAddress: item.allocationMarket.irmAddress,
+            lltv: item.allocationMarket.lltv,
+          },
+        })),
+        rewards: (options.includeRewards
+          ? (item.state?.rewards ?? [])
+          : []
+        ).map((reward) => {
           //Supply APR is used only for vaults, zeroing it for now to avoid confusion
           // Morpho removed the per-token amount fields from the API
           // (MarketStateReward.amountPerBorrowedToken et al.), so reward
@@ -795,6 +839,7 @@ async function getMorphoMarketsDataFromIndexer(params: {
   environments: Environment[];
   markets?: string[] | undefined;
   includeRewards?: boolean | undefined;
+  includeSharedLiquidity?: boolean | undefined;
 }): Promise<MorphoMarket[]> {
   const { environments } = params;
 
@@ -866,6 +911,7 @@ async function getMorphoMarketsDataFromIndexer(params: {
         environments: failedEnvironments,
         markets: params.markets,
         includeRewards: params.includeRewards,
+        includeSharedLiquidity: params.includeSharedLiquidity,
       });
     } catch (rpcError) {
       console.warn(
@@ -883,61 +929,69 @@ async function getMorphoMarketsDataFromIndexer(params: {
 
   // Fetch shared liquidity from lunar-indexer.
   const sharedLiquiditySettlements = await Promise.allSettled(
-    fulfilledMarkets.map(async ({ environment, markets }) => {
-      const lunarIndexerUrl = environment.lunarIndexerUrl;
-      if (!lunarIndexerUrl)
-        return {
-          environment,
-          data: [] as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
-        };
+    (params.includeSharedLiquidity === false ? [] : fulfilledMarkets).map(
+      async ({
+        environment,
+        markets,
+      }): Promise<{
+        environment: Environment;
+        data: MorphoMarketSharedLiquidity[];
+      }> => {
+        const lunarIndexerUrl = environment.lunarIndexerUrl;
+        if (!lunarIndexerUrl)
+          return {
+            environment,
+            data: [],
+          };
 
-      const marketParamsMap = new Map(
-        markets.map((m) => [
-          m.marketId.toLowerCase(),
-          {
-            oracle: m.oracle,
-            irm: m.irm,
-            lltv: m.lltv,
-            loanToken: {
-              address: m.loanToken.address,
-              decimals: m.loanToken.decimals,
+        const marketParamsMap = new Map(
+          markets.map((m) => [
+            m.marketId.toLowerCase(),
+            {
+              oracle: m.oracle,
+              irm: m.irm,
+              lltv: m.lltv,
+              loanToken: {
+                address: m.loanToken.address,
+                decimals: m.loanToken.decimals,
+              },
+              collateralToken: {
+                address: m.collateralToken.address,
+                decimals: m.collateralToken.decimals,
+              },
             },
-            collateralToken: {
-              address: m.collateralToken.address,
-              decimals: m.collateralToken.decimals,
-            },
-          },
-        ]),
-      );
+          ]),
+        );
 
-      try {
-        const rawData = await fetchSharedLiquidityFromLunar(
-          lunarIndexerUrl,
-          environment.chainId,
-        );
-        const marketIds = markets.map((m) => m.marketId);
-        const data = computeSharedLiquidityFromLunar(
-          rawData,
-          marketIds,
-          marketParamsMap,
-          environment.chainId,
-        );
-        return { environment, data };
-      } catch (error) {
-        console.warn(
-          `[getMorphoMarketsData] Lunar shared liquidity failed for chain ${environment.chainId}:`,
-          error,
-        );
-        environment.onError?.(error, {
-          source: "morpho-shared-liquidity",
-          chainId: environment.chainId,
-        });
-        return {
-          environment,
-          data: [] as GetMorphoMarketsPublicAllocatorSharedLiquidityReturnType[],
-        };
-      }
-    }),
+        try {
+          const rawData = await fetchSharedLiquidityFromLunar(
+            lunarIndexerUrl,
+            environment.chainId,
+          );
+          const marketIds = markets.map((m) => m.marketId);
+          const data = computeSharedLiquidityFromLunar(
+            rawData,
+            marketIds,
+            marketParamsMap,
+            environment.chainId,
+          );
+          return { environment, data };
+        } catch (error) {
+          console.warn(
+            `[getMorphoMarketsData] Lunar shared liquidity failed for chain ${environment.chainId}:`,
+            error,
+          );
+          environment.onError?.(error, {
+            source: "morpho-shared-liquidity",
+            chainId: environment.chainId,
+          });
+          return {
+            environment,
+            data: [],
+          };
+        }
+      },
+    ),
   );
 
   const fulfilledSharedLiquidity = sharedLiquiditySettlements.flatMap((s) =>
@@ -1027,6 +1081,18 @@ async function getMorphoMarketsDataFromIndexer(params: {
         environment,
         rewardsDataMap,
         sharedLiquidityMap,
+      ).map(
+        (market): MorphoMarket => ({
+          ...market,
+          sharedLiquidityStatus:
+            params.includeSharedLiquidity === false
+              ? "not-requested"
+              : sharedLiquidityMap.has(
+                    `${market.chainId}-${market.marketId.toLowerCase()}`,
+                  )
+                ? "available"
+                : "unavailable",
+        }),
       );
     },
   );

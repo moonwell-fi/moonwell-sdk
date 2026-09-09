@@ -1,0 +1,78 @@
+import OptionalNetworkParameterInfo from "../../../../components/OptionalNetworkParameterInfo.mdx";
+
+# getMorphoMarketsSharedLiquidity
+
+Fetch public-allocator liquidity independently of base isolated-market data. This action requests only the shared-liquidity endpoint and reuses market parameters from a previously fetched market list. It supports environments with a configured Lunar Indexer.
+
+## Usage
+
+```ts
+import type { MorphoMarket } from "@moonwell-fi/moonwell-sdk";
+
+const markets = await moonwellClient.getMorphoMarkets({
+  chainId: 8453,
+  includeRewards: true,
+  includeSharedLiquidity: false,
+});
+
+// Publish base balances, prices, rates and collateral now.
+// Run this separately in your query/cache layer, using its AbortSignal.
+const liquidity = await moonwellClient.getMorphoMarketsSharedLiquidity({
+  chainId: 8453,
+  markets,
+  timeoutMs: 15_000,
+});
+
+const byMarketId = new Map(liquidity.map((item) => [item.marketId.toLowerCase(), item]));
+const enrichedMarkets = markets.map((market): MorphoMarket => {
+  const result = byMarketId.get(market.marketId.toLowerCase());
+  if (!result) return market;
+  return {
+    ...market,
+    publicAllocatorSharedLiquidity: result.publicAllocatorSharedLiquidity,
+    sharedLiquidityStatus: "available",
+  };
+});
+```
+
+Cache base data and liquidity under separate keys that include the chain. Retain the last successful liquidity snapshot and its fetch time if a refresh fails. This action does not cache financial data internally or mutate the supplied markets. Apply results only to the same chain and market identity; continue validating liquidity when preparing a borrow/reallocation transaction.
+
+## Returns
+
+`Promise<MorphoMarketSharedLiquidity[]>`, with one entry for each supplied market:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `chainId` | `number` | Requested chain |
+| `marketId` | `string` | Lowercase market ID |
+| `reallocatableLiquidityAssets` | `Amount` | Allocator liquidity in loan-token units |
+| `publicAllocatorSharedLiquidity` | `PublicAllocatorSharedLiquidityType[]` | Allocations and available transaction parameters |
+
+The action rejects on HTTP, decoding, deadline or cancellation errors. A rejected request must not be interpreted as an empty successful allocation list. An empty `markets` input returns an empty list without making a request.
+
+## Parameters
+
+### chainId / network
+
+Select one configured environment. All supplied markets must belong to that chain. An unsupported environment or mixed-chain input rejects before fetching.
+
+<OptionalNetworkParameterInfo />
+
+### markets
+
+- **Type:** `readonly MorphoMarket[]`
+
+Pass the full chain's base market result so allocation sources retain their known contract parameters. The action reuses token decimals and market parameters; it does not refetch core balances or rates. Source markets outside the supplied list may lack `allocationMarket` parameters, matching the existing SDK behavior.
+
+### signal (optional)
+
+- **Type:** `AbortSignal`
+
+Aborts the active request and retry backoff. Cancellation does not trigger another retry.
+
+### timeoutMs (optional)
+
+- **Type:** `number`
+- **Default:** `15000`
+
+Overall positive, finite deadline in milliseconds, including HTTP attempts and backoff. Transient failures can make up to three attempts within that budget. Existing `getMorphoMarket` / `getMorphoMarkets` enrichment uses the same 15-second budget by default.

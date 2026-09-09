@@ -1,4 +1,3 @@
-import axios from "axios";
 import { mainnet } from "viem/chains";
 import { Amount } from "../../../common/index.js";
 import type { Environment } from "../../../environments/index.js";
@@ -22,8 +21,6 @@ const MULTICHAIN_WORMHOLE_BRIDGES: ReadonlySet<string> = new Set([
   WORMHOLE_CONTRACT,
   "0x98f3c9e6e3face36baad05fe09d375ef1464288b", // Ethereum
 ]);
-
-axios.defaults.timeout = 5_000;
 
 /**
  * Extract proposal subtitle from description
