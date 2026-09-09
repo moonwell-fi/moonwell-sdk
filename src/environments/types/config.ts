@@ -227,6 +227,14 @@ export type MorphoMarketsConfig<markets, tokens> = {} extends markets
 export type ContractsConfig<contracts, tokens> = {} extends contracts
   ? {}
   : { [name in keyof ContractConfig<tokens>]?: ContractConfig<tokens>[name] };
+
+/** Context passed to `onError` callbacks. `token` is set for per-token read failures. */
+export type OnErrorContext = {
+  source: string;
+  chainId: number;
+  token?: Address;
+};
+
 export type CustomConfig<custom> = {} extends custom
   ? {}
   : { [name in keyof CustomConfigType]?: CustomConfigType[name] };
@@ -276,10 +284,7 @@ export const createEnvironmentConfig = <
   indexerUrl?: string;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
-  onError?: (
-    error: unknown,
-    context: { source: string; chainId: number; token?: Address },
-  ) => void;
+  onError?: (error: unknown, context: OnErrorContext) => void;
   tokens: TokensConfig<tokens>;
   markets: MarketsConfig<markets, tokens>;
   vaults: VaultsConfig<vaults, tokens>;
@@ -481,10 +486,7 @@ export type Environment<
   indexerUrl?: string;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
-  onError?: (
-    error: unknown,
-    context: { source: string; chainId: number; token?: Address },
-  ) => void;
+  onError?: (error: unknown, context: OnErrorContext) => void;
   tokens: {
     [name in keyof tokens]: TokenContractReturnType;
   };

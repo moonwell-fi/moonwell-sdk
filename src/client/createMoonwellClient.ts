@@ -5,6 +5,7 @@ import {
   type BaseEnvironment,
   type Environment,
   type EthereumEnvironment,
+  type OnErrorContext,
   type OptimismEnvironment,
   type PolygonEnvironment,
   type SupportedChains,
@@ -64,10 +65,7 @@ export type NetworksConfig<networks> = {} extends networks
 
 export const createMoonwellClient = <const networks>(config: {
   networks: NetworksConfig<Narrow<networks>>;
-  onError?: (
-    error: unknown,
-    context: { source: string; chainId: number },
-  ) => void;
+  onError?: (error: unknown, context: OnErrorContext) => void;
 }) => {
   const environments = Object.entries(
     config.networks as NetworksConfig<SupportedChains>,
