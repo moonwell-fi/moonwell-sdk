@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-27T18:15:34.805Z",
+  "generatedAt": "2026-08-24T12:09:14.490Z",
   "coverage": {
     "lines": 83.73,
     "statements": 83.73,
@@ -17,8 +17,8 @@
     "low": 0
   },
   "duplication": {
-    "percentage": 8.73,
-    "clones": 93,
-    "duplicatedLines": 1903
+    "percentage": 8.59,
+    "clones": 91,
+    "duplicatedLines": 1835
   }
 }
