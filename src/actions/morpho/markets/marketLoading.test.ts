@@ -2,7 +2,11 @@ import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMoonwellClient } from "../../../client/createMoonwellClient.js";
 import type { Environment } from "../../../environments/index.js";
-import { getMorphoMarketsData } from "./common.js";
+import {
+  type LunarMarketLiveData,
+  type LunarSharedLiquidityResponse,
+  getMorphoMarketsData,
+} from "./common.js";
 import type { LunarIndexerMarket } from "./lunarIndexerTransform.js";
 
 const client = createMoonwellClient({
@@ -52,6 +56,44 @@ const row: LunarIndexerMarket = {
   ],
 };
 const emptyLiquidity = { vaults: [], markets: {} };
+const sourceId =
+  "0x1111111111111111111111111111111111111111111111111111111111111111";
+function liquidityFixture() {
+  const target = {
+    marketId: id,
+    flowCapIn: "100000000000000000000",
+    flowCapOut: "0",
+    supplyCap: "0",
+    supplyCapEnabled: false,
+    vaultSupplyShares: "0",
+    vaultSupplyAssets: "1000000000000000000",
+  };
+  const source = {
+    ...target,
+    marketId: sourceId,
+    flowCapIn: "0",
+    flowCapOut: "8000000000000000000",
+    vaultSupplyAssets: "10000000000000000000",
+  };
+  const sourceLive: LunarMarketLiveData = {
+    totalLiquidity: "9",
+    loanToken: { ...row.loanToken },
+  };
+  const vault = {
+    address: "0xvault",
+    name: "Vault",
+    fee: "0",
+    markets: [target, source],
+  };
+  const data: LunarSharedLiquidityResponse = {
+    vaults: [vault],
+    markets: {
+      [id]: { totalLiquidity: "60", loanToken: { ...row.loanToken } },
+      [sourceId]: sourceLive,
+    },
+  };
+  return { data, target, source, sourceLive, vault };
+}
 function response(data: unknown) {
   return { data, status: 200, statusText: "OK", headers: {}, config: {} };
 }
@@ -77,6 +119,265 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+
+describe("allocator response validation", () => {
+  async function expectInvalidLiquidity(
+    fixture: ReturnType<typeof liquidityFixture>,
+  ) {
+    const onError = vi.fn();
+    const checkedClient = createMoonwellClient({
+      networks: { base: { rpcUrls: ["https://rpc.invalid"] } },
+      onError,
+    });
+    const get = api();
+    const base = await checkedClient.getMorphoMarkets({
+      chainId: 8453,
+      includeRewards: true,
+      includeSharedLiquidity: false,
+    });
+    get
+      .mockClear()
+      .mockImplementation(async (url) =>
+        response(
+          url.includes("shared-liquidity") ? fixture.data : { results: [row] },
+        ),
+      );
+    await expect(
+      checkedClient.getMorphoMarketsSharedLiquidity({
+        chainId: 8453,
+        markets: base,
+      }),
+    ).rejects.toBeInstanceOf(TypeError);
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(expect.any(TypeError), {
+      source: "morpho-shared-liquidity",
+      chainId: 8453,
+    });
+    const enriched = await checkedClient.getMorphoMarkets({
+      chainId: 8453,
+      includeRewards: true,
+    });
+    expect(enriched[0]).toMatchObject({
+      sharedLiquidityStatus: "unavailable",
+      publicAllocatorSharedLiquidity: [],
+      availableLiquidityUsd: 120000,
+      collateralAssetsUsd: 60000,
+      totalSupplyApr: 5,
+      totalBorrowApr: 4,
+    });
+    expect(enriched[0]?.availableLiquidity.value).toBe(60);
+    expect(enriched[0]?.collateralAssets?.value).toBe(25);
+    expect(enriched[0]?.rewards).toHaveLength(1);
+    expect(onError).toHaveBeenCalledTimes(2);
+    expect(get).toHaveBeenCalledTimes(3);
+    expect(base[0]?.sharedLiquidityStatus).toBe("not-requested");
+    expect(base[0]?.publicAllocatorSharedLiquidity).toEqual([]);
+  }
+
+  it.each([
+    "invalid",
+    "9oops",
+    "",
+    " ",
+    "Infinity",
+    "NaN",
+    "1e309",
+    "-1",
+    "0x10",
+    null,
+    true,
+    9,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    {},
+  ])(
+    "rejects invalid totalLiquidity %j in both loading paths",
+    async (value) => {
+      const fixture = liquidityFixture();
+      Reflect.set(fixture.sourceLive, "totalLiquidity", value);
+      await expectInvalidLiquidity(fixture);
+    },
+  );
+
+  it.each(
+    [
+      "flowCapIn",
+      "flowCapOut",
+      "supplyCap",
+      "vaultSupplyShares",
+      "vaultSupplyAssets",
+    ].flatMap((field) =>
+      ["invalid", undefined, "-1", "0.5"].map((value) => ({ field, value })),
+    ),
+  )(
+    "rejects $field=$value before computing either loading path",
+    async ({ field, value }) => {
+      const fixture = liquidityFixture();
+      Reflect.set(fixture.target, field, value);
+      await expectInvalidLiquidity(fixture);
+    },
+  );
+
+  it.each(["invalid", undefined, "-1", "1e18"])(
+    "rejects an invalid raw fee %s",
+    async (fee) => {
+      const fixture = liquidityFixture();
+      Reflect.set(fixture.vault, "fee", fee);
+      await expectInvalidLiquidity(fixture);
+    },
+  );
+
+  it.each([undefined, "false", null])(
+    "rejects invalid supplyCapEnabled %s",
+    async (enabled) => {
+      const fixture = liquidityFixture();
+      Reflect.set(fixture.target, "supplyCapEnabled", enabled);
+      await expectInvalidLiquidity(fixture);
+    },
+  );
+
+  it.each([
+    undefined,
+    "18",
+    -1,
+    18.5,
+    256,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+  ])("rejects invalid loan token decimals %s", async (decimals) => {
+    const fixture = liquidityFixture();
+    fixture.sourceLive.loanToken = { ...row.loanToken };
+    Reflect.set(fixture.sourceLive.loanToken, "decimals", decimals);
+    await expectInvalidLiquidity(fixture);
+  });
+
+  it.each<LunarMarketLiveData>([
+    {},
+    { totalSupplyAssets: "9" },
+    { totalBorrowAssets: "1" },
+    { totalSupplyAssets: "invalid", totalBorrowAssets: "0" },
+    { totalSupplyAssets: "9", totalBorrowAssets: " " },
+    { totalSupplyAssets: "9", totalBorrowAssets: "10" },
+  ])("rejects missing or invalid supply-minus-borrow data %j", async (live) => {
+    const fixture = liquidityFixture();
+    fixture.data.markets[sourceId] = live;
+    await expectInvalidLiquidity(fixture);
+  });
+
+  it.each(["totalSupplyAssets", "totalBorrowAssets"])(
+    "validates a supplied %s even when totalLiquidity is present",
+    async (field) => {
+      const fixture = liquidityFixture();
+      Reflect.set(fixture.sourceLive, field, "invalid");
+      await expectInvalidLiquidity(fixture);
+    },
+  );
+
+  it.each([null, {}, { vaults: [], markets: [] }, { vaults: {}, markets: {} }])(
+    "rejects an invalid response envelope %j",
+    async (data) => {
+      const fixture = liquidityFixture();
+      Reflect.set(fixture, "data", data);
+      await expectInvalidLiquidity(fixture);
+    },
+  );
+
+  it.each([
+    { totalSupplyAssets: "10", totalBorrowAssets: "1", expected: 8 },
+    { totalSupplyAssets: "2.5e1", totalBorrowAssets: "1.75e1", expected: 7.5 },
+    { totalSupplyAssets: "9", totalBorrowAssets: "9", expected: 0 },
+    {
+      totalLiquidity: "0",
+      totalSupplyAssets: "9",
+      totalBorrowAssets: "0",
+      expected: 0,
+    },
+  ])(
+    "preserves valid liquidity and the supply-minus-borrow fallback %j",
+    async ({ expected, ...live }) => {
+      const fixture = liquidityFixture();
+      fixture.data.markets[sourceId] = { ...live, loanToken: row.loanToken };
+      const get = api();
+      const base = await client.getMorphoMarkets({
+        chainId: 8453,
+        includeSharedLiquidity: false,
+      });
+      get.mockImplementation(async (url) =>
+        response(
+          url.includes("shared-liquidity") ? fixture.data : { results: [row] },
+        ),
+      );
+      const result = await client.getMorphoMarketsSharedLiquidity({
+        chainId: 8453,
+        markets: base,
+      });
+      expect(result[0]?.reallocatableLiquidityAssets.value).toBe(expected);
+      const enriched = await client.getMorphoMarkets({ chainId: 8453 });
+      expect(enriched[0]?.sharedLiquidityStatus).toBe("available");
+      expect(
+        enriched[0]?.publicAllocatorSharedLiquidity.reduce(
+          (total, allocation) => total + allocation.assets,
+          0,
+        ),
+      ).toBe(expected);
+    },
+  );
+
+  it("accepts large raw integers and applies a real supply cap", async () => {
+    const fixture = liquidityFixture();
+    const maxUint256 = ((1n << 256n) - 1n).toString();
+    fixture.target.flowCapIn = maxUint256;
+    fixture.target.vaultSupplyShares = maxUint256;
+    fixture.source.vaultSupplyShares = maxUint256;
+    fixture.vault.fee = maxUint256;
+    fixture.target.supplyCapEnabled = true;
+    fixture.target.supplyCap = "2000000000000000000";
+    const get = api();
+    const base = await client.getMorphoMarkets({
+      chainId: 8453,
+      includeSharedLiquidity: false,
+    });
+    get.mockResolvedValue(response(fixture.data));
+    const result = await client.getMorphoMarketsSharedLiquidity({
+      chainId: 8453,
+      markets: base,
+    });
+    expect(result[0]?.reallocatableLiquidityAssets.value).toBe(1);
+    expect(
+      result[0]?.publicAllocatorSharedLiquidity[0]?.vault.publicAllocatorConfig
+        .fee,
+    ).toBe(Number(maxUint256));
+    expect(fixture.target.flowCapIn).toBe(maxUint256);
+  });
+
+  it("preserves valid allocations when the indexer omits another source record", async () => {
+    const fixture = liquidityFixture();
+    fixture.vault.markets.push({
+      ...fixture.source,
+      marketId:
+        "0x2222222222222222222222222222222222222222222222222222222222222222",
+    });
+    const get = api();
+    const base = await client.getMorphoMarkets({
+      chainId: 8453,
+      includeSharedLiquidity: false,
+    });
+    get.mockImplementation(async (url) =>
+      response(
+        url.includes("shared-liquidity") ? fixture.data : { results: [row] },
+      ),
+    );
+    const result = await client.getMorphoMarketsSharedLiquidity({
+      chainId: 8453,
+      markets: base,
+    });
+    expect(result[0]?.reallocatableLiquidityAssets.value).toBe(8);
+    expect(result[0]?.publicAllocatorSharedLiquidity).toHaveLength(1);
+    const enriched = await client.getMorphoMarkets({ chainId: 8453 });
+    expect(enriched[0]?.sharedLiquidityStatus).toBe("available");
+    expect(enriched[0]?.publicAllocatorSharedLiquidity).toHaveLength(1);
+  });
 });
 
 describe("independent isolated-market loading", () => {
@@ -211,8 +512,6 @@ describe("independent isolated-market loading", () => {
     });
     const target = markets[0];
     if (!target) throw new Error("Expected a base market");
-    const sourceId =
-      "0x1111111111111111111111111111111111111111111111111111111111111111";
     const source: (typeof markets)[number] = {
       ...target,
       marketId: sourceId,
@@ -221,41 +520,7 @@ describe("independent isolated-market loading", () => {
         address: "0x0000000000000000000000000000000000000000",
       },
     };
-    get.mockClear().mockResolvedValue(
-      response({
-        vaults: [
-          {
-            address: "0xvault",
-            name: "Vault",
-            fee: "0",
-            markets: [
-              {
-                marketId: id,
-                flowCapIn: "100000000000000000000",
-                flowCapOut: "0",
-                supplyCap: "0",
-                supplyCapEnabled: false,
-                vaultSupplyShares: "0",
-                vaultSupplyAssets: "1000000000000000000",
-              },
-              {
-                marketId: sourceId,
-                flowCapIn: "0",
-                flowCapOut: "8000000000000000000",
-                supplyCap: "0",
-                supplyCapEnabled: false,
-                vaultSupplyShares: "0",
-                vaultSupplyAssets: "10000000000000000000",
-              },
-            ],
-          },
-        ],
-        markets: {
-          [id]: { totalLiquidity: "60", loanToken: row.loanToken },
-          [sourceId]: { totalLiquidity: "9", loanToken: row.loanToken },
-        },
-      }),
-    );
+    get.mockClear().mockResolvedValue(response(liquidityFixture().data));
     const enriched = await client.getMorphoMarketsSharedLiquidity({
       chainId: 8453,
       markets: [target, source],

@@ -50,6 +50,8 @@ Cache base data and liquidity under separate keys that include the chain. Retain
 
 The action rejects on HTTP, decoding, deadline or cancellation errors. A rejected request must not be interpreted as an empty successful allocation list. An empty `markets` input returns an empty list without making a request.
 
+Allocator quantities are validated before calculation: raw quantities must be unsigned integer strings, token-unit quantities must be finite nonnegative numeric strings, and loan-token decimals must be valid integers. Large raw integers and legitimate zero/empty responses remain supported. When `totalLiquidity` is absent, both `totalSupplyAssets` and `totalBorrowAssets` are required to compute the nonnegative difference. The existing behavior of skipping source markets omitted entirely from the response is unchanged. Default market enrichment reports these failures as `sharedLiquidityStatus: "unavailable"` while retaining base market data.
+
 ## Parameters
 
 ### chainId / network

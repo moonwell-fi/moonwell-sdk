@@ -46,6 +46,101 @@ export interface LunarSharedLiquidityResponse {
   markets: Record<string, LunarMarketLiveData>;
 }
 
+function parseLiquidityQuantity(
+  value: unknown,
+  field: string,
+  raw = false,
+): number {
+  // Raw uint quantities routinely exceed Number.MAX_SAFE_INTEGER. Validate the
+  // integer string, not its safe-integer range; keep the existing numeric units.
+  const pattern = raw ? /^\d+$/ : /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+  if (typeof value !== "string" || !pattern.test(value)) {
+    throw new TypeError(`Invalid shared-liquidity quantity: ${field}`);
+  }
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity)) {
+    throw new TypeError(`Invalid shared-liquidity quantity: ${field}`);
+  }
+  return quantity;
+}
+
+function validateLoanDecimals(value: unknown): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    value > 255
+  ) {
+    throw new TypeError("Invalid shared-liquidity loan token decimals");
+  }
+  return value;
+}
+
+function validatedMarketLiquidity(
+  data: LunarSharedLiquidityResponse,
+): Map<string, number> {
+  if (
+    !data ||
+    !Array.isArray(data.vaults) ||
+    !data.markets ||
+    typeof data.markets !== "object" ||
+    Array.isArray(data.markets)
+  ) {
+    throw new TypeError("Invalid shared-liquidity response");
+  }
+  for (const vault of data.vaults) {
+    parseLiquidityQuantity(vault.fee, "vault.fee", true);
+    for (const market of vault.markets) {
+      for (const field of [
+        "flowCapIn",
+        "flowCapOut",
+        "supplyCap",
+        "vaultSupplyShares",
+        "vaultSupplyAssets",
+      ] as const) {
+        parseLiquidityQuantity(
+          market[field],
+          `${market.marketId}.${field}`,
+          true,
+        );
+      }
+      if (typeof market.supplyCapEnabled !== "boolean") {
+        throw new TypeError("Invalid shared-liquidity supplyCapEnabled");
+      }
+    }
+  }
+  return new Map(
+    Object.entries(data.markets).map(([marketId, market]) => {
+      if (market.loanToken !== undefined) {
+        validateLoanDecimals(market.loanToken.decimals);
+      }
+      for (const field of ["totalSupplyAssets", "totalBorrowAssets"] as const) {
+        if (market[field] !== undefined) {
+          parseLiquidityQuantity(market[field], `${marketId}.${field}`);
+        }
+      }
+      const liquidity =
+        market.totalLiquidity !== undefined
+          ? parseLiquidityQuantity(
+              market.totalLiquidity,
+              `${marketId}.totalLiquidity`,
+            )
+          : parseLiquidityQuantity(
+              market.totalSupplyAssets,
+              `${marketId}.totalSupplyAssets`,
+            ) -
+            parseLiquidityQuantity(
+              market.totalBorrowAssets,
+              `${marketId}.totalBorrowAssets`,
+            );
+      if (liquidity < 0) {
+        throw new TypeError(`Negative shared liquidity for ${marketId}`);
+      }
+      return [marketId, liquidity];
+    }),
+  );
+}
+
 export async function fetchSharedLiquidityFromLunar(
   lunarIndexerUrl: string,
   chainId: number,
@@ -91,6 +186,8 @@ export function computeSharedLiquidityFromLunar(
   >,
   chainId: number,
 ): MorphoMarketSharedLiquidity[] {
+  // Validate the complete response before building any successful allocations.
+  const liquidityByMarket = validatedMarketLiquidity(data);
   return targetMarkets.map((targetMarket) => {
     const targetId = targetMarket.toLowerCase();
     const r: PublicAllocatorSharedLiquidityType[] = [];
@@ -104,10 +201,11 @@ export function computeSharedLiquidityFromLunar(
     // (wei-like). Markets data (totalSupplyAssets, totalBorrowAssets, totalLiquidity)
     // is already in token units (divided by decimals). We convert vault raw values
     // to token units using the loan token decimals before comparing.
-    const targetLoanDecimals =
+    const targetLoanDecimals = validateLoanDecimals(
       targetLiveData?.loanToken?.decimals ??
-      targetParams?.loanToken.decimals ??
-      18;
+        targetParams?.loanToken.decimals ??
+        18,
+    );
     const targetScale = 10 ** targetLoanDecimals;
 
     for (const vault of data.vaults) {
@@ -156,24 +254,24 @@ export function computeSharedLiquidityFromLunar(
 
         const sourceLiveData =
           data.markets[sourceMarket.marketId.toLowerCase()];
-        if (!sourceLiveData) continue;
+        const liquidity = liquidityByMarket.get(
+          sourceMarket.marketId.toLowerCase(),
+        );
+        // The indexer can omit an entire source record. Preserve that existing
+        // skip behavior; quantities in every returned record were validated above.
+        if (!sourceLiveData || liquidity === undefined) continue;
 
-        const sourceLoanDecimals =
+        const sourceLoanDecimals = validateLoanDecimals(
           sourceLiveData.loanToken?.decimals ??
-          marketParamsMap.get(sourceMarket.marketId.toLowerCase())?.loanToken
-            .decimals ??
-          18;
+            marketParamsMap.get(sourceMarket.marketId.toLowerCase())?.loanToken
+              .decimals ??
+            18,
+        );
         const sourceScale = 10 ** sourceLoanDecimals;
 
         const vaultSupplyInSource =
           Number(sourceMarket.vaultSupplyAssets) / sourceScale;
         const maxOut = Number(sourceMarket.flowCapOut) / sourceScale;
-
-        // Use pre-computed totalLiquidity if available, else derive from supply/borrow
-        const liquidity = sourceLiveData.totalLiquidity
-          ? Number(sourceLiveData.totalLiquidity)
-          : Number(sourceLiveData.totalSupplyAssets ?? 0) -
-            Number(sourceLiveData.totalBorrowAssets ?? 0);
 
         if (vaultSupplyInSource > 0 && maxOut > 0 && liquidity > 0) {
           const sourceParams = marketParamsMap.get(
