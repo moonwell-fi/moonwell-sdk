@@ -25,9 +25,14 @@ export async function getMarkets<
   const environments = getEnvironmentsFromArgs(client, args);
   const logId = logger.start("getMarkets", "Starting to get markets...");
 
-  const settlements = await Promise.allSettled(
-    environments.map((environment) => getMarketsData(environment)),
-  );
+  const [settlements, liquidStakingRewards] = await Promise.all([
+    Promise.allSettled(
+      environments.map((environment) => getMarketsData(environment)),
+    ),
+    args?.includeLiquidStakingRewards === true
+      ? fetchLiquidStakingRewards()
+      : undefined,
+  ]);
 
   const result = settlements
     .filter(
@@ -35,8 +40,7 @@ export async function getMarkets<
     )
     .map((s) => s.value);
 
-  if (args?.includeLiquidStakingRewards === true) {
-    const liquidStakingRewards = await fetchLiquidStakingRewards();
+  if (liquidStakingRewards) {
     for (const item of result.flat()) {
       if (item.underlyingToken.symbol.toLowerCase() === "cbeth") {
         item.rewards.push({
