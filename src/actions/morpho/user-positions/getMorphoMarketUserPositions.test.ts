@@ -1,0 +1,168 @@
+import { describe, expect, test, vi } from "vitest";
+import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import type { Environment } from "../../../environments/index.js";
+import { getMorphoMarketUserPosition } from "./getMorphoMarketUserPosition.js";
+import { getMorphoMarketUserPositions } from "./getMorphoMarketUserPositions.js";
+
+const USER = "0xd7854FC91f16a58D67EC3644981160B6ca9C41B8";
+const MARKET_ID =
+  "0x0000000000000000000000000000000000000000000000000000000000000001";
+
+const ZERO_POSITION = {
+  collateralAssets: 0n,
+  loanAssets: 0n,
+  loanShares: 0n,
+};
+
+const makeEnv = (
+  chainId: number,
+  read: ReturnType<typeof vi.fn>,
+): { env: Environment; onError: ReturnType<typeof vi.fn> } => {
+  const onError = vi.fn();
+  const env = {
+    chainId,
+    onError,
+    contracts: {
+      views: {},
+      morphoViews: { read: { getMorphoBlueUserBalances: read } },
+    },
+    config: {
+      tokens: {
+        USDC: { symbol: "USDC", decimals: 6 },
+        cbBTC: { symbol: "cbBTC", decimals: 8 },
+      },
+      morphoMarkets: {
+        cbBTC_USDC: {
+          id: MARKET_ID,
+          loanToken: "USDC",
+          collateralToken: "cbBTC",
+        },
+      },
+    },
+  } as unknown as Environment;
+  return { env, onError };
+};
+
+describe("getMorphoMarketUserPositions failure surfacing", () => {
+  test("a failed read on one chain rejects and reports that chain via onError", async () => {
+    const rpcError = new Error("HTTP request failed: 429 Too Many Requests");
+    const failing = makeEnv(
+      8453,
+      vi.fn(async () => {
+        throw rpcError;
+      }),
+    );
+    const healthy = makeEnv(
+      10,
+      vi.fn(async () => [ZERO_POSITION]),
+    );
+    const client = {
+      environments: { base: failing.env, optimism: healthy.env },
+    } as unknown as MoonwellClient;
+
+    await expect(
+      getMorphoMarketUserPositions(client, { userAddress: USER }),
+    ).rejects.toBe(rpcError);
+
+    expect(failing.onError).toHaveBeenCalledTimes(1);
+    expect(failing.onError).toHaveBeenCalledWith(rpcError, {
+      source: "getMorphoMarketUserPositions",
+      chainId: 8453,
+    });
+    expect(healthy.onError).not.toHaveBeenCalled();
+  });
+
+  test("every chain failing rejects with an AggregateError and reports each chain", async () => {
+    const a = makeEnv(
+      8453,
+      vi.fn(async () => {
+        throw new Error("base down");
+      }),
+    );
+    const b = makeEnv(
+      10,
+      vi.fn(async () => {
+        throw new Error("optimism down");
+      }),
+    );
+    const client = {
+      environments: { base: a.env, optimism: b.env },
+    } as unknown as MoonwellClient;
+
+    await expect(
+      getMorphoMarketUserPositions(client, { userAddress: USER }),
+    ).rejects.toBeInstanceOf(AggregateError);
+
+    expect(a.onError.mock.calls[0]?.[1]).toEqual({
+      source: "getMorphoMarketUserPositions",
+      chainId: 8453,
+    });
+    expect(b.onError.mock.calls[0]?.[1]).toEqual({
+      source: "getMorphoMarketUserPositions",
+      chainId: 10,
+    });
+  });
+
+  test("an account with no positions resolves with zeroed positions and no error", async () => {
+    const healthy = makeEnv(
+      8453,
+      vi.fn(async () => [ZERO_POSITION]),
+    );
+    const client = {
+      environments: { base: healthy.env },
+    } as unknown as MoonwellClient;
+
+    const result = await getMorphoMarketUserPositions(client, {
+      userAddress: USER,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.marketId).toBe(MARKET_ID);
+    expect(result[0]?.supplied.exponential).toBe(0n);
+    expect(result[0]?.borrowed.exponential).toBe(0n);
+    expect(healthy.onError).not.toHaveBeenCalled();
+  });
+
+  test("a chain without morphoViews is skipped, not treated as a failure", async () => {
+    const healthy = makeEnv(
+      8453,
+      vi.fn(async () => [ZERO_POSITION]),
+    );
+    const noMorpho = {
+      chainId: 1,
+      onError: vi.fn(),
+      contracts: { views: {} },
+    } as unknown as Environment;
+    const client = {
+      environments: { base: healthy.env, ethereum: noMorpho },
+    } as unknown as MoonwellClient;
+
+    const result = await getMorphoMarketUserPositions(client, {
+      userAddress: USER,
+    });
+
+    expect(result.map((position) => position.chainId)).toEqual([8453]);
+    expect(noMorpho.onError).not.toHaveBeenCalled();
+  });
+
+  test("getMorphoMarketUserPosition rejects on a failed read instead of resolving undefined", async () => {
+    const rpcError = new Error("timeout");
+    const failing = makeEnv(
+      8453,
+      vi.fn(async () => {
+        throw rpcError;
+      }),
+    );
+    const client = {
+      environments: { base: failing.env },
+    } as unknown as MoonwellClient;
+
+    await expect(
+      getMorphoMarketUserPosition(client, {
+        chainId: 8453,
+        marketId: MARKET_ID,
+        userAddress: USER,
+      }),
+    ).rejects.toBe(rpcError);
+  });
+});

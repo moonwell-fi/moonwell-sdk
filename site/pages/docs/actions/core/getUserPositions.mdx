@@ -42,6 +42,10 @@ UserPosition[]
 
 - **Type:** [`UserPosition[]`](/docs/glossary/types#userposition)
 
+## Errors
+
+The promise rejects when the read fails on any requested chain, so a failed RPC never looks like an empty position list. Each chain failure is first reported through the client's `onError` callback with `{ source: "getUserPositions", chainId }`. A single failing chain rethrows the original error; several failing chains reject with an `AggregateError`. Chains without the relevant deployment are skipped, and an account with no positions resolves normally.
+
 ## Parameters
 
 ### userAddress
