@@ -5,8 +5,8 @@ import type { Environment } from "../environments/index.js";
 
 dayjs.extend(utc);
 export { Amount } from "./amount.js";
-export { BaseError, HttpRequestError } from "./error.js";
-export type { HttpRequestErrorType } from "./error.js";
+export { BaseError, ChainReadError, HttpRequestError } from "./error.js";
+export type { ChainReadFailure, HttpRequestErrorType } from "./error.js";
 export { getBlockNumberAtTimestamp } from "./getBlockNumberAtTimestamp.js";
 export type { MultichainReturnType } from "./types.js";
 

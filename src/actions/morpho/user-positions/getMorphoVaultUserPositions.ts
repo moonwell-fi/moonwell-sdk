@@ -18,9 +18,9 @@ export type GetMorphoVaultUserPositionsReturnType = Promise<
 >;
 
 /**
- * Rejects when the read fails on any requested chain (after reporting each
- * failure via the client's `onError`), so a failed RPC never looks like an
- * empty position list.
+ * Rejects with a `ChainReadError` when the read fails on any requested chain,
+ * so a failed RPC never looks like an empty position list. The error lists the
+ * failed chains and carries the positions from the chains that succeeded.
  */
 export async function getMorphoVaultUserPositions<
   environments,
@@ -29,9 +29,7 @@ export async function getMorphoVaultUserPositions<
   client: MoonwellClient,
   args: GetMorphoVaultUserPositionsParameters<environments, Network>,
 ): GetMorphoVaultUserPositionsReturnType {
-  const environments = getEnvironmentsFromArgs(client, args).filter(
-    (environment) => environment.contracts.morphoViews !== undefined,
-  );
+  const environments = getEnvironmentsFromArgs(client, args);
 
   return readAcrossEnvironments({
     environments,

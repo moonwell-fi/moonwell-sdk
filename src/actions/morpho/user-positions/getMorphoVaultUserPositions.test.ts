@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../../test/client.js";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { ChainReadError } from "../../../common/error.js";
 import type { Environment, base } from "../../../environments/index.js";
 import { getMorphoVaultUserPositions } from "./getMorphoVaultUserPositions.js";
 
@@ -405,7 +406,7 @@ describe("getMorphoVaultUserPositions failure surfacing", () => {
     return { env, onError };
   };
 
-  test("a failed vault read on one chain rejects and reports that chain via onError", async () => {
+  test("a failed vault read on one chain rejects with a ChainReadError carrying the healthy chain's positions", async () => {
     const rpcError = new Error("HTTP request failed: 429 Too Many Requests");
     const failing = makeEnv(
       8453,
@@ -421,28 +422,35 @@ describe("getMorphoVaultUserPositions failure surfacing", () => {
       environments: { base: failing.env, optimism: healthy.env },
     } as unknown as MoonwellClient;
 
-    await expect(
-      getMorphoVaultUserPositions(client, { userAddress: TEST_USER_ADDRESS }),
-    ).rejects.toBe(rpcError);
-
-    expect(failing.onError).toHaveBeenCalledWith(rpcError, {
-      source: "getMorphoVaultUserPositions",
-      chainId: 8453,
+    const promise = getMorphoVaultUserPositions(client, {
+      userAddress: TEST_USER_ADDRESS,
     });
+
+    await expect(promise).rejects.toBeInstanceOf(ChainReadError);
+    await expect(promise).rejects.toMatchObject({
+      source: "getMorphoVaultUserPositions",
+      failures: [{ chainId: 8453, reason: rpcError }],
+      data: [{ chainId: 10 }],
+    });
+
+    // Surfaced through the rejection only, not additionally through onError.
+    expect(failing.onError).not.toHaveBeenCalled();
     expect(healthy.onError).not.toHaveBeenCalled();
   });
 
-  test("every chain failing rejects with an AggregateError", async () => {
+  test("every chain failing rejects with a ChainReadError listing each chain", async () => {
+    const baseError = new Error("base down");
+    const optimismError = new Error("optimism down");
     const a = makeEnv(
       8453,
       vi.fn(async () => {
-        throw new Error("base down");
+        throw baseError;
       }),
     );
     const b = makeEnv(
       10,
       vi.fn(async () => {
-        throw new Error("optimism down");
+        throw optimismError;
       }),
     );
     const client = {
@@ -451,9 +459,13 @@ describe("getMorphoVaultUserPositions failure surfacing", () => {
 
     await expect(
       getMorphoVaultUserPositions(client, { userAddress: TEST_USER_ADDRESS }),
-    ).rejects.toBeInstanceOf(AggregateError);
-    expect(a.onError).toHaveBeenCalledTimes(1);
-    expect(b.onError).toHaveBeenCalledTimes(1);
+    ).rejects.toMatchObject({
+      failures: [
+        { chainId: 8453, reason: baseError },
+        { chainId: 10, reason: optimismError },
+      ],
+      data: [],
+    });
   });
 
   test("an account with no vault shares resolves with zeroed positions and no error", async () => {

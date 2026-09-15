@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { ChainReadError } from "../../../common/error.js";
 import type { Environment } from "../../../environments/index.js";
 import { getUserPositions } from "./getUserPositions.js";
 
@@ -43,7 +44,7 @@ const rejectWith = (error: Error): ReturnType<typeof vi.fn> =>
   });
 
 describe("getUserPositions failure surfacing", () => {
-  test("a failed user-balances read on one chain rejects and reports that chain via onError", async () => {
+  test("a failed user-balances read on one chain rejects with a ChainReadError naming that chain", async () => {
     const rpcError = new Error("HTTP request failed: 429 Too Many Requests");
     const failing = makeEnv(8453, { getUserBalances: rejectWith(rpcError) });
     const healthy = makeEnv(10);
@@ -51,15 +52,17 @@ describe("getUserPositions failure surfacing", () => {
       environments: { base: failing.env, optimism: healthy.env },
     } as unknown as MoonwellClient;
 
-    await expect(getUserPositions(client, { userAddress: USER })).rejects.toBe(
-      rpcError,
-    );
+    const promise = getUserPositions(client, { userAddress: USER });
 
-    expect(failing.onError).toHaveBeenCalledTimes(1);
-    expect(failing.onError).toHaveBeenCalledWith(rpcError, {
+    await expect(promise).rejects.toBeInstanceOf(ChainReadError);
+    await expect(promise).rejects.toMatchObject({
       source: "getUserPositions",
-      chainId: 8453,
+      failures: [{ chainId: 8453, reason: rpcError }],
+      data: [],
     });
+
+    // Surfaced through the rejection only, not additionally through onError.
+    expect(failing.onError).not.toHaveBeenCalled();
     expect(healthy.onError).not.toHaveBeenCalled();
   });
 
@@ -75,7 +78,9 @@ describe("getUserPositions failure surfacing", () => {
         { environments: { base: borrows.env } } as unknown as MoonwellClient,
         { userAddress: USER },
       ),
-    ).rejects.toBe(borrowsError);
+    ).rejects.toMatchObject({
+      failures: [{ chainId: 8453, reason: borrowsError }],
+    });
 
     const memberships = makeEnv(8453, {
       getUserMarketsMemberships: rejectWith(membershipsError),
@@ -87,31 +92,28 @@ describe("getUserPositions failure surfacing", () => {
         } as unknown as MoonwellClient,
         { userAddress: USER },
       ),
-    ).rejects.toBe(membershipsError);
+    ).rejects.toMatchObject({
+      failures: [{ chainId: 8453, reason: membershipsError }],
+    });
   });
 
-  test("every chain failing rejects with an AggregateError and reports each chain", async () => {
-    const a = makeEnv(8453, {
-      getUserBalances: rejectWith(new Error("base down")),
-    });
-    const b = makeEnv(10, {
-      getUserBalances: rejectWith(new Error("optimism down")),
-    });
+  test("every chain failing rejects with a ChainReadError listing each chain", async () => {
+    const baseError = new Error("base down");
+    const optimismError = new Error("optimism down");
+    const a = makeEnv(8453, { getUserBalances: rejectWith(baseError) });
+    const b = makeEnv(10, { getUserBalances: rejectWith(optimismError) });
     const client = {
       environments: { base: a.env, optimism: b.env },
     } as unknown as MoonwellClient;
 
     await expect(
       getUserPositions(client, { userAddress: USER }),
-    ).rejects.toBeInstanceOf(AggregateError);
-
-    expect(a.onError.mock.calls[0]?.[1]).toEqual({
-      source: "getUserPositions",
-      chainId: 8453,
-    });
-    expect(b.onError.mock.calls[0]?.[1]).toEqual({
-      source: "getUserPositions",
-      chainId: 10,
+    ).rejects.toMatchObject({
+      failures: [
+        { chainId: 8453, reason: baseError },
+        { chainId: 10, reason: optimismError },
+      ],
+      data: [],
     });
   });
 
@@ -129,9 +131,10 @@ describe("getUserPositions failure surfacing", () => {
     expect(b.onError).not.toHaveBeenCalled();
   });
 
-  test("a failed getAllMarketsInfo read still uses the mToken fallback, not an error", async () => {
+  test("a failed getAllMarketsInfo read uses the mToken fallback and reports the degraded read via onError", async () => {
+    const oracleError = new Error("oracle reverted");
     const oracleEnv = makeEnv(1, {
-      getAllMarketsInfo: rejectWith(new Error("oracle reverted")),
+      getAllMarketsInfo: rejectWith(oracleError),
     });
     const client = {
       environments: { ethereum: oracleEnv.env },
@@ -140,6 +143,10 @@ describe("getUserPositions failure surfacing", () => {
     await expect(
       getUserPositions(client, { userAddress: USER }),
     ).resolves.toEqual([]);
-    expect(oracleEnv.onError).not.toHaveBeenCalled();
+    expect(oracleEnv.onError).toHaveBeenCalledTimes(1);
+    expect(oracleEnv.onError).toHaveBeenCalledWith(oracleError, {
+      source: "user-positions-oracle-fallback",
+      chainId: 1,
+    });
   });
 });

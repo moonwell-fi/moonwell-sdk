@@ -44,7 +44,9 @@ UserPosition[]
 
 ## Errors
 
-The promise rejects when the read fails on any requested chain, so a failed RPC never looks like an empty position list. Each chain failure is first reported through the client's `onError` callback with `{ source: "getUserPositions", chainId }`. A single failing chain rethrows the original error; several failing chains reject with an `AggregateError`. Chains without the relevant deployment are skipped, and an account with no positions resolves normally.
+The promise rejects with a `ChainReadError` when the read fails on any requested chain, so a failed RPC never looks like an empty position list. `error.failures` lists each failed chain as `{ chainId, reason }` with the original error, `error.data` carries the positions from the chains that succeeded, and `error.source` is `"getUserPositions"`. The failure is not additionally reported through the client's `onError` callback. Chains without the relevant deployment are skipped, and an account with no positions resolves normally.
+
+If only the `getAllMarketsInfo` read fails, positions are computed from per-mToken reads with USD values of `0`, and that failure is reported through `onError` with `source: "user-positions-oracle-fallback"`.
 
 ## Parameters
 

@@ -15,42 +15,33 @@ export const getUserPositionData = async (params: {
     return [];
   }
 
-  // getAllMarketsInfo has a legitimate fallback path (see below), so the four
-  // reads are settled together. The user-specific reads have no fallback: a
-  // failed balances/borrows/memberships read must propagate rather than be
-  // treated as an empty list, which would misreport the user as having no
-  // position (MOO-885).
-  const [allMarketsResult, balancesResult, borrowsResult, membershipsResult] =
-    await Promise.allSettled([
-      viewsContract.read.getAllMarketsInfo(),
+  // Only getAllMarketsInfo is settled, because it has the mToken fallback
+  // below. The three user reads have no fallback: Promise.all lets their first
+  // rejection propagate instead of being treated as an empty list, which would
+  // misreport the user as having no position (MOO-885).
+  const [[allMarketsResult], balances, borrows, memberships] =
+    await Promise.all([
+      Promise.allSettled([viewsContract.read.getAllMarketsInfo()]),
       viewsContract.read.getUserBalances([params.account]),
       viewsContract.read.getUserBorrowsBalances([params.account]),
       viewsContract.read.getUserMarketsMemberships([params.account]),
     ]);
 
-  if (balancesResult.status === "rejected") {
-    throw balancesResult.reason;
-  }
-  if (borrowsResult.status === "rejected") {
-    throw borrowsResult.reason;
-  }
-  if (membershipsResult.status === "rejected") {
-    throw membershipsResult.reason;
-  }
-
-  const balances = balancesResult.value;
-  const borrows = borrowsResult.value;
-  const memberships = membershipsResult.value;
-
   // If getAllMarketsInfo failed (e.g. broken on-chain oracle), fall back to
   // per-mToken exchange rate calls. The user balance/borrow/membership calls
-  // don't touch the oracle so they can still succeed.
+  // don't touch the oracle so they can still succeed. The fallback reports
+  // every USD value as 0, so the degraded read is surfaced through onError
+  // instead of passing as a healthy result.
   if (allMarketsResult.status === "rejected") {
+    params.environment.onError?.(allMarketsResult.reason, {
+      source: "user-positions-oracle-fallback",
+      chainId: params.environment.chainId,
+    });
     return getUserPositionsFromMTokenFallback(
       params,
-      balances as { amount: bigint; token: `0x${string}` }[],
-      borrows as { amount: bigint; token: `0x${string}` }[],
-      memberships as { membership: boolean; token: `0x${string}` }[],
+      balances,
+      borrows,
+      memberships,
     );
   }
 
@@ -146,9 +137,9 @@ async function getUserPositionsFromMTokenFallback(
     account: Address;
     markets?: string[] | undefined;
   },
-  balances: { amount: bigint; token: `0x${string}` }[],
-  borrows: { amount: bigint; token: `0x${string}` }[],
-  memberships: { membership: boolean; token: `0x${string}` }[],
+  balances: readonly { amount: bigint; token: `0x${string}` }[],
+  borrows: readonly { amount: bigint; token: `0x${string}` }[],
+  memberships: readonly { membership: boolean; token: `0x${string}` }[],
 ): Promise<UserPosition[]> {
   const positions: UserPosition[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

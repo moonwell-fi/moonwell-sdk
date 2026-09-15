@@ -59,16 +59,24 @@ export async function getMorphoMarketUserPositionsData(params: {
   account: Address;
   markets?: string[] | undefined;
 }): Promise<MorphoMarketUserPosition[]> {
+  // A chain without a Morpho deployment has no positions to read. Both the
+  // plural action and the singular getMorphoMarketUserPosition come through
+  // here, so the guard lives at the source rather than in each caller.
+  const morphoViews = params.environment.contracts.morphoViews;
+  if (!morphoViews) {
+    return [];
+  }
+
   const markets = Object.values(params.environment.config.morphoMarkets).filter(
     (market) => (params.markets ? params.markets.includes(market.id) : true),
   );
 
   // A failed read must propagate: swallowing it here made a Base RPC outage
   // look like "user has no isolated positions" (MOO-884).
-  const userMarketPositions =
-    await params.environment.contracts.morphoViews!.read.getMorphoBlueUserBalances(
-      [markets.map((market) => market.id), params.account],
-    );
+  const userMarketPositions = await morphoViews.read.getMorphoBlueUserBalances([
+    markets.map((market) => market.id),
+    params.account,
+  ]);
 
   return markets.map((market, index) => {
     const position = userMarketPositions[index];
