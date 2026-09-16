@@ -15,117 +15,113 @@ export const getUserPositionData = async (params: {
     return [];
   }
 
-  try {
-    const [allMarketsResult, balancesResult, borrowsResult, membershipsResult] =
-      await Promise.allSettled([
-        viewsContract.read.getAllMarketsInfo(),
-        viewsContract.read.getUserBalances([params.account]),
-        viewsContract.read.getUserBorrowsBalances([params.account]),
-        viewsContract.read.getUserMarketsMemberships([params.account]),
-      ]);
+  // Only getAllMarketsInfo is settled, because it has the mToken fallback
+  // below. The three user reads have no fallback: Promise.all lets their first
+  // rejection propagate instead of being treated as an empty list, which would
+  // misreport the user as having no position (MOO-885).
+  const [[allMarketsResult], balances, borrows, memberships] =
+    await Promise.all([
+      Promise.allSettled([viewsContract.read.getAllMarketsInfo()]),
+      viewsContract.read.getUserBalances([params.account]),
+      viewsContract.read.getUserBorrowsBalances([params.account]),
+      viewsContract.read.getUserMarketsMemberships([params.account]),
+    ]);
 
-    const balances =
-      balancesResult.status === "fulfilled" ? balancesResult.value : [];
-    const borrows =
-      borrowsResult.status === "fulfilled" ? borrowsResult.value : [];
-    const memberships =
-      membershipsResult.status === "fulfilled" ? membershipsResult.value : [];
-
-    // If getAllMarketsInfo failed (e.g. broken on-chain oracle), fall back to
-    // per-mToken exchange rate calls. The user balance/borrow/membership calls
-    // don't touch the oracle so they can still succeed.
-    if (allMarketsResult.status === "rejected") {
-      return getUserPositionsFromMTokenFallback(
-        params,
-        balances as { amount: bigint; token: `0x${string}` }[],
-        borrows as { amount: bigint; token: `0x${string}` }[],
-        memberships as { membership: boolean; token: `0x${string}` }[],
-      );
-    }
-
-    const allMarkets = allMarketsResult.value;
-
-    const markets = allMarkets
-      ?.map((marketInfo) => {
-        const market = findMarketByAddress(
-          params.environment,
-          marketInfo.market,
-        );
-        if (market) {
-          const { marketToken, underlyingToken } = market;
-
-          const underlyingPrice = new Amount(
-            marketInfo.underlyingPrice,
-            36 - underlyingToken.decimals,
-          ).value;
-          const collateralFactor = new Amount(marketInfo.collateralFactor, 18)
-            .value;
-          const exchangeRate = new Amount(
-            marketInfo.exchangeRate,
-            10 + underlyingToken.decimals,
-          ).value;
-
-          const marketCollateralEnabled =
-            memberships?.find((r) => r.token === marketInfo.market)
-              ?.membership === true;
-          const marketBorrowedRaw =
-            borrows?.find((r) => r.token === marketInfo.market)?.amount || 0n;
-          const marketSuppliedRaw =
-            balances?.find((r) => r.token === marketInfo.market)?.amount || 0n;
-
-          const borrowed = new Amount(
-            marketBorrowedRaw,
-            market.underlyingToken.decimals,
-          );
-          const borrowedUsd = borrowed.value * underlyingPrice;
-
-          const marketSupplied = new Amount(
-            marketSuppliedRaw,
-            marketToken.decimals,
-          );
-
-          const supplied = new Amount(
-            marketSupplied.value * exchangeRate,
-            underlyingToken.decimals,
-          );
-          const suppliedUsd = supplied.value * underlyingPrice;
-
-          const collateral = marketCollateralEnabled
-            ? new Amount(
-                supplied.value * collateralFactor,
-                underlyingToken.decimals,
-              )
-            : new Amount(0n, underlyingToken.decimals);
-
-          const collateralUsd = collateral.value * underlyingPrice;
-
-          const result: UserPosition = {
-            chainId: params.environment.chainId,
-            account: params.account,
-            market: market.marketToken,
-            collateralEnabled: marketCollateralEnabled,
-            borrowed,
-            borrowedUsd,
-            collateral,
-            collateralUsd,
-            supplied,
-            suppliedUsd,
-          };
-
-          return result;
-        } else {
-          return;
-        }
-      })
-      .filter((r) => r !== undefined)
-      .filter((r) =>
-        params.markets ? params.markets.includes(r!.market.address) : true,
-      ) as UserPosition[];
-
-    return markets;
-  } catch {
-    return [];
+  // If getAllMarketsInfo failed (e.g. broken on-chain oracle), fall back to
+  // per-mToken exchange rate calls. The user balance/borrow/membership calls
+  // don't touch the oracle so they can still succeed. The fallback reports
+  // every USD value as 0, so the degraded read is surfaced through onError
+  // instead of passing as a healthy result.
+  if (allMarketsResult.status === "rejected") {
+    params.environment.onError?.(allMarketsResult.reason, {
+      source: "user-positions-oracle-fallback",
+      chainId: params.environment.chainId,
+    });
+    return getUserPositionsFromMTokenFallback(
+      params,
+      balances,
+      borrows,
+      memberships,
+    );
   }
+
+  const allMarkets = allMarketsResult.value;
+
+  const markets = allMarkets
+    ?.map((marketInfo) => {
+      const market = findMarketByAddress(params.environment, marketInfo.market);
+      if (market) {
+        const { marketToken, underlyingToken } = market;
+
+        const underlyingPrice = new Amount(
+          marketInfo.underlyingPrice,
+          36 - underlyingToken.decimals,
+        ).value;
+        const collateralFactor = new Amount(marketInfo.collateralFactor, 18)
+          .value;
+        const exchangeRate = new Amount(
+          marketInfo.exchangeRate,
+          10 + underlyingToken.decimals,
+        ).value;
+
+        const marketCollateralEnabled =
+          memberships?.find((r) => r.token === marketInfo.market)
+            ?.membership === true;
+        const marketBorrowedRaw =
+          borrows?.find((r) => r.token === marketInfo.market)?.amount || 0n;
+        const marketSuppliedRaw =
+          balances?.find((r) => r.token === marketInfo.market)?.amount || 0n;
+
+        const borrowed = new Amount(
+          marketBorrowedRaw,
+          market.underlyingToken.decimals,
+        );
+        const borrowedUsd = borrowed.value * underlyingPrice;
+
+        const marketSupplied = new Amount(
+          marketSuppliedRaw,
+          marketToken.decimals,
+        );
+
+        const supplied = new Amount(
+          marketSupplied.value * exchangeRate,
+          underlyingToken.decimals,
+        );
+        const suppliedUsd = supplied.value * underlyingPrice;
+
+        const collateral = marketCollateralEnabled
+          ? new Amount(
+              supplied.value * collateralFactor,
+              underlyingToken.decimals,
+            )
+          : new Amount(0n, underlyingToken.decimals);
+
+        const collateralUsd = collateral.value * underlyingPrice;
+
+        const result: UserPosition = {
+          chainId: params.environment.chainId,
+          account: params.account,
+          market: market.marketToken,
+          collateralEnabled: marketCollateralEnabled,
+          borrowed,
+          borrowedUsd,
+          collateral,
+          collateralUsd,
+          supplied,
+          suppliedUsd,
+        };
+
+        return result;
+      } else {
+        return;
+      }
+    })
+    .filter((r) => r !== undefined)
+    .filter((r) =>
+      params.markets ? params.markets.includes(r!.market.address) : true,
+    ) as UserPosition[];
+
+  return markets;
 };
 
 /**
@@ -141,9 +137,9 @@ async function getUserPositionsFromMTokenFallback(
     account: Address;
     markets?: string[] | undefined;
   },
-  balances: { amount: bigint; token: `0x${string}` }[],
-  borrows: { amount: bigint; token: `0x${string}` }[],
-  memberships: { membership: boolean; token: `0x${string}` }[],
+  balances: readonly { amount: bigint; token: `0x${string}` }[],
+  borrows: readonly { amount: bigint; token: `0x${string}` }[],
+  memberships: readonly { membership: boolean; token: `0x${string}` }[],
 ): Promise<UserPosition[]> {
   const positions: UserPosition[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
