@@ -1,5 +1,23 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.24.0
+
+### Minor Changes
+
+- [#331](https://github.com/moonwell-fi/moonwell-sdk/pull/331) [`53e8007fee2b2782133ff8a21d6ba4c7ea4e4b66`](https://github.com/moonwell-fi/moonwell-sdk/commit/53e8007fee2b2782133ff8a21d6ba4c7ea4e4b66) Thanks [@apokusin](https://github.com/apokusin)! - Allow isolated-market base data to load independently of public-allocator shared liquidity. Add `includeSharedLiquidity: false` to market actions, explicit liquidity status, and a separate `getMorphoMarketsSharedLiquidity` action with cancellation and a 15-second total request/retry deadline. Existing callers continue to request enrichment by default. Reuse a single Morpho GraphQL response during RPC fallback and omit allocator fields when opted out.
+
+  Validate Lunar allocator quantities before computing liquidity. Malformed or missing required data rejects the independent action and marks default enrichment unavailable while preserving base markets. Keep legitimate zero responses, large raw integers and the supply-minus-borrow fallback.
+
+  Fix retry counts resetting when Axios merges request configs, stop retries on cancellation, and scope HTTP timeouts to SDK requests without mutating the host application's Axios defaults. Fetch staking APR providers in parallel with each other and core markets, with bounded provider requests and the existing fallback behavior.
+
+- [#332](https://github.com/moonwell-fi/moonwell-sdk/pull/332) [`d97006c0c4cea3618c32c000387d39d82a8005ae`](https://github.com/moonwell-fi/moonwell-sdk/commit/d97006c0c4cea3618c32c000387d39d82a8005ae) Thanks [@bprofiro](https://github.com/bprofiro)! - **Behavior change:** `getUserPositions`, `getMorphoMarketUserPositions` and `getMorphoVaultUserPositions` now reject when the read fails on any requested chain instead of silently returning a list that is missing that chain's positions. The rejection is a new exported `ChainReadError` (an `AggregateError` subclass) whose `failures` lists every failed chain as `{ chainId, reason }` with the original RPC/contract error, and whose `data` carries the positions from the chains that did succeed, so a consumer can keep rendering the healthy chains while flagging the broken one.
+
+  These failures are surfaced only through the rejection. They are **not** also reported through the client's `onError` callback, so a consumer that retries the call is not told about the same outage once per attempt per chain; report the rejection where you handle it.
+
+  `getUserPosition`, `getMorphoMarketUserPosition` and `getMorphoVaultUserPosition` likewise reject on a failed read (with the original error, since they read a single chain) instead of resolving to `undefined`. A failed `getUserBalances` / `getUserBorrowsBalances` / `getUserMarketsMemberships` read is no longer treated as an empty balance. When only `getAllMarketsInfo` fails and positions are computed through the per-mToken fallback (USD values reported as `0`), that failure is now reported through `onError` with `source: "user-positions-oracle-fallback"`. Chains without the relevant deployment are still skipped, and an account with no positions still resolves normally.
+
+  Consumers that treated an empty array as "no positions" should now handle the rejection. With TanStack Query: keep the last good result with `placeholderData: keepPreviousData`, gate the empty state on `isError` rather than on `data === undefined`, read partial results from `error.data` when `error instanceof ChainReadError`, and consider a lower `retry` for these queries since every attempt re-reads the healthy chains too. This fixes a Base RPC failure being shown as a `$0.00` credit limit and disabled borrow confirmation in isolated markets (MOO-884, MOO-885).
+
 ## 0.23.0
 
 ### Minor Changes
