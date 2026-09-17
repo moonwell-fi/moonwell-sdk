@@ -876,54 +876,55 @@ async function fetchMarketsFromLunar(
 }
 
 const fetchFromGenericCacheApi = async <T>(uri: string): Promise<T> => {
-  const response = await fetch(
-    "https://generic-api-cache.moonwell.workers.dev/",
-    {
-      method: "POST",
-      body: `{"uri":"${uri}","cacheDuration":"300"}`,
-      headers: {
-        ...MOONWELL_FETCH_JSON_HEADERS,
-        "Content-Type": "text/plain",
+  // AbortSignal.timeout is not available in every browser supported by SDK
+  // consumers. Keep the timeout local and release it after reading the body.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const response = await fetch(
+      "https://generic-api-cache.moonwell.workers.dev/",
+      {
+        method: "POST",
+        body: `{"uri":"${uri}","cacheDuration":"300"}`,
+        signal: controller.signal,
+        headers: {
+          ...MOONWELL_FETCH_JSON_HEADERS,
+          "Content-Type": "text/plain",
+        },
       },
-    },
-  );
+    );
 
-  return response.json() as T;
+    if (!response.ok)
+      throw new Error(`Staking APR request failed: ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
-export const fetchLiquidStakingRewards = async () => {
-  const result = {
-    cbETH: 0,
-    rETH: 0,
-    wstETH: 0,
-  };
-
-  try {
-    const cbETH = await fetchFromGenericCacheApi<{ apy: string }>(
+export const fetchLiquidStakingRewards = async (): Promise<{
+  cbETH: number;
+  rETH: number;
+  wstETH: number;
+}> => {
+  // Each provider can succeed independently, and each has a bounded request.
+  // Preserve the existing zero fallback for callers of this optional enrichment.
+  const [cbETH, rETH, wstETH] = await Promise.all([
+    fetchFromGenericCacheApi<{ apy: string }>(
       "https://api.exchange.coinbase.com/wrapped-assets/CBETH",
-    );
-    result.cbETH = Number(cbETH.apy) * 100;
-  } catch (error) {
-    result.cbETH = 0;
-  }
-
-  try {
-    const rETH = await fetchFromGenericCacheApi<{ rethAPR: string }>(
+    )
+      .then((result) => Number(result.apy) * 100)
+      .catch(() => 0),
+    fetchFromGenericCacheApi<{ rethAPR: string }>(
       "https://rocketpool.net/api/mainnet/payload",
-    );
-    result.rETH = Number(rETH.rethAPR);
-  } catch (error) {
-    result.rETH = 0;
-  }
-
-  try {
-    const stETH = await fetchFromGenericCacheApi<{ data: { apr: number } }>(
+    )
+      .then((result) => Number(result.rethAPR))
+      .catch(() => 0),
+    fetchFromGenericCacheApi<{ data: { apr: number } }>(
       "https://eth-api.lido.fi/v1/protocol/steth/apr/last",
-    );
-    result.wstETH = stETH.data.apr;
-  } catch (error) {
-    result.wstETH = 0;
-  }
-
-  return result;
+    )
+      .then((result) => result.data.apr)
+      .catch(() => 0),
+  ]);
+  return { cbETH, rETH, wstETH };
 };

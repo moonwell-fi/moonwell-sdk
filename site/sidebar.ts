@@ -66,6 +66,10 @@ export const sidebar: Sidebar = {
                   text: "getMorphoMarkets",
                   link: "/docs/actions/morpho/getMorphoMarkets",
                 },
+                {
+                  text: "getMorphoMarketsSharedLiquidity",
+                  link: "/docs/actions/morpho/getMorphoMarketsSharedLiquidity",
+                },
               ],
             },
             {

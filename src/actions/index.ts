@@ -117,6 +117,11 @@ export {
   type GetMorphoMarketsReturnType,
 } from "./morpho/markets/getMorphoMarkets.js";
 export {
+  getMorphoMarketsSharedLiquidity,
+  type GetMorphoMarketsSharedLiquidityParameters,
+  type GetMorphoMarketsSharedLiquidityReturnType,
+} from "./morpho/markets/getMorphoMarketsSharedLiquidity.js";
+export {
   getMarketSnapshots as getMorphoMarketSnapshots,
   type GetMarketSnapshotsParameters as GetMorphoMarketSnapshotsParameters,
   type GetMarketSnapshotsReturnType as GetMorphoMarketSnapshotsReturnType,

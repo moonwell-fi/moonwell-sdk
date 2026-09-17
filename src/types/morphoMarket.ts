@@ -41,6 +41,16 @@ export type MorphoMarket = {
   totalBorrowApr: number;
   rewards: Required<MorphoReward>[];
   publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
+  /** Whether allocator liquidity was fetched. An empty list is not proof of zero
+   * reallocatable liquidity when this is "not-requested" or "unavailable". */
+  sharedLiquidityStatus?: "available" | "unavailable" | "not-requested";
+};
+
+export type MorphoMarketSharedLiquidity = {
+  chainId: number;
+  marketId: string;
+  reallocatableLiquidityAssets: Amount;
+  publicAllocatorSharedLiquidity: PublicAllocatorSharedLiquidityType[];
 };
 
 export type MorphoMarketParamsType = {

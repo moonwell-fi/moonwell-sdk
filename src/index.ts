@@ -20,6 +20,7 @@ export type { Discussion } from "./types/discussion.js";
 export type { Market, MarketReward, MarketSnapshot } from "./types/market.js";
 export type {
   MorphoMarket,
+  MorphoMarketSharedLiquidity,
   MorphoMarketParamsType,
   PublicAllocatorSharedLiquidityType,
 } from "./types/morphoMarket.js";

@@ -17,6 +17,8 @@ export type GetMorphoMarketParameters<
 > = NetworkParameterType<environments, network> &
   MorphoMarketParameterType<network> & {
     includeRewards?: boolean | undefined;
+    /** Defaults to true. Disable to load base market data independently. */
+    includeSharedLiquidity?: boolean | undefined;
   };
 
 export type GetMorphoMarketReturnType = Promise<MorphoMarket | undefined>;
@@ -47,6 +49,7 @@ export async function getMorphoMarket<
     environments: [environment],
     markets: [marketId],
     includeRewards: args.includeRewards,
+    includeSharedLiquidity: args.includeSharedLiquidity,
   });
 
   return first(markets);
