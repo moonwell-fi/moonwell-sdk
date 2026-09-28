@@ -17,7 +17,10 @@ import {
   findTokenByAddress,
 } from "../../../environments/utils/index.js";
 import type { Market } from "../../../types/market.js";
-import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
+import {
+  getGovernanceTokenPriceFor,
+  getGovernanceTokenPriceOrZero,
+} from "../../governance/getWellPrice.js";
 
 export const getMarketsData = async (environment: Environment) => {
   // Moonriver (chainId 1285) should always use on-chain data
@@ -530,13 +533,7 @@ async function fetchMarketsFromLunar(
 
     const [nativeTokenPriceRaw, governanceTokenPriceRaw] = await Promise.all([
       homeEnvironment.contracts.views?.read.getNativeTokenPrice(),
-      getGovernanceTokenPriceFor(environment).catch((err) => {
-        environment.onError?.(err, {
-          source: "governance-token-price",
-          chainId: environment.chainId,
-        });
-        return 0n;
-      }),
+      getGovernanceTokenPriceOrZero(environment),
     ]);
 
     if (nativeTokenPriceRaw === undefined) {

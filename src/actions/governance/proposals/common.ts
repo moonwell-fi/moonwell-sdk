@@ -447,6 +447,29 @@ export const getProposalsOnChainData = async (
       ? governanceEnvironment
       : getEnvironmentByChainId(chainId);
 
+  // viem batches these reads into one multicall, so a single failed request
+  // rejects every read in it. Collect failures per chain and report them once
+  // after the batch instead of once per read (Sentry MOONWELL-FRONTEND-1AX).
+  const readFailures = new Map<
+    number,
+    { error: unknown; failed: number; total: number; proposalIds: Set<string> }
+  >();
+  const recordRead = (chainId: number, proposalId: number, error?: unknown) => {
+    const entry = readFailures.get(chainId) ?? {
+      error: undefined,
+      failed: 0,
+      total: 0,
+      proposalIds: new Set<string>(),
+    };
+    entry.total++;
+    if (error !== undefined) {
+      entry.error ??= error;
+      entry.failed++;
+      entry.proposalIds.add(String(proposalId));
+    }
+    readFailures.set(chainId, entry);
+  };
+
   const onChainDataList = await Promise.all(
     apiProposals.map(async (p) => {
       const isLocal = p.chainId === governanceEnvironment.chainId;
@@ -501,29 +524,17 @@ export const getProposalsOnChainData = async (
         ]);
         if (stateResult.status === "fulfilled") {
           state = Number(stateResult.value);
+          recordRead(p.chainId, p.proposalId);
         } else {
           stateReadFailed = true;
-          console.warn(
-            `Failed to fetch state for proposal ${p.proposalId} (chainId=${p.chainId}):`,
-            stateResult.reason,
-          );
-          governanceEnvironment.onError?.(stateResult.reason, {
-            source: "governance-proposals",
-            chainId: p.chainId,
-          });
+          recordRead(p.chainId, p.proposalId, stateResult.reason);
         }
         if (proposalsResult.status === "fulfilled") {
           proposalData = proposalsResult.value ?? null;
+          recordRead(p.chainId, p.proposalId);
         } else {
           proposalsReadFailed = true;
-          console.warn(
-            `Failed to fetch proposalData for proposal ${p.proposalId} (chainId=${p.chainId}):`,
-            proposalsResult.reason,
-          );
-          governanceEnvironment.onError?.(proposalsResult.reason, {
-            source: "governance-proposals",
-            chainId: p.chainId,
-          });
+          recordRead(p.chainId, p.proposalId, proposalsResult.reason);
         }
       }
 
@@ -608,6 +619,23 @@ export const getProposalsOnChainData = async (
       };
     }),
   );
+
+  for (const [chainId, entry] of readFailures) {
+    if (entry.failed === 0) continue;
+    const proposalIds = [...entry.proposalIds];
+    console.warn(
+      `Failed ${entry.failed}/${entry.total} governor reads (chainId=${chainId}, proposals ${proposalIds.join(", ")}):`,
+      entry.error,
+    );
+    governanceEnvironment.onError?.(entry.error, {
+      source: "governance-proposals",
+      chainId,
+      operation: "proposal-onchain-read",
+      failedCount: entry.failed,
+      totalCount: entry.total,
+      items: proposalIds,
+    });
+  }
 
   return onChainDataList;
 };

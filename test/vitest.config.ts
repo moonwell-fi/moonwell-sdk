@@ -48,6 +48,8 @@ export default defineConfig({
       "src/actions/governance/getStakingSnapshots.test.ts",
       "src/actions/governance/getUserVotingPowers.test.ts",
       "src/actions/governance/getUserVoteReceipt.test.ts",
+      "src/actions/governance/getWellPrice.test.ts",
+      "src/actions/governance/staking.unit.test.ts",
       "src/actions/governance/governor-api-client.test.ts",
       "src/actions/governance/ipfs.test.ts",
       "src/actions/governance/proposals/common.test.ts",

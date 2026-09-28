@@ -228,11 +228,21 @@ export type ContractsConfig<contracts, tokens> = {} extends contracts
   ? {}
   : { [name in keyof ContractConfig<tokens>]?: ContractConfig<tokens>[name] };
 
-/** Context passed to `onError` callbacks. `token` is set for per-token read failures. */
+/**
+ * Context passed to `onError` callbacks. `token` is set for per-token read failures.
+ *
+ * Batched reads report once per operation rather than once per item: `error`
+ * is the first failure, `failedCount`/`totalCount` size the batch and `items`
+ * identifies what failed (proposalIds, token/vault addresses, chainIds...).
+ */
 export type OnErrorContext = {
   source: string;
   chainId: number;
   token?: Address;
+  operation?: string;
+  failedCount?: number;
+  totalCount?: number;
+  items?: string[];
 };
 
 export type CustomConfig<custom> = {} extends custom

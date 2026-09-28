@@ -41,18 +41,7 @@ export async function getWellPriceFromBaseOracle(
   return await oracle.read.getUnderlyingPrice([mWELL]);
 }
 
-/**
- * Returns the governance-token-in-USD price for an environment.
- *
- * - For WELL-governed chains (Base, Optimism, Moonbeam), reads from the Base
- *   lending oracle's mWELL underlying price (authoritative, Chainlink-fed).
- * - For non-WELL chains (currently only Moonriver / MFAM), reads from the
- *   env's own views.getGovernanceTokenPrice() — Moonriver has its own MFAM
- *   oracle and isn't priced from Base.
- *
- * Returns 0n if the lookup fails.
- */
-export async function getGovernanceTokenPriceFor(
+async function readGovernanceTokenPrice(
   environment: Environment,
   baseEnvironment?: Environment,
 ): Promise<bigint> {
@@ -63,4 +52,97 @@ export async function getGovernanceTokenPriceFor(
   const views = environment.contracts.views;
   if (!views) return 0n;
   return (await views.read.getGovernanceTokenPrice()) ?? 0n;
+}
+
+const GOVERNANCE_TOKEN_PRICE_TTL_MS = 10_000;
+
+type GovernanceTokenPriceEntry = {
+  promise: Promise<bigint>;
+  expiresAt: number;
+  requestingChainIds: Set<number>;
+  reported: boolean;
+};
+
+// Keyed by the chain the price is read from (Base for every WELL chain), so
+// markets, vaults, rewards and staking reads issued together share one request.
+const governanceTokenPriceCache = new Map<number, GovernanceTokenPriceEntry>();
+
+function getSharedGovernanceTokenPrice(
+  environment: Environment,
+  baseEnvironment?: Environment,
+): { sourceChainId: number; entry: GovernanceTokenPriceEntry } {
+  const sourceChainId =
+    environment.custom?.governance?.token === "WELL"
+      ? (baseEnvironment ?? publicEnvironments.base).chainId
+      : environment.chainId;
+
+  const cached = governanceTokenPriceCache.get(sourceChainId);
+  if (cached && Date.now() < cached.expiresAt) {
+    cached.requestingChainIds.add(environment.chainId);
+    return { sourceChainId, entry: cached };
+  }
+
+  const entry: GovernanceTokenPriceEntry = {
+    promise: readGovernanceTokenPrice(environment, baseEnvironment),
+    expiresAt: Date.now() + GOVERNANCE_TOKEN_PRICE_TTL_MS,
+    requestingChainIds: new Set([environment.chainId]),
+    reported: false,
+  };
+  governanceTokenPriceCache.set(sourceChainId, entry);
+  // Failures are never cached: evict so the next call reads again.
+  entry.promise.catch(() => {
+    if (governanceTokenPriceCache.get(sourceChainId) === entry) {
+      governanceTokenPriceCache.delete(sourceChainId);
+    }
+  });
+  return { sourceChainId, entry };
+}
+
+/**
+ * Returns the governance-token-in-USD price for an environment.
+ *
+ * - For WELL-governed chains (Base, Optimism, Moonbeam), reads from the Base
+ *   lending oracle's mWELL underlying price (authoritative, Chainlink-fed).
+ * - For non-WELL chains (currently only Moonriver / MFAM), reads from the
+ *   env's own views.getGovernanceTokenPrice() — Moonriver has its own MFAM
+ *   oracle and isn't priced from Base.
+ *
+ * Concurrent calls for the same price source share one in-flight read, and a
+ * successful price is reused for a few seconds. Rejects if the read fails.
+ */
+export async function getGovernanceTokenPriceFor(
+  environment: Environment,
+  baseEnvironment?: Environment,
+): Promise<bigint> {
+  return getSharedGovernanceTokenPrice(environment, baseEnvironment).entry
+    .promise;
+}
+
+/**
+ * Same shared read as `getGovernanceTokenPriceFor`, but resolves to 0n on
+ * failure. A failed shared read is reported through `onError` once, however
+ * many callers were waiting on it; `items` lists the requesting chainIds.
+ */
+export async function getGovernanceTokenPriceOrZero(
+  environment: Environment,
+  baseEnvironment?: Environment,
+): Promise<bigint> {
+  const { sourceChainId, entry } = getSharedGovernanceTokenPrice(
+    environment,
+    baseEnvironment,
+  );
+  try {
+    return await entry.promise;
+  } catch (error) {
+    if (!entry.reported) {
+      entry.reported = true;
+      environment.onError?.(error, {
+        source: "governance-token-price",
+        chainId: sourceChainId,
+        operation: "governance-token-price-read",
+        items: [...entry.requestingChainIds].map(String),
+      });
+    }
+    return 0n;
+  }
 }

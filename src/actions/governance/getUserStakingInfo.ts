@@ -6,7 +6,7 @@ import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Environment } from "../../environments/index.js";
 import type { UserStakingInfo } from "../../types/staking.js";
 import { getMerklCampaignIds, getMerklRewardsData } from "./common.js";
-import { getGovernanceTokenPriceFor } from "./getWellPrice.js";
+import { getGovernanceTokenPriceOrZero } from "./getWellPrice.js";
 
 export type GetUserStakingInfoParameters<
   environments,
@@ -150,7 +150,7 @@ export async function getUserStakingInfo<
         environment.contracts.views?.read.getUserStakingInfo([userAddress]),
         environment.contracts.governanceToken?.read.balanceOf([userAddress]),
         environment.contracts.views?.read.getStakingInfo(),
-        getGovernanceTokenPriceFor(environment, baseEnvironment),
+        getGovernanceTokenPriceOrZero(environment, baseEnvironment),
       ]);
 
       const [userStakingR, balanceR, stakingScheduleR, priceR] = settled;
@@ -175,12 +175,6 @@ export async function getUserStakingInfo<
           : 0n;
 
       const price = priceR.status === "fulfilled" ? priceR.value : 0n;
-      if (priceR.status === "rejected") {
-        environment.onError?.(priceR.reason, {
-          source: "governance-token-price",
-          chainId: environment.chainId,
-        });
-      }
 
       return { userStaking, schedule, tokenBalance, price };
     }),
