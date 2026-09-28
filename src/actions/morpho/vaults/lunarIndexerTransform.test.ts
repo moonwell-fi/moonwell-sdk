@@ -1190,3 +1190,79 @@ describe("getMorphoVaultSnapshots V2 address redirect", () => {
     }
   });
 });
+
+// Sentry MOONWELL-FRONTEND-GX: one indexer vault arriving without `markets`
+// threw "Cannot read properties of undefined (reading 'map')" and took down the
+// whole chain's vault list. A malformed record now costs only that record.
+describe("malformed indexer vault records", () => {
+  const tokenMap = new Map(
+    MOCK_TOKENS.map((t) => [t.address.toLowerCase(), t]),
+  );
+  const makeEnv = (onError: ReturnType<typeof vi.fn>) => {
+    const env = createBaseEnvironment();
+    env.onError = onError;
+    return env;
+  };
+
+  test("keeps a vault with missing markets/rewards as [] and reports it once", () => {
+    const onError = vi.fn();
+    const { markets: _markets, ...withoutMarkets } = MOCK_MWETH_VAULT;
+    const { rewards: _rewards, ...withoutRewards } = MOCK_MWUSDC_VAULT;
+
+    const vaults = transformVaultsFromIndexer(
+      [
+        MOCK_CBBTC_VAULT,
+        withoutMarkets,
+        withoutRewards,
+      ] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(vaults).toHaveLength(3);
+    expect(vaults[1]?.markets).toEqual([]);
+    expect(vaults[2]?.rewards).toEqual([]);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      source: "vaults",
+      chainId: BASE_CHAIN_ID,
+      operation: "malformed-vault-records",
+      failedCount: 2,
+      totalCount: 3,
+      items: [MOCK_MWETH_VAULT.address, MOCK_MWUSDC_VAULT.address],
+    });
+  });
+
+  test("drops only a vault that cannot be built and reports it", () => {
+    const onError = vi.fn();
+    const unbuildable = {
+      ...MOCK_MWETH_VAULT,
+      underlyingTokenAddress: "0x000000000000000000000000000000000000dEaD",
+      underlyingToken: undefined,
+    };
+
+    const vaults = transformVaultsFromIndexer(
+      [MOCK_CBBTC_VAULT, unbuildable] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(vaults.map((v) => v.vaultToken.address.toLowerCase())).toEqual([
+      MOCK_CBBTC_VAULT.address.toLowerCase(),
+    ]);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 1,
+      totalCount: 2,
+      items: [MOCK_MWETH_VAULT.address],
+    });
+  });
+
+  test("does not report well-formed records", () => {
+    const onError = vi.fn();
+
+    transformVaultsFromIndexer(ALL_MOCK_VAULTS, makeEnv(onError), tokenMap);
+
+    expect(onError).not.toHaveBeenCalled();
+  });
+});

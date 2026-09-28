@@ -248,13 +248,14 @@ export function transformVaultFromIndexer(
   // where totalLiquidity briefly exceeds totalAssets.
   const vaultSupplyValue = Math.max(0, totalAssetsValue - totalLiquidityValue);
 
-  // Transform markets
-  const markets = indexerVault.markets.map((market) =>
+  // Transform markets. The indexer has served vaults without `markets` /
+  // `rewards` (Sentry MOONWELL-FRONTEND-GX); keep the vault with empty lists.
+  const markets = (indexerVault.markets ?? []).map((market) =>
     transformMarket(market, underlyingDecimals, totalAssetsValue, tokenMap),
   );
 
   // Transform rewards
-  const rewards = transformRewards(indexerVault.rewards, tokenMap);
+  const rewards = transformRewards(indexerVault.rewards ?? [], tokenMap);
 
   // Build vault object
   const vault: MorphoVault = {
@@ -313,9 +314,43 @@ export function transformVaultsFromIndexer(
   environment: Environment,
   tokenMap: Map<string, LunarIndexerToken>,
 ): MorphoVault[] {
-  return indexerVaults.map((vault) =>
-    transformVaultFromIndexer(vault, environment, tokenMap),
-  );
+  // A malformed record costs only that record, never the chain's whole list.
+  // Missing `markets` / `rewards` keep the vault (as empty lists); a vault
+  // that cannot be built at all is dropped. Both are reported once per call.
+  const malformed: string[] = [];
+  let firstError: unknown;
+  const vaults = indexerVaults.flatMap((vault) => {
+    if (!Array.isArray(vault.markets) || !Array.isArray(vault.rewards)) {
+      malformed.push(vault.address);
+      firstError ??= new Error(
+        `Lunar Indexer vault ${vault.address} is missing ${!Array.isArray(vault.markets) ? "markets" : "rewards"}`,
+      );
+    }
+    try {
+      return [transformVaultFromIndexer(vault, environment, tokenMap)];
+    } catch (error) {
+      if (!malformed.includes(vault.address)) malformed.push(vault.address);
+      firstError ??= error;
+      return [];
+    }
+  });
+
+  if (malformed.length > 0) {
+    console.warn(
+      `Malformed Lunar Indexer vault record(s) on chain ${environment.chainId}: ${malformed.join(", ")}`,
+      firstError,
+    );
+    environment.onError?.(firstError, {
+      source: "vaults",
+      chainId: environment.chainId,
+      operation: "malformed-vault-records",
+      failedCount: malformed.length,
+      totalCount: indexerVaults.length,
+      items: malformed,
+    });
+  }
+
+  return vaults;
 }
 
 /**

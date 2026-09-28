@@ -574,4 +574,38 @@ describe("computeSharedLiquidityFromLunar", () => {
     const [entry] = result?.publicAllocatorSharedLiquidity ?? [];
     expect(entry?.allocationMarket).toBeUndefined();
   });
+
+  // Sentry MOONWELL-FRONTEND-1C5: the live payload passes validation, so the
+  // failures come from a top-level body that is not the expected shape. The
+  // error now says what was received so the next occurrence is diagnosable.
+  describe("invalid top-level response diagnostics", () => {
+    const compute = (data: unknown) => () =>
+      computeSharedLiquidityFromLunar(
+        data as LunarSharedLiquidityResponse,
+        [TARGET_ID],
+        new Map(),
+        8453,
+      );
+
+    test("describes a non-JSON body", () => {
+      expect(compute("<html>error code: 1102</html>")).toThrow(
+        'Invalid shared-liquidity response (received string of 29 chars: "<html>error code: 1102</html>")',
+      );
+    });
+
+    test("describes an object without the expected fields", () => {
+      expect(compute({ error: "upstream timeout" })).toThrow(
+        "Invalid shared-liquidity response (received object with keys [error]; vaults: undefined, markets: undefined)",
+      );
+    });
+
+    test("describes an empty body", () => {
+      expect(compute("")).toThrow(
+        'Invalid shared-liquidity response (received string of 0 chars: "")',
+      );
+      expect(compute(null)).toThrow(
+        "Invalid shared-liquidity response (received null)",
+      );
+    });
+  });
 });
