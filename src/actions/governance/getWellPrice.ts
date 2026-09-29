@@ -56,27 +56,35 @@ async function readGovernanceTokenPrice(
 
 const GOVERNANCE_TOKEN_PRICE_TTL_MS = 10_000;
 
+type OnErrorCallback = NonNullable<Environment["onError"]>;
+
 type GovernanceTokenPriceEntry = {
   promise: Promise<bigint>;
   expiresAt: number;
   requestingChainIds: Set<number>;
-  reported: boolean;
+  /** Callbacks already told about this read's failure. */
+  reportedTo: Set<OnErrorCallback>;
 };
 
-// Keyed by the chain the price is read from (Base for every WELL chain), so
-// markets, vaults, rewards and staking reads issued together share one request.
-const governanceTokenPriceCache = new Map<number, GovernanceTokenPriceEntry>();
+// Keyed by the environment the price is read through (the Base env for every
+// WELL chain), so markets, vaults, rewards and staking reads issued together
+// share one request, while clients with their own RPCs never share results.
+const governanceTokenPriceCache = new WeakMap<
+  Environment,
+  GovernanceTokenPriceEntry
+>();
 
 function getSharedGovernanceTokenPrice(
   environment: Environment,
   baseEnvironment?: Environment,
 ): { sourceChainId: number; entry: GovernanceTokenPriceEntry } {
-  const sourceChainId =
+  const sourceEnvironment: Environment =
     environment.custom?.governance?.token === "WELL"
-      ? (baseEnvironment ?? publicEnvironments.base).chainId
-      : environment.chainId;
+      ? (baseEnvironment ?? publicEnvironments.base)
+      : environment;
+  const sourceChainId = sourceEnvironment.chainId;
 
-  const cached = governanceTokenPriceCache.get(sourceChainId);
+  const cached = governanceTokenPriceCache.get(sourceEnvironment);
   if (cached && Date.now() < cached.expiresAt) {
     cached.requestingChainIds.add(environment.chainId);
     return { sourceChainId, entry: cached };
@@ -86,13 +94,13 @@ function getSharedGovernanceTokenPrice(
     promise: readGovernanceTokenPrice(environment, baseEnvironment),
     expiresAt: Date.now() + GOVERNANCE_TOKEN_PRICE_TTL_MS,
     requestingChainIds: new Set([environment.chainId]),
-    reported: false,
+    reportedTo: new Set(),
   };
-  governanceTokenPriceCache.set(sourceChainId, entry);
+  governanceTokenPriceCache.set(sourceEnvironment, entry);
   // Failures are never cached: evict so the next call reads again.
   entry.promise.catch(() => {
-    if (governanceTokenPriceCache.get(sourceChainId) === entry) {
-      governanceTokenPriceCache.delete(sourceChainId);
+    if (governanceTokenPriceCache.get(sourceEnvironment) === entry) {
+      governanceTokenPriceCache.delete(sourceEnvironment);
     }
   });
   return { sourceChainId, entry };
@@ -120,8 +128,9 @@ export async function getGovernanceTokenPriceFor(
 
 /**
  * Same shared read as `getGovernanceTokenPriceFor`, but resolves to 0n on
- * failure. A failed shared read is reported through `onError` once, however
- * many callers were waiting on it; `items` lists the requesting chainIds.
+ * failure. A failed shared read is reported once per `onError` callback,
+ * however many callers using that callback were waiting on it; `items` lists
+ * the requesting chainIds.
  */
 export async function getGovernanceTokenPriceOrZero(
   environment: Environment,
@@ -134,8 +143,9 @@ export async function getGovernanceTokenPriceOrZero(
   try {
     return await entry.promise;
   } catch (error) {
-    if (!entry.reported) {
-      entry.reported = true;
+    const onError = environment.onError;
+    if (onError && !entry.reportedTo.has(onError)) {
+      entry.reportedTo.add(onError);
       environment.onError?.(error, {
         source: "governance-token-price",
         chainId: sourceChainId,

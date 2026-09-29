@@ -100,4 +100,76 @@ describe("governance token price sharing", () => {
     expect(await getGovernanceTokenPriceFor(env, base)).toBe(6n);
     expect(getUnderlyingPrice).toHaveBeenCalledTimes(2);
   });
+
+  // Clients configure their own RPCs: a price source is shared only by the
+  // consumers reading through that same source, never across sources that
+  // happen to be on the same chain.
+  test("different price sources on the same chain do not share a read", async () => {
+    const readA = vi.fn().mockResolvedValue(5n);
+    const readB = vi.fn().mockResolvedValue(9n);
+    const baseA = makeBaseEnv(readA);
+    const baseB = makeBaseEnv(readB);
+
+    const prices = await Promise.all([
+      getGovernanceTokenPriceFor(makeWellEnv(10, vi.fn()), baseA),
+      getGovernanceTokenPriceFor(makeWellEnv(10, vi.fn()), baseB),
+    ]);
+
+    expect(prices).toEqual([5n, 9n]);
+    expect(readA).toHaveBeenCalledTimes(1);
+    expect(readB).toHaveBeenCalledTimes(1);
+  });
+
+  test("a failing source does not affect a healthy source on the same chain", async () => {
+    const failing = makeBaseEnv(
+      vi.fn().mockRejectedValue(new Error("multicall failed")),
+    );
+    const healthy = makeBaseEnv(vi.fn().mockResolvedValue(9n));
+    const onErrorA = vi.fn();
+    const onErrorB = vi.fn();
+
+    const prices = await Promise.all([
+      getGovernanceTokenPriceOrZero(makeWellEnv(10, onErrorA), failing),
+      getGovernanceTokenPriceOrZero(makeWellEnv(10, onErrorB), healthy),
+    ]);
+
+    expect(prices).toEqual([0n, 9n]);
+    expect(onErrorA).toHaveBeenCalledTimes(1);
+    expect(onErrorB).not.toHaveBeenCalled();
+  });
+
+  test("still reports when the first consumer of a failed read has no onError", async () => {
+    const base = makeBaseEnv(
+      vi.fn().mockRejectedValue(new Error("multicall failed")),
+    );
+    const withoutCallback = {
+      ...makeWellEnv(10, vi.fn()),
+      onError: undefined,
+    } as unknown as Environment;
+    const onError = vi.fn();
+
+    await Promise.all([
+      getGovernanceTokenPriceOrZero(withoutCallback, base),
+      getGovernanceTokenPriceOrZero(makeWellEnv(1, onError), base),
+    ]);
+
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  test("reports a failed read once to each distinct onError callback", async () => {
+    const base = makeBaseEnv(
+      vi.fn().mockRejectedValue(new Error("multicall failed")),
+    );
+    const onErrorA = vi.fn();
+    const onErrorB = vi.fn();
+
+    await Promise.all([
+      getGovernanceTokenPriceOrZero(makeWellEnv(10, onErrorA), base),
+      getGovernanceTokenPriceOrZero(makeWellEnv(1, onErrorA), base),
+      getGovernanceTokenPriceOrZero(makeWellEnv(10, onErrorB), base),
+    ]);
+
+    expect(onErrorA).toHaveBeenCalledTimes(1);
+    expect(onErrorB).toHaveBeenCalledTimes(1);
+  });
 });
