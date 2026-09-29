@@ -30,49 +30,74 @@ export type GetUserBalancesReturnType = Promise<UserBalance[]>;
  * empty" and disabled the confirm button for 59 users (Sentry
  * MOONWELL-FRONTEND-195). Callers settle these with `Promise.allSettled` and
  * omit the rejected tokens, so a consumer that finds no entry knows the balance
- * is UNKNOWN rather than zero. The failure is routed to `environment.onError`
- * (source `user-balances-token-read`) so Sentry-wired consumers can see the
- * degraded read.
+ * is UNKNOWN rather than zero. Failures are routed to `environment.onError`
+ * (source `user-balances-token-read`) once per chain by `getUserBalances`, so
+ * Sentry-wired consumers can see the degraded read.
  */
 const getTokenBalance = async (
   environment: Environment,
   userAddress: Address,
   tokenAddress: Address,
 ): Promise<{ amount: bigint; token: `0x${string}` }> => {
-  try {
-    if (tokenAddress === zeroAddress) {
-      const balance = await environment.publicClient.getBalance({
-        address: userAddress,
-      });
-      return { amount: BigInt(balance), token: tokenAddress };
-    }
-
-    const erc20Abi = parseAbi([
-      "function balanceOf(address owner) view returns (uint256)",
-    ]);
-
-    const erc20Contract = getContract({
-      address: tokenAddress,
-      abi: erc20Abi,
-      client: environment.publicClient,
+  if (tokenAddress === zeroAddress) {
+    const balance = await environment.publicClient.getBalance({
+      address: userAddress,
     });
-
-    const balance = await erc20Contract.read.balanceOf([userAddress]);
     return { amount: BigInt(balance), token: tokenAddress };
-  } catch (error) {
-    environment.onError?.(error, {
-      source: "user-balances-token-read",
-      chainId: environment.chainId,
-      token: tokenAddress,
-    });
-    throw error;
   }
+
+  const erc20Abi = parseAbi([
+    "function balanceOf(address owner) view returns (uint256)",
+  ]);
+
+  const erc20Contract = getContract({
+    address: tokenAddress,
+    abi: erc20Abi,
+    client: environment.publicClient,
+  });
+
+  const balance = await erc20Contract.read.balanceOf([userAddress]);
+  return { amount: BigInt(balance), token: tokenAddress };
+};
+
+type TokenBalanceReads = {
+  balances: { amount: bigint; token: `0x${string}` }[];
+  failures: { token: Address; error: unknown }[];
+  total: number;
+};
+
+/**
+ * Reads each token balance, keeping failures instead of reporting them one by
+ * one: viem batches these reads into one multicall, so a single failed request
+ * rejects every token on the chain.
+ */
+const readTokenBalances = async (
+  environment: Environment,
+  userAddress: Address,
+  tokenAddresses: Address[],
+): Promise<TokenBalanceReads> => {
+  const results = await Promise.all(
+    tokenAddresses.map(async (token) => {
+      try {
+        return {
+          balance: await getTokenBalance(environment, userAddress, token),
+        };
+      } catch (error) {
+        return { failure: { token, error } };
+      }
+    }),
+  );
+  return {
+    balances: results.flatMap((r) => (r.balance ? [r.balance] : [])),
+    failures: results.flatMap((r) => (r.failure ? [r.failure] : [])),
+    total: tokenAddresses.length,
+  };
 };
 
 async function getTokenBalancesFromEnvironment(
   environment: Environment,
   userAddress: Address,
-): Promise<{ amount: bigint; token: `0x${string}` }[]> {
+): Promise<TokenBalanceReads> {
   // Try the views multicall first (single RPC for N tokens). Some chains ship a
   // staking-only views contract (Ethereum's at the time of writing) that doesn't
   // implement getTokensBalances and reverts on the call — in that case fall
@@ -87,7 +112,7 @@ async function getTokenBalancesFromEnvironment(
           userAddress,
         ]);
 
-      return [...tokenBalancesFromView];
+      return { balances: [...tokenBalancesFromView], failures: [], total: 0 };
     } catch (error) {
       environment.onError?.(error, {
         source: "user-balances-views-fallback",
@@ -96,14 +121,10 @@ async function getTokenBalancesFromEnvironment(
     }
   }
 
-  const tokenBalancesSettled = await Promise.allSettled(
-    Object.values(environment.config.tokens).map((token) =>
-      getTokenBalance(environment, userAddress, token.address),
-    ),
-  );
-
-  return tokenBalancesSettled.flatMap((s) =>
-    s.status === "fulfilled" ? s.value : [],
+  return readTokenBalances(
+    environment,
+    userAddress,
+    Object.values(environment.config.tokens).map((token) => token.address),
   );
 }
 
@@ -124,31 +145,57 @@ export async function getUserBalances<
     ),
   );
 
-  const environmentsTokensBalances = environmentsTokensBalancesSettled.map(
-    (s) => (s.status === "fulfilled" ? [...s.value] : []),
+  const environmentsTokenReads = environmentsTokensBalancesSettled.map((s) =>
+    s.status === "fulfilled"
+      ? s.value
+      : { balances: [], failures: [], total: 0 },
   );
+  const environmentsTokensBalances = environmentsTokenReads.map((r) => [
+    ...r.balances,
+  ]);
 
   // Fetch morpho staking balances
   await Promise.all(
     environments.map(async (env, index) => {
       if (!env.config.vaults) return;
 
-      const vaultBalancesSettled = await Promise.allSettled(
-        Object.values(env.config.vaults)
-          .filter((vault) => vault.multiReward)
-          .map((vault) =>
-            getTokenBalance(env, userAddress, vault.multiReward!),
-          ),
-      );
-
-      const vaultBalances = vaultBalancesSettled.flatMap((s) =>
-        s.status === "fulfilled" ? s.value : [],
+      const vaultReads = await readTokenBalances(
+        env,
+        userAddress,
+        Object.values(env.config.vaults).flatMap((vault) =>
+          vault.multiReward ? [vault.multiReward] : [],
+        ),
       );
 
       const envBalances = environmentsTokensBalances[index] || [];
-      environmentsTokensBalances[index] = [...envBalances, ...vaultBalances];
+      environmentsTokensBalances[index] = [
+        ...envBalances,
+        ...vaultReads.balances,
+      ];
+
+      const tokenReads = environmentsTokenReads[index];
+      if (tokenReads) {
+        tokenReads.failures.push(...vaultReads.failures);
+        tokenReads.total += vaultReads.total;
+      }
     }),
   );
+
+  // One report per chain for every token read that failed.
+  environments.forEach((env, index) => {
+    const reads = environmentsTokenReads[index];
+    const [firstFailure] = reads?.failures ?? [];
+    if (!reads || !firstFailure) return;
+    env.onError?.(firstFailure.error, {
+      source: "user-balances-token-read",
+      chainId: env.chainId,
+      ...(reads.failures.length === 1 && { token: firstFailure.token }),
+      operation: "token-balance-read",
+      failedCount: reads.failures.length,
+      totalCount: reads.total,
+      items: reads.failures.map((f) => f.token),
+    });
+  });
 
   const result = environments.flatMap((env, index) => {
     const balances = environmentsTokensBalances[index] || [];

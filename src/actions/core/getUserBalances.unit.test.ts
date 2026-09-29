@@ -194,4 +194,35 @@ describe("getUserBalances — failed reads are unknown, not zero (MOO-832)", () 
     expect(STK_WELL in balances).toBe(false);
     expect(balances[WELL]).toBe(5n);
   });
+
+  // A single failed multicall rejects every per-token read on the chain; that
+  // must surface as one report listing the tokens, not one event per token.
+  test("reports all failed token reads of a chain in a single onError call", async () => {
+    const failure = new Error("multicall failed");
+    const { client, onError } = makeClient({
+      vaults: true,
+      balanceOf: async () => {
+        throw failure;
+      },
+      getBalance: async () => {
+        throw failure;
+      },
+    });
+
+    const result = await getUserBalances(client, {
+      chainId: CHAIN_ID,
+      userAddress: USER,
+    });
+
+    expect(result).toEqual([]);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(failure, {
+      source: "user-balances-token-read",
+      chainId: CHAIN_ID,
+      operation: "token-balance-read",
+      failedCount: 4,
+      totalCount: 4,
+      items: [zeroAddress, USDC, WELL, STK_WELL],
+    });
+  });
 });

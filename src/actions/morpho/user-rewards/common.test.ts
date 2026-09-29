@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type { Environment } from "../../../environments/index.js";
 import type { MorphoUserReward } from "../../../types/morphoUserReward.js";
-import { MerklApiError, getUserMorphoRewardsData } from "./common.js";
+import {
+  MerklApiError,
+  getUserMorphoRewardsData,
+  getUserMorphoStakingRewardsData,
+} from "./common.js";
 
 type MerklReward = Extract<MorphoUserReward, { type: "merkl-reward" }>;
 
@@ -352,5 +356,49 @@ describe("getUserMorphoRewardsData", () => {
     const reward = result[0] as MerklReward;
     expect(reward.claimableNow.exponential).toBe(0n);
     expect(reward.claimableFuture.exponential).toBe(0n);
+  });
+});
+
+describe("getUserMorphoStakingRewardsData governance token price", () => {
+  test("reports a failed price read once and still resolves", async () => {
+    const onError = vi.fn();
+    // Chain unknown to publicEnvironments, so the env is its own price source.
+    const environment = {
+      chainId: 99991,
+      onError,
+      custom: {},
+      contracts: {
+        views: {
+          read: {
+            getAllMarketsInfo: vi.fn().mockResolvedValue([]),
+            getNativeTokenPrice: vi.fn().mockResolvedValue(0n),
+            getGovernanceTokenPrice: vi
+              .fn()
+              .mockRejectedValue(new Error("multicall failed")),
+          },
+        },
+      },
+      config: {
+        tokens: {},
+        vaults: {
+          vaultA: { multiReward: "0x00000000000000000000000000000000000000f1" },
+          vaultB: { multiReward: "0x00000000000000000000000000000000000000f2" },
+        },
+      },
+    } as unknown as Environment;
+
+    const result = await getUserMorphoStakingRewardsData({
+      environment,
+      account: ACCOUNT,
+    });
+
+    expect(result).toEqual([]);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      source: "governance-token-price",
+      chainId: 99991,
+      operation: "governance-token-price-read",
+      items: ["99991"],
+    });
   });
 });

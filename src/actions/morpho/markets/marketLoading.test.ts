@@ -609,7 +609,15 @@ describe("independent isolated-market loading", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("enforces one deadline across retries and backoff", async () => {
+  // Sentry MOONWELL-FRONTEND-1C7 & co: the SDK's own deadline aborts the
+  // request, which axios surfaces as a bare `CanceledError: canceled`. It is a
+  // real timeout, so it must reach onError identified as one.
+  it("enforces one deadline across retries and backoff and reports it as a timeout", async () => {
+    const onError = vi.fn();
+    const timeoutClient = createMoonwellClient({
+      networks: { base: { rpcUrls: ["https://rpc.invalid"] } },
+      onError,
+    });
     const get = api();
     const markets = await client.getMorphoMarkets({
       chainId: 8453,
@@ -619,7 +627,7 @@ describe("independent isolated-market loading", () => {
     get
       .mockReset()
       .mockRejectedValue(new AxiosError("network error", "ERR_NETWORK"));
-    const request = client
+    const request = timeoutClient
       .getMorphoMarketsSharedLiquidity({
         chainId: 8453,
         markets,
@@ -627,9 +635,50 @@ describe("independent isolated-market loading", () => {
       })
       .catch((error) => error);
     await vi.advanceTimersByTimeAsync(300);
-    expect(axios.isCancel(await request)).toBe(true);
+    const error = await request;
+    expect(axios.isCancel(error)).toBe(false);
+    expect(error).toMatchObject({
+      name: "TimeoutError",
+      message: "Shared-liquidity request timed out after 300ms (chainId=8453)",
+    });
+    expect(axios.isCancel(error.cause)).toBe(true);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(error, {
+      source: "morpho-shared-liquidity",
+      chainId: 8453,
+    });
     expect(get).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("reports the default deadline of the market list as a timeout", async () => {
+    const onError = vi.fn();
+    const timeoutClient = createMoonwellClient({
+      networks: { base: { rpcUrls: ["https://rpc.invalid"] } },
+      onError,
+    });
+    vi.useFakeTimers();
+    vi.spyOn(axios, "get").mockImplementation(
+      (url: string, config?: AxiosRequestConfig) =>
+        url.includes("shared-liquidity")
+          ? new Promise((_resolve, reject) => {
+              config?.signal?.addEventListener?.("abort", () =>
+                reject(new axios.CanceledError()),
+              );
+            })
+          : Promise.resolve(response({ results: [row] })),
+    );
+    const request = timeoutClient.getMorphoMarkets({ chainId: 8453 });
+    await vi.advanceTimersByTimeAsync(15_000);
+    const markets = await request;
+
+    expect(markets[0]?.sharedLiquidityStatus).toBe("unavailable");
+    const reports = onError.mock.calls.filter(
+      ([, context]) => context.source === "morpho-shared-liquidity",
+    );
+    expect(reports).toHaveLength(1);
+    expect(axios.isCancel(reports[0]?.[0])).toBe(false);
+    expect(reports[0]?.[0]).toMatchObject({ name: "TimeoutError" });
   });
 
   it("aborts an in-flight request and stops its deadline timer", async () => {

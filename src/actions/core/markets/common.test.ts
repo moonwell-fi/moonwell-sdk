@@ -416,3 +416,41 @@ describe("malformed Lunar market records", () => {
     );
   });
 });
+
+// ─── Governance token price failure ──────────────────────────────────────────
+// A null incentive price makes the market path read the governance token price
+// over RPC. Its failure goes through the shared price helper: reported once
+// with the price-source chain, and the markets still load with a zero price.
+
+describe("governance token price failure", () => {
+  test("reports the failed price read once and still returns markets", async () => {
+    // Own chainId so no other test's shared price read is reused.
+    const chainId = 99990;
+    const env = { ...makeMarketEnvironment(), chainId } as Environment;
+    const views = env.contracts.views as unknown as ReturnType<
+      typeof makeViews
+    >;
+    views.read.getGovernanceTokenPrice.mockRejectedValue(
+      new Error("multicall failed"),
+    );
+    mockListMarkets.mockResolvedValue({
+      results: [
+        makeLunarMarket({ incentives: [makeIncentive({ priceUsd: null })] }),
+      ],
+    });
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    const priceReports = mockOnError.mock.calls.filter(
+      ([, context]) => context.source === "governance-token-price",
+    );
+    expect(priceReports).toHaveLength(1);
+    expect(priceReports[0]?.[1]).toEqual({
+      source: "governance-token-price",
+      chainId,
+      operation: "governance-token-price-read",
+      items: [String(chainId)],
+    });
+  });
+});

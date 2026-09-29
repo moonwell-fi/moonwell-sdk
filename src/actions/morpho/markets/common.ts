@@ -76,6 +76,21 @@ function validateLoanDecimals(value: unknown): number {
   return value;
 }
 
+/** Summarizes an unexpected top-level body so the error says what arrived. */
+function describeSharedLiquidityBody(data: unknown): string {
+  if (data === null || data === undefined) return `received ${data}`;
+  if (typeof data === "string") {
+    return `received string of ${data.length} chars: ${JSON.stringify(data.slice(0, 100))}`;
+  }
+  if (typeof data !== "object") return `received ${typeof data}`;
+  if (Array.isArray(data)) return `received array of ${data.length}`;
+  const body = data as Record<string, unknown>;
+  const kind = (value: unknown): string =>
+    Array.isArray(value) ? "array" : value === null ? "null" : typeof value;
+  const keys = Object.keys(body).slice(0, 10).join(", ");
+  return `received object with keys [${keys}]; vaults: ${kind(body.vaults)}, markets: ${kind(body.markets)}`;
+}
+
 function validatedMarketLiquidity(
   data: LunarSharedLiquidityResponse,
 ): Map<string, number> {
@@ -86,7 +101,9 @@ function validatedMarketLiquidity(
     typeof data.markets !== "object" ||
     Array.isArray(data.markets)
   ) {
-    throw new TypeError("Invalid shared-liquidity response");
+    throw new TypeError(
+      `Invalid shared-liquidity response (${describeSharedLiquidityBody(data)})`,
+    );
   }
   for (const vault of data.vaults) {
     parseLiquidityQuantity(vault.fee, "vault.fee", true);
@@ -158,13 +175,31 @@ export async function fetchSharedLiquidityFromLunar(
   const abort = (): void => controller.abort();
   if (options.signal?.aborted) abort();
   options.signal?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(abort, timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    abort();
+  }, timeoutMs);
   try {
     const response = await getWithRetry<LunarSharedLiquidityResponse>(
       `${lunarIndexerUrl}/api/v1/isolated/shared-liquidity/${chainId}`,
       { timeout: timeoutMs, signal: controller.signal },
     );
     return response.data;
+  } catch (error) {
+    // Our own deadline aborts the request, which axios reports as a bare
+    // `CanceledError: canceled` (Sentry MOONWELL-FRONTEND-1C7 & co). That is a
+    // timeout, not a cancellation: surface it as one. A caller's own abort
+    // still propagates as the CanceledError it is.
+    if (timedOut && !options.signal?.aborted) {
+      const timeoutError = new Error(
+        `Shared-liquidity request timed out after ${timeoutMs}ms (chainId=${chainId})`,
+        { cause: error },
+      );
+      timeoutError.name = "TimeoutError";
+      throw timeoutError;
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
     options.signal?.removeEventListener("abort", abort);

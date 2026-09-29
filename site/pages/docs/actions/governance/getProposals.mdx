@@ -72,3 +72,18 @@ const proposals = await moonwellClient.getProposals<typeof ethereum>({
   network: "ethereum" // [!code focus]
 })
 ```
+
+### proposalChainIds (optional)
+
+- **Type:** `number[]`
+- **Default:** `[1, 1284, 1285]`
+
+Governance chains to fetch proposals from: `1` (Ethereum, active), `1284` (Moonbeam archive) and `1285` (Moonriver archive). The archives account for almost all of the payload, so a view that only shows recent proposals can request `[1]` and load the archives separately when it needs them.
+
+```ts twoslash
+// [!include ~/snippets/moonClient.ts]
+// ---cut---
+const proposals = await moonwellClient.getProposals({
+  proposalChainIds: [1] // [!code focus]
+})
+```
