@@ -503,6 +503,18 @@ describe("Lunar Indexer Transformation Tests", () => {
     ).rejects.toThrow("404");
   });
 
+  // Sentry MOONWELL-FRONTEND-H0 / -133 (MOO-535): a monkeypatched fetch can
+  // resolve without a Response; reading `.ok` on it threw a bare TypeError.
+  test("Fetch throws a diagnosable error when fetch resolves without a Response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(undefined)),
+    );
+    await expect(
+      fetchVaultsFromIndexer(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toThrow("Failed to fetch vaults from Lunar Indexer: no response");
+  });
+
   // ─── Pure transformation unit tests ────────────────────────────────────────
 
   test("Transform single vault from indexer fixture", () => {

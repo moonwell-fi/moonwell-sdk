@@ -111,6 +111,22 @@ describe("onError callback", () => {
     expect(mockOnError).not.toHaveBeenCalled();
   });
 
+  // Sentry MOONWELL-FRONTEND-10J (MOO-535): a 2xx body without `results` used
+  // to escape as a TypeError from `lunarMarkets.some`.
+  test("reports a body without results once and falls back to on-chain", async () => {
+    mockListMarkets.mockResolvedValue({});
+
+    await expect(getMarketsData(makeEnvironment())).resolves.toEqual([]);
+
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    const [error, context] = mockOnError.mock.calls[0];
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe(
+      `Lunar Indexer markets response for chain ${MOCK_CHAIN_ID} is missing the results array`,
+    );
+    expect(context).toEqual({ source: "markets", chainId: MOCK_CHAIN_ID });
+  });
+
   test("does not call onError when lunarIndexerUrl is not set", async () => {
     const env = makeEnvironment({
       lunarIndexerUrl: undefined,

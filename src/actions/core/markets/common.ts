@@ -511,7 +511,16 @@ async function fetchMarketsFromLunar(
   });
 
   const lunarMarketsResponse = await client.listMarkets(environment.chainId);
-  const lunarMarkets = lunarMarketsResponse.results;
+  const lunarMarkets = lunarMarketsResponse?.results;
+  // The indexer has served a 2xx body without `results` (Sentry
+  // MOONWELL-FRONTEND-10J, MOO-535). Throwing here routes through
+  // getMarketsData's catch: one onError and the on-chain fallback, instead of a
+  // TypeError out of `.some` on undefined.
+  if (!Array.isArray(lunarMarkets)) {
+    throw new Error(
+      `Lunar Indexer markets response for chain ${environment.chainId} is missing the results array`,
+    );
+  }
 
   const needsRpcPrices = lunarMarkets.some((market) =>
     market.incentives.some(
