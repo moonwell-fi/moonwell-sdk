@@ -254,6 +254,28 @@ function makeIncentive(overrides: Record<string, unknown> = {}) {
 }
 
 describe("malformed Lunar market records", () => {
+  // PR #339 review: `incentives` was read unguarded in the needsRpcPrices
+  // pre-scan, before the per-record try, so one record without it threw a
+  // TypeError out of the whole chain (on-chain fallback, contextless onError).
+  test("keeps the valid market when another record has no incentives array", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [makeLunarMarket(), makeLunarMarket({ incentives: undefined })],
+    });
+    const env = makeMarketEnvironment();
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    expect(env.contracts.views?.read.getAllMarketsInfo).not.toHaveBeenCalled();
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 malformed market record(s)"),
+      }),
+      { source: "markets-malformed-records", chainId: MOCK_CHAIN_ID },
+    );
+  });
+
   test("skips a malformed record but keeps the valid ones", async () => {
     mockListMarkets.mockResolvedValue({
       results: [

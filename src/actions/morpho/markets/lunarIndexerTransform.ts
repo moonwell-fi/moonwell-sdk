@@ -186,6 +186,13 @@ export async function fetchMarketsFromIndexer(
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/isolated/markets/${chainId}${queryString ? `?${queryString}` : ""}`;
   const response = await getWithRetry<LunarIndexerMarketsResponse>(url);
+  // A 2xx body without `results` otherwise reaches `.filter` / iteration in
+  // getMorphoMarketsDataFromIndexer as a TypeError (PR #339 review).
+  if (!Array.isArray(response.data?.results)) {
+    throw new Error(
+      `Lunar Indexer morpho markets response for chain ${chainId} is missing the results array`,
+    );
+  }
   return response.data;
 }
 

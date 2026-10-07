@@ -106,14 +106,15 @@ function validatedMarketLiquidity(
     );
   }
   for (const vault of data.vaults) {
-    parseLiquidityQuantity(vault.fee, "vault.fee", true);
-    // A vault record without `markets` (Sentry MOONWELL-FRONTEND-116, MOO-535)
-    // must fail validation here, not as a TypeError from the loop below.
-    if (!Array.isArray(vault.markets)) {
+    // A null entry or a vault record without `markets` (Sentry
+    // MOONWELL-FRONTEND-116, MOO-535) must fail validation here, not as a
+    // TypeError from `vault.fee` or the loop below.
+    if (!vault || !Array.isArray(vault.markets)) {
       throw new TypeError(
-        `Invalid shared-liquidity response (vault ${vault.address} has no markets array)`,
+        `Invalid shared-liquidity response (vault ${vault?.address ?? "<null>"} has no markets array)`,
       );
     }
+    parseLiquidityQuantity(vault.fee, "vault.fee", true);
     for (const market of vault.markets) {
       for (const field of [
         "flowCapIn",

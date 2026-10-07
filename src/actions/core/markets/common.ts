@@ -522,13 +522,18 @@ async function fetchMarketsFromLunar(
     );
   }
 
-  const needsRpcPrices = lunarMarkets.some((market) =>
-    market.incentives.some(
-      (incentive) =>
-        incentive.priceUsd === null ||
-        incentive.supplyApr === null ||
-        incentive.borrowApr === null,
-    ),
+  // A record without `incentives` is skipped by the per-record guard below; it
+  // must not throw out of this pre-scan and take the whole chain to the on-chain
+  // fallback (PR #339 review).
+  const needsRpcPrices = lunarMarkets.some(
+    (market) =>
+      Array.isArray(market.incentives) &&
+      market.incentives.some(
+        (incentive) =>
+          incentive.priceUsd === null ||
+          incentive.supplyApr === null ||
+          incentive.borrowApr === null,
+      ),
   );
 
   let governanceTokenPrice: Amount | undefined;
@@ -713,6 +718,14 @@ async function fetchMarketsFromLunar(
         totalSupplyApr: 0,
         rewards: [],
       };
+
+      // Inside the record-level try: the catch skips and reports only this
+      // record, where a TypeError from the loop would have had no context.
+      if (!Array.isArray(lunarMarket.incentives)) {
+        throw new Error(
+          `Lunar market ${lunarMarket.address} is missing the incentives array`,
+        );
+      }
 
       for (const incentive of lunarMarket.incentives) {
         // A malformed incentive costs its own reward entry, not the market.

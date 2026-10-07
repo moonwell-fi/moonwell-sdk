@@ -389,6 +389,11 @@ export async function fetchTokenMap(
   const response = await fetchFromIndexer(url, "tokens");
 
   const data: LunarIndexerTokensResponse = await response.json();
+  if (!Array.isArray(data?.results)) {
+    throw new Error(
+      `Lunar Indexer tokens response for chain ${chainId} is missing the results array`,
+    );
+  }
 
   const tokenMap = new Map<string, LunarIndexerToken>();
   for (const token of data.results) {
@@ -424,7 +429,14 @@ export async function fetchVaultsFromIndexer(
 
   const response = await fetchFromIndexer(url, "vaults");
 
-  return response.json();
+  const data: LunarIndexerVaultsResponse = await response.json();
+  // transformVaultsFromIndexer calls `.flatMap` on this array (PR #339 review).
+  if (!Array.isArray(data?.results)) {
+    throw new Error(
+      `Lunar Indexer vaults response for chain ${chainId} is missing the results array`,
+    );
+  }
+  return data;
 }
 
 /**
