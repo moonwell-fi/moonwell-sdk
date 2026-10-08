@@ -503,6 +503,44 @@ describe("Lunar Indexer Transformation Tests", () => {
     ).rejects.toThrow("404");
   });
 
+  // PR #339 review: a 2xx body without `results` reached `for…of` / `.flatMap`
+  // as a bare TypeError. Both fetchers now name the missing array.
+  test("fetchTokenMap throws a diagnosable error when the body has no results array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => makeJsonResponse({})),
+    );
+    await expect(
+      fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toThrow(
+      `Lunar Indexer tokens response for chain ${BASE_CHAIN_ID} is missing the results array`,
+    );
+  });
+
+  test("fetchVaultsFromIndexer throws a diagnosable error when the body has no results array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => makeJsonResponse({})),
+    );
+    await expect(
+      fetchVaultsFromIndexer(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toThrow(
+      `Lunar Indexer vaults response for chain ${BASE_CHAIN_ID} is missing the results array`,
+    );
+  });
+
+  // Sentry MOONWELL-FRONTEND-H0 / -133 (MOO-535): a monkeypatched fetch can
+  // resolve without a Response; reading `.ok` on it threw a bare TypeError.
+  test("Fetch throws a diagnosable error when fetch resolves without a Response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(undefined)),
+    );
+    await expect(
+      fetchVaultsFromIndexer(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toThrow("Failed to fetch vaults from Lunar Indexer: no response");
+  });
+
   // ─── Pure transformation unit tests ────────────────────────────────────────
 
   test("Transform single vault from indexer fixture", () => {

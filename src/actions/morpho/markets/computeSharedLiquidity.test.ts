@@ -607,5 +607,25 @@ describe("computeSharedLiquidityFromLunar", () => {
         "Invalid shared-liquidity response (received null)",
       );
     });
+
+    // Sentry MOONWELL-FRONTEND-116 (MOO-535): a vault record without `markets`
+    // used to escape as a TypeError from the validation loop.
+    // PR #339 review: a `null` entry in `vaults` reached `vault.fee` first.
+    test("describes a null vault record", () => {
+      expect(compute({ vaults: [null], markets: {} })).toThrow(
+        "Invalid shared-liquidity response (vault <null> has no markets array)",
+      );
+    });
+
+    test("describes a vault record without a markets array", () => {
+      expect(
+        compute({
+          vaults: [{ address: "0xabc", name: "Vault", fee: "0" }],
+          markets: {},
+        }),
+      ).toThrow(
+        "Invalid shared-liquidity response (vault 0xabc has no markets array)",
+      );
+    });
   });
 });

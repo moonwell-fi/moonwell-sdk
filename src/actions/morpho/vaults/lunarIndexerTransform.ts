@@ -354,6 +354,26 @@ export function transformVaultsFromIndexer(
 }
 
 /**
+ * Fetch from the Lunar Indexer and reject on a non-OK or missing response.
+ *
+ * `response` can arrive `undefined` when a wallet extension monkeypatches
+ * `window.fetch` (Sentry MOONWELL-FRONTEND-H0 / -133, MOO-535); reading `.ok`
+ * on it used to throw a bare TypeError instead of a diagnosable error.
+ */
+async function fetchFromIndexer(url: string, what: string): Promise<Response> {
+  const response: Response | undefined = await fetch(url, {
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response?.ok) {
+    const status = response
+      ? `${response.status} ${response.statusText}`
+      : "no response";
+    throw new Error(`Failed to fetch ${what} from Lunar Indexer: ${status}`);
+  }
+  return response;
+}
+
+/**
  * Fetch tokens from Lunar Indexer and create a lookup map
  *
  * @param lunarIndexerUrl - Base URL for Lunar Indexer API
@@ -366,15 +386,14 @@ export async function fetchTokenMap(
 ): Promise<Map<string, LunarIndexerToken>> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/tokens/${chainId}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch tokens from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
+  const response = await fetchFromIndexer(url, "tokens");
 
   const data: LunarIndexerTokensResponse = await response.json();
+  if (!Array.isArray(data?.results)) {
+    throw new Error(
+      `Lunar Indexer tokens response for chain ${chainId} is missing the results array`,
+    );
+  }
 
   const tokenMap = new Map<string, LunarIndexerToken>();
   for (const token of data.results) {
@@ -408,15 +427,16 @@ export async function fetchVaultsFromIndexer(
 
   const url = `${lunarIndexerUrl}/api/v1/vaults/vaults/${chainId}${params.toString() ? `?${params.toString()}` : ""}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  const response = await fetchFromIndexer(url, "vaults");
 
-  if (!response.ok) {
+  const data: LunarIndexerVaultsResponse = await response.json();
+  // transformVaultsFromIndexer calls `.flatMap` on this array (PR #339 review).
+  if (!Array.isArray(data?.results)) {
     throw new Error(
-      `Failed to fetch vaults from Lunar Indexer: ${response.status} ${response.statusText}`,
+      `Lunar Indexer vaults response for chain ${chainId} is missing the results array`,
     );
   }
-
-  return response.json();
+  return data;
 }
 
 /**
@@ -432,13 +452,7 @@ export async function fetchVaultFromIndexer(
 ): Promise<LunarIndexerVault> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch vault from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
+  const response = await fetchFromIndexer(url, "vault");
 
   return response.json();
 }
@@ -499,13 +513,7 @@ export async function fetchVaultSnapshotsFromIndexer(
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch vault snapshots from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
+  const response = await fetchFromIndexer(url, "vault snapshots");
 
   return response.json();
 }
