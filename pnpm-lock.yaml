@@ -9,6 +9,7 @@ overrides:
   ws@>=8.0.0 <8.21.0: '>=8.21.0'
   form-data@>=4.0.0 <4.0.6: '>=4.0.6'
   nanoid@<3.3.18: 3.3.18
+  source-map-js@<1.2.2: '>=1.2.2'
 
 importers:
 
@@ -121,8 +122,8 @@ importers:
         specifier: ^22.13.10
         version: 22.19.17
       axios:
-        specifier: ^1.18.1
-        version: 1.18.1
+        specifier: ^1.20.0
+        version: 1.20.0
       dayjs:
         specifier: ^1.11.20
         version: 1.11.20
@@ -2742,8 +2743,8 @@ packages:
     peerDependencies:
       postcss: ^8.1.0
 
-  axios@1.18.1:
-    resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
+  axios@1.20.0:
+    resolution: {integrity: sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==}
 
   babel-walk@3.0.0-canary-5:
     resolution: {integrity: sha512-GAwkz0AihzY5bkwIY5QDR+LvsRQgB/B+1foMPvi0FZPMl5fjD7ICiznUiBdLYMH1QYe6vqu4gWYytZOccLouFw==}
@@ -5218,8 +5219,8 @@ packages:
   solady@0.0.235:
     resolution: {integrity: sha512-JUEXLDG7ag3HmqUnrDG7ilhafH6R9bFPpwV63O2kH4UbnS2+gRGEOqqy4k01O7tHjo3MWkDD0cpG+UY9pjy/fQ==}
 
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+  source-map-js@1.2.2:
+    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
 
   source-map@0.7.6:
@@ -7799,7 +7800,7 @@ snapshots:
       jiti: 2.6.1
       lightningcss: 1.30.2
       magic-string: 0.30.21
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
       tailwindcss: 4.1.15
 
   '@tailwindcss/node@4.2.4':
@@ -7809,7 +7810,7 @@ snapshots:
       jiti: 2.6.1
       lightningcss: 1.32.0
       magic-string: 0.30.21
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
       tailwindcss: 4.2.4
 
   '@tailwindcss/oxide-android-arm64@4.1.15':
@@ -8360,7 +8361,7 @@ snapshots:
       postcss: 8.5.23
       postcss-value-parser: 4.2.0
 
-  axios@1.18.1:
+  axios@1.20.0:
     dependencies:
       follow-redirects: 1.16.0
       form-data: 4.0.6
@@ -9983,7 +9984,7 @@ snapshots:
     dependencies:
       '@babel/parser': 7.29.3
       '@babel/types': 7.29.0
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   make-dir@4.0.0:
     dependencies:
@@ -10863,7 +10864,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.18
       picocolors: 1.1.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   prettier@2.8.8: {}
 
@@ -11488,7 +11489,7 @@ snapshots:
 
   solady@0.0.235: {}
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.2: {}
 
   source-map@0.7.6: {}
 
