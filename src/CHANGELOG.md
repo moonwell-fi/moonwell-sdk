@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.25.1
+
+### Patch Changes
+
+- [#338](https://github.com/moonwell-fi/moonwell-sdk/pull/338) [`dd6a28b4245de4d28a8add7b24496524fad0561a`](https://github.com/moonwell-fi/moonwell-sdk/commit/dd6a28b4245de4d28a8add7b24496524fad0561a) Thanks [@bprofiro](https://github.com/bprofiro)! - Bump `axios` to `^1.20.0` to pick up the fixes for the advisories published against `axios@<1.20.0`.
+
 ## 0.25.0
 
 ### Minor Changes
