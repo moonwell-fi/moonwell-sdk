@@ -317,14 +317,20 @@ export function transformVaultsFromIndexer(
 ): MorphoVault[] {
   // A malformed record costs only that record, never the chain's whole list.
   // Missing `markets` / `rewards` keep the vault (as empty lists); a vault
-  // that cannot be built at all is dropped. Both are reported once per call.
+  // that cannot be built at all is dropped. Both are reported once per call,
+  // with `droppedCount` telling them apart: only the first error is reported,
+  // so a consumer demoting the kept case (the frontend logs it at warning,
+  // since the list still renders in full) would otherwise misread a batch
+  // where a kept record precedes a dropped one.
   const malformed: string[] = [];
+  let droppedCount = 0;
   let firstError: unknown;
   const vaults = indexerVaults.flatMap((vault) => {
     // A `null` entry would throw on `vault.markets` below, before the try
     // (PR #339 review). Drop it and count it with the other malformed records.
     if (vault === null || typeof vault !== "object") {
       malformed.push(String(vault));
+      droppedCount += 1;
       firstError ??= new Error(
         `Lunar Indexer vault record is ${String(vault)}, not an object`,
       );
@@ -340,6 +346,7 @@ export function transformVaultsFromIndexer(
       return [transformVaultFromIndexer(vault, environment, tokenMap)];
     } catch (error) {
       if (!malformed.includes(vault.address)) malformed.push(vault.address);
+      droppedCount += 1;
       firstError ??= error;
       return [];
     }
@@ -357,6 +364,7 @@ export function transformVaultsFromIndexer(
       failedCount: malformed.length,
       totalCount: indexerVaults.length,
       items: malformed,
+      droppedCount,
     });
   }
 

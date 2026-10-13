@@ -1303,6 +1303,7 @@ describe("malformed indexer vault records", () => {
       failedCount: 2,
       totalCount: 3,
       items: [MOCK_MWETH_VAULT.address, MOCK_MWUSDC_VAULT.address],
+      droppedCount: 0,
     });
   });
 
@@ -1328,6 +1329,64 @@ describe("malformed indexer vault records", () => {
       failedCount: 1,
       totalCount: 2,
       items: [MOCK_MWETH_VAULT.address],
+      droppedCount: 1,
+    });
+  });
+
+  // Only the first error is reported, so when a kept record precedes a dropped
+  // one the error reads as the cosmetic missing-markets case. `droppedCount` is
+  // what lets a consumer still treat the batch as a real loss.
+  test("counts a dropped vault even when a kept malformed record comes first", () => {
+    const onError = vi.fn();
+    const { markets: _markets, ...withoutMarkets } = MOCK_CBBTC_VAULT;
+    const unbuildable = {
+      ...MOCK_MWETH_VAULT,
+      underlyingTokenAddress: "0x000000000000000000000000000000000000dEaD",
+      underlyingToken: undefined,
+    };
+
+    const vaults = transformVaultsFromIndexer(
+      [withoutMarkets, unbuildable] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(vaults).toHaveLength(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[0]).toMatchObject({
+      message: `Lunar Indexer vault ${MOCK_CBBTC_VAULT.address} is missing markets`,
+    });
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 2,
+      totalCount: 2,
+      droppedCount: 1,
+    });
+  });
+
+  // A record that both lacks `markets` and cannot be built is one failed item
+  // and one dropped item, not two of either.
+  test("counts a vault that is both malformed and unbuildable once", () => {
+    const onError = vi.fn();
+    const { markets: _markets, ...unbuildableWithoutMarkets } = {
+      ...MOCK_MWETH_VAULT,
+      underlyingTokenAddress: "0x000000000000000000000000000000000000dEaD",
+      underlyingToken: undefined,
+    };
+
+    transformVaultsFromIndexer(
+      [
+        MOCK_CBBTC_VAULT,
+        unbuildableWithoutMarkets,
+      ] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 1,
+      totalCount: 2,
+      items: [MOCK_MWETH_VAULT.address],
+      droppedCount: 1,
     });
   });
 
@@ -1347,6 +1406,7 @@ describe("malformed indexer vault records", () => {
       failedCount: 1,
       totalCount: 2,
       items: ["null"],
+      droppedCount: 1,
     });
   });
 
