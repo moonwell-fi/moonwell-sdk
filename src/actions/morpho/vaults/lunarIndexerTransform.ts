@@ -15,6 +15,7 @@ import type {
   MorphoVaultMarket,
   MorphoVaultSnapshot,
 } from "../../../types/morphoVault.js";
+import { LunarIndexerError } from "../../lunar-indexer-client.js";
 
 /**
  * Lunar Indexer API Response Types
@@ -320,6 +321,15 @@ export function transformVaultsFromIndexer(
   const malformed: string[] = [];
   let firstError: unknown;
   const vaults = indexerVaults.flatMap((vault) => {
+    // A `null` entry would throw on `vault.markets` below, before the try
+    // (PR #339 review). Drop it and count it with the other malformed records.
+    if (vault === null || typeof vault !== "object") {
+      malformed.push(String(vault));
+      firstError ??= new Error(
+        `Lunar Indexer vault record is ${String(vault)}, not an object`,
+      );
+      return [];
+    }
     if (!Array.isArray(vault.markets) || !Array.isArray(vault.rewards)) {
       malformed.push(vault.address);
       firstError ??= new Error(
@@ -354,23 +364,42 @@ export function transformVaultsFromIndexer(
 }
 
 /**
- * Fetch from the Lunar Indexer and reject on a non-OK or missing response.
+ * Fetch JSON from the Lunar Indexer and reject on a non-OK or missing response.
  *
  * `response` can arrive `undefined` when a wallet extension monkeypatches
  * `window.fetch` (Sentry MOONWELL-FRONTEND-H0 / -133, MOO-535); reading `.ok`
  * on it used to throw a bare TypeError instead of a diagnosable error.
+ *
+ * The rejection is a `LunarIndexerError` whose message must not start with
+ * "Failed to fetch": the frontend's Sentry noise filter substring-matches that
+ * browser transport text and dropped every failure raised here (PR #339
+ * review). Consumers should match on `error.name`, not on the message.
+ *
+ * `AbortSignal.timeout` is missing in Safari < 16 and older WebViews, where it
+ * throws a bare TypeError before `fetch` runs; use AbortController instead and
+ * keep the timer alive until the body has been read.
  */
-async function fetchFromIndexer(url: string, what: string): Promise<Response> {
-  const response: Response | undefined = await fetch(url, {
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response?.ok) {
-    const status = response
-      ? `${response.status} ${response.statusText}`
-      : "no response";
-    throw new Error(`Failed to fetch ${what} from Lunar Indexer: ${status}`);
+async function fetchJsonFromIndexer<T>(url: string, what: string): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response: Response | undefined = await fetch(url, {
+      signal: controller.signal,
+    });
+    if (!response?.ok) {
+      const status = response
+        ? `${response.status} ${response.statusText}`
+        : "no response";
+      throw new LunarIndexerError(
+        `Lunar Indexer ${what} request failed: ${status}`,
+        response?.status,
+        url,
+      );
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return response;
 }
 
 /**
@@ -386,9 +415,10 @@ export async function fetchTokenMap(
 ): Promise<Map<string, LunarIndexerToken>> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/tokens/${chainId}`;
 
-  const response = await fetchFromIndexer(url, "tokens");
-
-  const data: LunarIndexerTokensResponse = await response.json();
+  const data = await fetchJsonFromIndexer<LunarIndexerTokensResponse>(
+    url,
+    "tokens",
+  );
   if (!Array.isArray(data?.results)) {
     throw new Error(
       `Lunar Indexer tokens response for chain ${chainId} is missing the results array`,
@@ -427,9 +457,10 @@ export async function fetchVaultsFromIndexer(
 
   const url = `${lunarIndexerUrl}/api/v1/vaults/vaults/${chainId}${params.toString() ? `?${params.toString()}` : ""}`;
 
-  const response = await fetchFromIndexer(url, "vaults");
-
-  const data: LunarIndexerVaultsResponse = await response.json();
+  const data = await fetchJsonFromIndexer<LunarIndexerVaultsResponse>(
+    url,
+    "vaults",
+  );
   // transformVaultsFromIndexer calls `.flatMap` on this array (PR #339 review).
   if (!Array.isArray(data?.results)) {
     throw new Error(
@@ -452,9 +483,7 @@ export async function fetchVaultFromIndexer(
 ): Promise<LunarIndexerVault> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}`;
 
-  const response = await fetchFromIndexer(url, "vault");
-
-  return response.json();
+  return fetchJsonFromIndexer<LunarIndexerVault>(url, "vault");
 }
 
 /**
@@ -513,9 +542,10 @@ export async function fetchVaultSnapshotsFromIndexer(
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetchFromIndexer(url, "vault snapshots");
-
-  return response.json();
+  return fetchJsonFromIndexer<LunarIndexerVaultSnapshotsResponse>(
+    url,
+    "vault snapshots",
+  );
 }
 
 /**

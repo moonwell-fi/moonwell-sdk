@@ -500,7 +500,37 @@ describe("Lunar Indexer Transformation Tests", () => {
     );
     await expect(
       fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
-    ).rejects.toThrow("404");
+    ).rejects.toMatchObject({
+      name: "LunarIndexerError",
+      statusCode: 404,
+      message: expect.stringContaining(
+        "Lunar Indexer tokens request failed: 404",
+      ),
+    });
+  });
+
+  // PR #339 review: `AbortSignal.timeout` is missing in Safari < 16 and older
+  // WebViews, where it threw a bare TypeError before `fetch` ran.
+  test("fetches without the static AbortSignal.timeout browser API", async () => {
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation(() => {
+        throw new TypeError("AbortSignal.timeout is not a function");
+      });
+    const routes = createMockFetch();
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => routes(url));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
+
+      expect(tokenMap.size).toBeGreaterThan(0);
+      expect(fetchMock).toHaveBeenCalled();
+      for (const [, init] of fetchMock.mock.calls) {
+        expect(init?.signal).toBeInstanceOf(AbortSignal);
+      }
+    } finally {
+      timeoutSpy.mockRestore();
+    }
   });
 
   // PR #339 review: a 2xx body without `results` reached `for…of` / `.flatMap`
@@ -531,14 +561,19 @@ describe("Lunar Indexer Transformation Tests", () => {
 
   // Sentry MOONWELL-FRONTEND-H0 / -133 (MOO-535): a monkeypatched fetch can
   // resolve without a Response; reading `.ok` on it threw a bare TypeError.
-  test("Fetch throws a diagnosable error when fetch resolves without a Response", async () => {
+  // The message must not start with "Failed to fetch": the frontend's Sentry
+  // noise filter substring-matches that browser text (PR #339 review).
+  test("Fetch throws a named, non-transport-looking error when fetch resolves without a Response", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => Promise.resolve(undefined)),
     );
     await expect(
       fetchVaultsFromIndexer(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
-    ).rejects.toThrow("Failed to fetch vaults from Lunar Indexer: no response");
+    ).rejects.toMatchObject({
+      name: "LunarIndexerError",
+      message: "Lunar Indexer vaults request failed: no response",
+    });
   });
 
   // ─── Pure transformation unit tests ────────────────────────────────────────
@@ -1293,6 +1328,25 @@ describe("malformed indexer vault records", () => {
       failedCount: 1,
       totalCount: 2,
       items: [MOCK_MWETH_VAULT.address],
+    });
+  });
+
+  // PR #339 review: a `null` entry threw on `vault.markets` before the try.
+  test("drops a null record and reports it", () => {
+    const onError = vi.fn();
+
+    const vaults = transformVaultsFromIndexer(
+      [MOCK_CBBTC_VAULT, null] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(vaults).toHaveLength(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 1,
+      totalCount: 2,
+      items: ["null"],
     });
   });
 

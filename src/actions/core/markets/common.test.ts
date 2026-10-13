@@ -276,6 +276,26 @@ describe("malformed Lunar market records", () => {
     );
   });
 
+  // PR #339 review: a `null` entry threw a TypeError out of the same pre-scan.
+  test("keeps the valid market when another entry is null", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [makeLunarMarket(), null],
+    });
+    const env = makeMarketEnvironment();
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    expect(env.contracts.views?.read.getAllMarketsInfo).not.toHaveBeenCalled();
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 malformed market record(s)"),
+      }),
+      { source: "markets-malformed-records", chainId: MOCK_CHAIN_ID },
+    );
+  });
+
   test("skips a malformed record but keeps the valid ones", async () => {
     mockListMarkets.mockResolvedValue({
       results: [
