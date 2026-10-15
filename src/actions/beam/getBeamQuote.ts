@@ -5,7 +5,6 @@ import type { HttpRequestError } from "../../common/index.js";
 import type { OptionalNetworkParameterType } from "../../common/types.js";
 import type { Chain } from "../../environments/index.js";
 import type { BeamTokenInfo } from "../../types/beam.js";
-import { getQuote } from "./common.js";
 
 export type BeamQuote =
   | {
@@ -102,6 +101,11 @@ export async function getBeamQuote<
   client: MoonwellClient,
   args: GetBeamQuoteParameters<environments, Network>,
 ): GetBeamQuoteReturnType {
+  // `common.js` pulls in @biconomy/abstractjs and @across-protocol/app-sdk.
+  // Importing it here instead of at module scope keeps them out of a consumer's
+  // initial bundle: createMoonwellClient wires every action up front, so a static
+  // import shipped both SDKs to apps that never request a Beam quote.
+  const { getQuote } = await import("./common.js");
   const quote = await getQuote(client, args);
   return quote;
 }
