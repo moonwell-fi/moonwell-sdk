@@ -1,5 +1,24 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.25.1
+
+### Patch Changes
+
+- [#338](https://github.com/moonwell-fi/moonwell-sdk/pull/338) [`dd6a28b4245de4d28a8add7b24496524fad0561a`](https://github.com/moonwell-fi/moonwell-sdk/commit/dd6a28b4245de4d28a8add7b24496524fad0561a) Thanks [@bprofiro](https://github.com/bprofiro)! - Bump `axios` to `^1.20.0` to pick up the fixes for the advisories published against `axios@<1.20.0`.
+
+- [#339](https://github.com/moonwell-fi/moonwell-sdk/pull/339) [`1469992d7f5250a36dacd88502e35efda6a0c896`](https://github.com/moonwell-fi/moonwell-sdk/commit/1469992d7f5250a36dacd88502e35efda6a0c896) Thanks [@bprofiro](https://github.com/bprofiro)! - Guard the remaining Lunar Indexer response shapes that the SDK iterated unguarded (MOO-535):
+
+  - `getMarkets`: a 2xx markets body without `results` now throws a descriptive error that `getMarketsData` catches, reports once through `onError` (`source: "markets"`) and falls back to on-chain reads, instead of a `TypeError` from `lunarMarkets.some` (Sentry MOONWELL-FRONTEND-10J).
+  - Shared liquidity: a vault record without a `markets` array fails validation with "Invalid shared-liquidity response (vault … has no markets array)" instead of a `TypeError` from the validation loop (Sentry MOONWELL-FRONTEND-116).
+  - Vault indexer fetches (tokens, vaults, vault, snapshots): a `fetch` that resolves without a `Response` (seen when a wallet extension monkeypatches `window.fetch`) now rejects with a `LunarIndexerError` instead of a `TypeError` reading `.ok` on `undefined` (Sentry MOONWELL-FRONTEND-H0 / -133). These rejections, including the existing non-OK ones, now read "Lunar Indexer … request failed: …" instead of "Failed to fetch … from Lunar Indexer: …", so Sentry noise filters that substring-match the browser's "Failed to fetch" transport text no longer drop them; match on `error.name === "LunarIndexerError"` rather than on the message. The 10 s timeout now uses `AbortController` instead of `AbortSignal.timeout`, which is missing in Safari < 16 and older WebViews.
+  - `getMarkets` and the vault transform: a `null` record in the indexer's `results` array is dropped and counted with the other malformed records instead of throwing a `TypeError` out of the whole chain.
+  - `getMarkets`: a market record without an `incentives` array is skipped and reported with the other malformed records (`source: "markets-malformed-records"`) instead of throwing a `TypeError` out of the whole chain.
+  - Tokens and vaults bodies without `results`, and a morpho markets body without `results`, throw "… response for chain … is missing the results array" instead of a `TypeError` from iteration.
+  - Shared liquidity: a `null` vault entry fails validation with the same named error as a vault without `markets`.
+  - `OnErrorContext` gains an optional `droppedCount`: how many of the failed items were left out of the result rather than kept in a degraded form. The vault transform's `malformed-vault-records` report sets it, so a consumer can tell a vault kept with empty `markets` / `rewards` from one dropped from the list (with any user position in it) even when only the first error is reported.
+
+- [#341](https://github.com/moonwell-fi/moonwell-sdk/pull/341) [`93b9c1cd74d22cda3e2c627d24a4561d57d6f9ff`](https://github.com/moonwell-fi/moonwell-sdk/commit/93b9c1cd74d22cda3e2c627d24a4561d57d6f9ff) Thanks [@bprofiro](https://github.com/bprofiro)! - Load the Beam quote implementation (`@biconomy/abstractjs`, `@across-protocol/app-sdk`) on the first `getBeamQuote` call instead of when the client is created, so apps that never request a Beam quote no longer ship those SDKs in their initial bundle.
+
 ## 0.25.0
 
 ### Minor Changes
