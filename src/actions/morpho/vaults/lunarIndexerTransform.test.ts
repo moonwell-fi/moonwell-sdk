@@ -500,7 +500,80 @@ describe("Lunar Indexer Transformation Tests", () => {
     );
     await expect(
       fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
-    ).rejects.toThrow("404");
+    ).rejects.toMatchObject({
+      name: "LunarIndexerError",
+      statusCode: 404,
+      message: expect.stringContaining(
+        "Lunar Indexer tokens request failed: 404",
+      ),
+    });
+  });
+
+  // PR #339 review: `AbortSignal.timeout` is missing in Safari < 16 and older
+  // WebViews, where it threw a bare TypeError before `fetch` ran.
+  test("fetches without the static AbortSignal.timeout browser API", async () => {
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation(() => {
+        throw new TypeError("AbortSignal.timeout is not a function");
+      });
+    const routes = createMockFetch();
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => routes(url));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const tokenMap = await fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID);
+
+      expect(tokenMap.size).toBeGreaterThan(0);
+      expect(fetchMock).toHaveBeenCalled();
+      for (const [, init] of fetchMock.mock.calls) {
+        expect(init?.signal).toBeInstanceOf(AbortSignal);
+      }
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  // PR #339 review: a 2xx body without `results` reached `for…of` / `.flatMap`
+  // as a bare TypeError. Both fetchers now name the missing array.
+  test("fetchTokenMap throws a diagnosable error when the body has no results array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => makeJsonResponse({})),
+    );
+    await expect(
+      fetchTokenMap(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toThrow(
+      `Lunar Indexer tokens response for chain ${BASE_CHAIN_ID} is missing the results array`,
+    );
+  });
+
+  test("fetchVaultsFromIndexer throws a diagnosable error when the body has no results array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => makeJsonResponse({})),
+    );
+    await expect(
+      fetchVaultsFromIndexer(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toThrow(
+      `Lunar Indexer vaults response for chain ${BASE_CHAIN_ID} is missing the results array`,
+    );
+  });
+
+  // Sentry MOONWELL-FRONTEND-H0 / -133 (MOO-535): a monkeypatched fetch can
+  // resolve without a Response; reading `.ok` on it threw a bare TypeError.
+  // The message must not start with "Failed to fetch": the frontend's Sentry
+  // noise filter substring-matches that browser text (PR #339 review).
+  test("Fetch throws a named, non-transport-looking error when fetch resolves without a Response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(undefined)),
+    );
+    await expect(
+      fetchVaultsFromIndexer(LUNAR_INDEXER_URL, BASE_CHAIN_ID),
+    ).rejects.toMatchObject({
+      name: "LunarIndexerError",
+      message: "Lunar Indexer vaults request failed: no response",
+    });
   });
 
   // ─── Pure transformation unit tests ────────────────────────────────────────
@@ -1230,6 +1303,7 @@ describe("malformed indexer vault records", () => {
       failedCount: 2,
       totalCount: 3,
       items: [MOCK_MWETH_VAULT.address, MOCK_MWUSDC_VAULT.address],
+      droppedCount: 0,
     });
   });
 
@@ -1255,6 +1329,84 @@ describe("malformed indexer vault records", () => {
       failedCount: 1,
       totalCount: 2,
       items: [MOCK_MWETH_VAULT.address],
+      droppedCount: 1,
+    });
+  });
+
+  // Only the first error is reported, so when a kept record precedes a dropped
+  // one the error reads as the cosmetic missing-markets case. `droppedCount` is
+  // what lets a consumer still treat the batch as a real loss.
+  test("counts a dropped vault even when a kept malformed record comes first", () => {
+    const onError = vi.fn();
+    const { markets: _markets, ...withoutMarkets } = MOCK_CBBTC_VAULT;
+    const unbuildable = {
+      ...MOCK_MWETH_VAULT,
+      underlyingTokenAddress: "0x000000000000000000000000000000000000dEaD",
+      underlyingToken: undefined,
+    };
+
+    const vaults = transformVaultsFromIndexer(
+      [withoutMarkets, unbuildable] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(vaults).toHaveLength(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[0]).toMatchObject({
+      message: `Lunar Indexer vault ${MOCK_CBBTC_VAULT.address} is missing markets`,
+    });
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 2,
+      totalCount: 2,
+      droppedCount: 1,
+    });
+  });
+
+  // A record that both lacks `markets` and cannot be built is one failed item
+  // and one dropped item, not two of either.
+  test("counts a vault that is both malformed and unbuildable once", () => {
+    const onError = vi.fn();
+    const { markets: _markets, ...unbuildableWithoutMarkets } = {
+      ...MOCK_MWETH_VAULT,
+      underlyingTokenAddress: "0x000000000000000000000000000000000000dEaD",
+      underlyingToken: undefined,
+    };
+
+    transformVaultsFromIndexer(
+      [
+        MOCK_CBBTC_VAULT,
+        unbuildableWithoutMarkets,
+      ] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 1,
+      totalCount: 2,
+      items: [MOCK_MWETH_VAULT.address],
+      droppedCount: 1,
+    });
+  });
+
+  // PR #339 review: a `null` entry threw on `vault.markets` before the try.
+  test("drops a null record and reports it", () => {
+    const onError = vi.fn();
+
+    const vaults = transformVaultsFromIndexer(
+      [MOCK_CBBTC_VAULT, null] as unknown as typeof ALL_MOCK_VAULTS,
+      makeEnv(onError),
+      tokenMap,
+    );
+
+    expect(vaults).toHaveLength(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 1,
+      totalCount: 2,
+      items: ["null"],
+      droppedCount: 1,
     });
   });
 
