@@ -35,6 +35,7 @@ export default defineConfig({
     include: [
       ...(process.env.TYPES ? ["**/*.bench-d.ts"] : []),
       "src/**/getBeamTokenLimits.test.ts",
+      "src/actions/beam/getBeamQuote.unit.test.ts",
       "src/actions/core/markets/getMarketSnapshots.test.ts",
       "src/actions/core/markets/common.test.ts",
       "src/actions/morpho/**/*.test.ts",
