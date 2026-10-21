@@ -77,7 +77,7 @@ jobs:
         uses: ./.github/actions/install-dependencies
         with:
           # npm trusted publishing needs Node >= 22.14 and npm >= 11.5.1. The
-          # composite default (22.5.1 / npm 10.8.2) is too old to even run npm 11.
+          # composite default used to be 22.5.1 / npm 10.8.2, too old to even run npm 11.
           node-version: 22
 
       # Publishing authenticates with npm Trusted Publishing (OIDC) instead of a
