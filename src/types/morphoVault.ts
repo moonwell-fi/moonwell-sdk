@@ -66,7 +66,6 @@ export type MorphoVaultStakingSnapshot = {
 
 export type MorphoVaultV2ApyResponse = {
   address: string;
-  avgApy: number;
   avgNetApy: number;
   totalAssets: string;
   totalAssetsUsd: number;
@@ -92,5 +91,4 @@ export type MorphoVaultV2RewardResponse = {
     };
   };
   supplyApr: number;
-  yearlySupplyTokens: string;
 };
