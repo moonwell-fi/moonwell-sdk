@@ -30,7 +30,7 @@ jobs:
         with:
           # Pinned explicitly so future bumps to the composite action's default
           # don't silently shift collector output shapes (e.g., pnpm audit JSON).
-          node-version: 22.5.1
+          node-version: 22.23.4
 
       - name: Lint (JSON output)
         run: pnpm lint:gate

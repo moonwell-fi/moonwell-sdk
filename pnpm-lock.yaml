@@ -10,6 +10,8 @@ overrides:
   form-data@>=4.0.0 <4.0.6: '>=4.0.6'
   nanoid@<3.3.18: 3.3.18
   source-map-js@<1.2.2: '>=1.2.2'
+  follow-redirects@<1.16.1: '>=1.16.1'
+  zod@>=4.0.0 <4.6.6: '>=4.6.6'
 
 importers:
 
@@ -108,13 +110,13 @@ importers:
     dependencies:
       '@across-protocol/app-sdk':
         specifier: ^0.2.3
-        version: 0.2.3(viem@2.48.8(typescript@5.9.3)(zod@4.4.3))
+        version: 0.2.3(viem@2.48.8(typescript@5.9.3)(zod@4.6.7))
       '@biconomy/abstractjs':
         specifier: 1.0.18
-        version: 1.0.18(@rhinestone/module-sdk@0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.4.3)))(typescript@5.9.3)(viem@2.48.8(typescript@5.9.3)(zod@4.4.3))
+        version: 1.0.18(@rhinestone/module-sdk@0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.6.7)))(typescript@5.9.3)(viem@2.48.8(typescript@5.9.3)(zod@4.6.7))
       '@rhinestone/module-sdk':
         specifier: 0.2.7
-        version: 0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.4.3))
+        version: 0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.6.7))
       '@types/lodash':
         specifier: ^4.17.9
         version: 4.17.24
@@ -132,7 +134,7 @@ importers:
         version: 4.18.1
       viem:
         specifier: ^2.26.2
-        version: 2.48.8(typescript@5.9.3)(zod@4.4.3)
+        version: 2.48.8(typescript@5.9.3)(zod@4.6.7)
 
   test: {}
 
@@ -2648,7 +2650,7 @@ packages:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
     peerDependencies:
       typescript: '>=5.0.4'
-      zod: ^3.22.0 || ^4.0.0
+      zod: '>=4.6.6'
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -3502,8 +3504,8 @@ packages:
     resolution: {integrity: sha512-78/PXT1wlLLDgTzDs7sjq9hzz0vXD+zn+7wypEe4fXQxCmdmqfGsEPQxmiCSQI3ajFV91bVSsvNtrJRiW6nGng==}
     engines: {node: '>=10'}
 
-  follow-redirects@1.16.0:
-    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
+  follow-redirects@1.16.1:
+    resolution: {integrity: sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -5866,17 +5868,17 @@ packages:
     resolution: {integrity: sha512-CzhO+pFNo8ajLM2d2IW/R93ipy99LWjtwblvC1RsoSUMZgyLbYFr221TnSNT7GjGdYui6P459mw9JH/g/zW2ug==}
     engines: {node: '>=18'}
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
 
-  '@across-protocol/app-sdk@0.2.3(viem@2.48.8(typescript@5.9.3)(zod@4.4.3))':
+  '@across-protocol/app-sdk@0.2.3(viem@2.48.8(typescript@5.9.3)(zod@4.6.7))':
     dependencies:
-      viem: 2.48.8(typescript@5.9.3)(zod@4.4.3)
+      viem: 2.48.8(typescript@5.9.3)(zod@4.6.7)
 
   '@adraffy/ens-normalize@1.11.1': {}
 
@@ -6043,11 +6045,11 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@biconomy/abstractjs@1.0.18(@rhinestone/module-sdk@0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.4.3)))(typescript@5.9.3)(viem@2.48.8(typescript@5.9.3)(zod@4.4.3))':
+  '@biconomy/abstractjs@1.0.18(@rhinestone/module-sdk@0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.6.7)))(typescript@5.9.3)(viem@2.48.8(typescript@5.9.3)(zod@4.6.7))':
     dependencies:
-      '@rhinestone/module-sdk': 0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.4.3))
+      '@rhinestone/module-sdk': 0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.6.7))
       typescript: 5.9.3
-      viem: 2.48.8(typescript@5.9.3)(zod@4.4.3)
+      viem: 2.48.8(typescript@5.9.3)(zod@4.6.7)
 
   '@biomejs/biome@1.9.4':
     optionalDependencies:
@@ -7572,11 +7574,11 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@rhinestone/module-sdk@0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.4.3))':
+  '@rhinestone/module-sdk@0.2.7(viem@2.48.8(typescript@5.9.3)(zod@4.6.7))':
     dependencies:
       solady: 0.0.235
       tslib: 2.8.1
-      viem: 2.48.8(typescript@5.9.3)(zod@4.4.3)
+      viem: 2.48.8(typescript@5.9.3)(zod@4.6.7)
 
   '@rolldown/binding-android-arm64@1.0.2':
     optional: true
@@ -8291,10 +8293,10 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 1.2.0
 
-  abitype@1.2.3(typescript@5.9.3)(zod@4.4.3):
+  abitype@1.2.3(typescript@5.9.3)(zod@4.6.7):
     optionalDependencies:
       typescript: 5.9.3
-      zod: 4.4.3
+      zod: 4.6.7
 
   acorn-jsx@5.3.2(acorn@8.16.0):
     dependencies:
@@ -8363,7 +8365,7 @@ snapshots:
 
   axios@1.20.0:
     dependencies:
-      follow-redirects: 1.16.0
+      follow-redirects: 1.16.1
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -9210,7 +9212,7 @@ snapshots:
       locate-path: 6.0.0
       path-exists: 4.0.0
 
-  follow-redirects@1.16.0: {}
+  follow-redirects@1.16.1: {}
 
   foreground-child@3.3.1:
     dependencies:
@@ -9542,7 +9544,7 @@ snapshots:
   http-proxy@1.18.1:
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.16.0
+      follow-redirects: 1.16.1
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -9806,7 +9808,7 @@ snapshots:
       typescript: 5.9.3
       unbash: 2.2.0
       yaml: 2.8.4
-      zod: 4.4.3
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -10701,7 +10703,7 @@ snapshots:
 
   outdent@0.5.0: {}
 
-  ox@0.14.20(typescript@5.9.3)(zod@4.4.3):
+  ox@0.14.20(typescript@5.9.3)(zod@4.6.7):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -10709,7 +10711,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.6.7)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -11824,15 +11826,15 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  viem@2.48.8(typescript@5.9.3)(zod@4.4.3):
+  viem@2.48.8(typescript@5.9.3)(zod@4.6.7):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.6.7)
       isows: 1.0.7(ws@8.21.0)
-      ox: 0.14.20(typescript@5.9.3)(zod@4.4.3)
+      ox: 0.14.20(typescript@5.9.3)(zod@4.6.7)
       ws: 8.21.0
     optionalDependencies:
       typescript: 5.9.3
@@ -12152,6 +12154,6 @@ snapshots:
 
   yoctocolors@2.1.2: {}
 
-  zod@4.4.3: {}
+  zod@4.6.7: {}
 
   zwitch@2.0.4: {}
