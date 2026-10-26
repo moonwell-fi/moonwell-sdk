@@ -16,8 +16,8 @@
  *    where the existing `environment.onError(...)` wiring picks it up
  */
 import axios, {
-  type AxiosError,
   type AxiosInstance,
+  type GenericAbortSignal,
   type InternalAxiosRequestConfig,
 } from "axios";
 
@@ -25,14 +25,30 @@ export interface RetryOptions {
   maxAttempts?: number;
   initialDelay?: number;
   maxDelay?: number;
+  signal?: GenericAbortSignal | undefined;
 }
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_INITIAL_DELAY_MS = 250;
 const DEFAULT_MAX_DELAY_MS = 5_000;
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function sleep(ms: number, signal?: GenericAbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new axios.CanceledError());
+      return;
+    }
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener?.("abort", onAbort);
+      reject(new axios.CanceledError());
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener?.("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener?.("abort", onAbort, { once: true });
+  });
 }
 
 function backoffDelay(
@@ -51,6 +67,7 @@ function backoffDelay(
  * - Non-axios errors (parse errors, code bugs) → do NOT retry
  */
 export function isRetriableError(error: unknown): boolean {
+  if (axios.isCancel(error)) return false;
   if (!axios.isAxiosError(error)) return false;
   if (!error.response) return true;
   return error.response.status >= 500;
@@ -59,33 +76,49 @@ export function isRetriableError(error: unknown): boolean {
 /**
  * Attach a retry-on-failure interceptor to an axios instance. Every request
  * made through this instance is retried up to `maxAttempts` times when the
- * failure is retriable. Per-config state is tracked on a WeakMap so we don't
- * pollute the public axios config shape.
+ * failure is retriable. Axios merges into a new config on every request, so
+ * the attempt counter must travel with that config rather than its identity.
  */
 export function attachRetryInterceptor(
   instance: AxiosInstance,
-  options: RetryOptions = {},
+  options: Omit<RetryOptions, "signal"> = {},
 ): void {
   const {
     maxAttempts = DEFAULT_MAX_ATTEMPTS,
     initialDelay = DEFAULT_INITIAL_DELAY_MS,
     maxDelay = DEFAULT_MAX_DELAY_MS,
   } = options;
-  const attemptsByConfig = new WeakMap<InternalAxiosRequestConfig, number>();
+  interface RetryConfig extends InternalAxiosRequestConfig {
+    moonwellRetryAttempts?: number | undefined;
+  }
 
   instance.interceptors.response.use(
-    (response) => response,
-    async (error: AxiosError) => {
-      const config = error.config;
+    (response) => {
+      const config: RetryConfig = response.config;
+      config.moonwellRetryAttempts = undefined;
+      return response;
+    },
+    async (error: unknown) => {
+      if (!axios.isAxiosError(error)) throw error;
+      const config: RetryConfig | undefined = error.config;
       if (!config) throw error;
-      if (!isRetriableError(error)) throw error;
+      const previousAttempts = config.moonwellRetryAttempts ?? 0;
+      if (!isRetriableError(error) || previousAttempts >= maxAttempts - 1) {
+        config.moonwellRetryAttempts = undefined;
+        throw error;
+      }
 
-      const previousAttempts = attemptsByConfig.get(config) ?? 0;
-      if (previousAttempts >= maxAttempts - 1) throw error;
-
-      attemptsByConfig.set(config, previousAttempts + 1);
-      await sleep(backoffDelay(previousAttempts, initialDelay, maxDelay));
-      return instance.request(config);
+      config.moonwellRetryAttempts = previousAttempts + 1;
+      try {
+        await sleep(
+          backoffDelay(previousAttempts, initialDelay, maxDelay),
+          config.signal,
+        );
+        return await instance.request(config);
+      } catch (retryError) {
+        config.moonwellRetryAttempts = undefined;
+        throw retryError;
+      }
     },
   );
 }
@@ -103,10 +136,12 @@ export async function retry<T>(
     maxAttempts = DEFAULT_MAX_ATTEMPTS,
     initialDelay = DEFAULT_INITIAL_DELAY_MS,
     maxDelay = DEFAULT_MAX_DELAY_MS,
+    signal,
   } = options;
   let attempt = 0;
   let lastError: unknown;
   while (attempt < maxAttempts) {
+    if (signal?.aborted) throw new axios.CanceledError();
     try {
       return await fn();
     } catch (error) {
@@ -114,7 +149,7 @@ export async function retry<T>(
       attempt++;
       if (!isRetriableError(error)) throw error;
       if (attempt >= maxAttempts) break;
-      await sleep(backoffDelay(attempt - 1, initialDelay, maxDelay));
+      await sleep(backoffDelay(attempt - 1, initialDelay, maxDelay), signal);
     }
   }
   throw lastError;

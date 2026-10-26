@@ -1,6 +1,7 @@
 import type { Address, Chain } from "viem";
 import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
 import { getEnvironmentsFromArgs } from "../../../common/index.js";
+import { readAcrossEnvironments } from "../../../common/readAcrossEnvironments.js";
 import type { OptionalNetworkParameterType } from "../../../common/types.js";
 import type { MorphoVaultUserPosition } from "../../../types/morphoUserPosition.js";
 import { getMorphoVaultUserPositionsData } from "./common.js";
@@ -16,6 +17,11 @@ export type GetMorphoVaultUserPositionsReturnType = Promise<
   MorphoVaultUserPosition[]
 >;
 
+/**
+ * Rejects with a `ChainReadError` when the read fails on any requested chain,
+ * so a failed RPC never looks like an empty position list. The error lists the
+ * failed chains and carries the positions from the chains that succeeded.
+ */
 export async function getMorphoVaultUserPositions<
   environments,
   Network extends Chain | undefined,
@@ -25,20 +31,13 @@ export async function getMorphoVaultUserPositions<
 ): GetMorphoVaultUserPositionsReturnType {
   const environments = getEnvironmentsFromArgs(client, args);
 
-  const settled = await Promise.allSettled(
-    environments
-      .filter((environment) => environment.contracts.morphoViews !== undefined)
-      .map((environment) => {
-        return getMorphoVaultUserPositionsData({
-          environment,
-          account: args.userAddress,
-        });
+  return readAcrossEnvironments({
+    environments,
+    source: "getMorphoVaultUserPositions",
+    read: (environment) =>
+      getMorphoVaultUserPositionsData({
+        environment,
+        account: args.userAddress,
       }),
-  );
-
-  const result = settled.flatMap((s) =>
-    s.status === "fulfilled" ? s.value : [],
-  );
-
-  return result;
+  });
 }

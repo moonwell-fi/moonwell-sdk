@@ -1167,3 +1167,93 @@ describe("getProposalsOnChainData legacy single-chain governor eta (MOO-611)", (
     expect(data?.eta).toBe(0);
   });
 });
+
+// Sentry MOONWELL-FRONTEND-1AX: viem batches every state/proposals read into
+// one multicall, so a single failed request used to fan out into one onError
+// per read (10-12 events per failure). Failures are now reported once per chain.
+describe("getProposalsOnChainData read-failure reporting", () => {
+  const makeEnv = (onError: ReturnType<typeof vi.fn>) =>
+    ({
+      chainId: 1284,
+      contracts: {
+        multichainGovernor: {
+          read: {
+            state: vi.fn().mockRejectedValue(new Error("multicall failed")),
+            proposals: vi.fn().mockRejectedValue(new Error("multicall failed")),
+            quorum: vi.fn().mockResolvedValue(0n),
+          },
+        },
+      },
+      custom: {},
+      onError,
+    }) as unknown as Parameters<typeof getProposalsOnChainData>[1];
+
+  const makeProposal = (proposalId: number): ApiProposal => ({
+    ...baseApiProposal,
+    chainId: 1284,
+    proposalId,
+    targets: [WORMHOLE_CONTRACT],
+    votingEndTime: 1_500_000_000,
+    stateChanges: [{ ...queuedChange, state: "EXECUTED", chainId: 1284 }],
+  });
+
+  test("reports every failed read of a chain in a single onError call", async () => {
+    const onError = vi.fn();
+    const proposals = [201, 202, 203, 204, 205].map(makeProposal);
+
+    const data = await getProposalsOnChainData(proposals, makeEnv(onError));
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      source: "governance-proposals",
+      chainId: 1284,
+      operation: "proposal-onchain-read",
+      failedCount: 10,
+      totalCount: 10,
+      items: ["201", "202", "203", "204", "205"],
+    });
+    // The API-derived state fallback still applies to every proposal.
+    expect(data.map((d) => d.state)).toEqual(
+      Array(5).fill(ProposalState.Executed),
+    );
+  });
+
+  test("counts only the reads that failed", async () => {
+    const onError = vi.fn();
+    const env = makeEnv(onError);
+    const read = (
+      env.contracts.multichainGovernor as unknown as {
+        read: { state: ReturnType<typeof vi.fn> };
+      }
+    ).read;
+    read.state.mockResolvedValue(MultichainProposalState.Executed);
+
+    await getProposalsOnChainData([makeProposal(201), makeProposal(202)], env);
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]).toMatchObject({
+      failedCount: 2,
+      totalCount: 4,
+      items: ["201", "202"],
+    });
+  });
+
+  test("does not report when every read succeeds", async () => {
+    const onError = vi.fn();
+    const env = makeEnv(onError);
+    const read = (
+      env.contracts.multichainGovernor as unknown as {
+        read: {
+          state: ReturnType<typeof vi.fn>;
+          proposals: ReturnType<typeof vi.fn>;
+        };
+      }
+    ).read;
+    read.state.mockResolvedValue(MultichainProposalState.Executed);
+    read.proposals.mockResolvedValue(buildProposalsTuple(1_700_000_000n));
+
+    await getProposalsOnChainData([makeProposal(201)], env);
+
+    expect(onError).not.toHaveBeenCalled();
+  });
+});

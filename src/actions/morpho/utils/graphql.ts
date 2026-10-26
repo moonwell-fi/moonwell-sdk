@@ -43,7 +43,6 @@ export async function getVaultV2Apy(
     query VaultV2Apy($address: String!, $chainId: Int!) {
       vaultV2ByAddress(address: $address, chainId: $chainId) {
         address
-        avgApy
         avgNetApy
         totalAssets
         totalAssetsUsd
@@ -66,7 +65,6 @@ export async function getVaultV2Apy(
             }
           }
           supplyApr
-          yearlySupplyTokens
         }
       }
     }

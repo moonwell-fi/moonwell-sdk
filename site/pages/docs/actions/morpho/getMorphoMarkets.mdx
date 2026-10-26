@@ -57,6 +57,21 @@ if (market.collateralAssets === null) {
 
 ## Parameters
 
+### includeSharedLiquidity (optional)
+
+- **Type:** `boolean`
+- **Default:** `true`
+
+Set to `false` to return base market data and optional rewards without requesting public-allocator shared liquidity. This also omits the expensive allocator fields in the Morpho GraphQL request during RPC fallback.
+
+Check `sharedLiquidityStatus` before interpreting `publicAllocatorSharedLiquidity`:
+
+- `available`: the allocator request succeeded; an empty list means no allocations were returned.
+- `not-requested`: the caller opted out; an empty list does not mean zero reallocatable liquidity.
+- `unavailable`: enrichment failed; base market data is still returned.
+
+Use [getMorphoMarketsSharedLiquidity](/docs/actions/morpho/getMorphoMarketsSharedLiquidity) as an independent query to enrich a full chain's market list. Keep liquidity query status and freshness separate from base market data.
+
 ### includeRewards (optional)
 
 - **Type:** `boolean`

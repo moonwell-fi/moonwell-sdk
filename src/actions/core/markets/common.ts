@@ -17,7 +17,10 @@ import {
   findTokenByAddress,
 } from "../../../environments/utils/index.js";
 import type { Market } from "../../../types/market.js";
-import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
+import {
+  getGovernanceTokenPriceFor,
+  getGovernanceTokenPriceOrZero,
+} from "../../governance/getWellPrice.js";
 
 export const getMarketsData = async (environment: Environment) => {
   // Moonriver (chainId 1285) should always use on-chain data
@@ -508,15 +511,36 @@ async function fetchMarketsFromLunar(
   });
 
   const lunarMarketsResponse = await client.listMarkets(environment.chainId);
-  const lunarMarkets = lunarMarketsResponse.results;
+  const rawLunarMarkets = lunarMarketsResponse?.results;
+  // The indexer has served a 2xx body without `results` (Sentry
+  // MOONWELL-FRONTEND-10J, MOO-535). Throwing here routes through
+  // getMarketsData's catch: one onError and the on-chain fallback, instead of a
+  // TypeError out of `.some` on undefined.
+  if (!Array.isArray(rawLunarMarkets)) {
+    throw new Error(
+      `Lunar Indexer markets response for chain ${environment.chainId} is missing the results array`,
+    );
+  }
 
-  const needsRpcPrices = lunarMarkets.some((market) =>
-    market.incentives.some(
-      (incentive) =>
-        incentive.priceUsd === null ||
-        incentive.supplyApr === null ||
-        incentive.borrowApr === null,
-    ),
+  // A `null` entry would throw a TypeError out of the needsRpcPrices pre-scan
+  // below, before the per-record try (PR #339 review). Drop it here; it is
+  // counted with the other malformed records.
+  const lunarMarkets = rawLunarMarkets.filter(
+    (market) => market !== null && typeof market === "object",
+  );
+
+  // A record without `incentives` is skipped by the per-record guard below; it
+  // must not throw out of this pre-scan and take the whole chain to the on-chain
+  // fallback (PR #339 review).
+  const needsRpcPrices = lunarMarkets.some(
+    (market) =>
+      Array.isArray(market.incentives) &&
+      market.incentives.some(
+        (incentive) =>
+          incentive.priceUsd === null ||
+          incentive.supplyApr === null ||
+          incentive.borrowApr === null,
+      ),
   );
 
   let governanceTokenPrice: Amount | undefined;
@@ -530,13 +554,7 @@ async function fetchMarketsFromLunar(
 
     const [nativeTokenPriceRaw, governanceTokenPriceRaw] = await Promise.all([
       homeEnvironment.contracts.views?.read.getNativeTokenPrice(),
-      getGovernanceTokenPriceFor(environment).catch((err) => {
-        environment.onError?.(err, {
-          source: "governance-token-price",
-          chainId: environment.chainId,
-        });
-        return 0n;
-      }),
+      getGovernanceTokenPriceOrZero(environment),
     ]);
 
     if (nativeTokenPriceRaw === undefined) {
@@ -548,7 +566,7 @@ async function fetchMarketsFromLunar(
   }
 
   const markets: Market[] = [];
-  let malformedCount = 0;
+  let malformedCount = rawLunarMarkets.length - lunarMarkets.length;
   let malformedIncentiveCount = 0;
 
   for (const lunarMarket of lunarMarkets) {
@@ -707,6 +725,14 @@ async function fetchMarketsFromLunar(
         totalSupplyApr: 0,
         rewards: [],
       };
+
+      // Inside the record-level try: the catch skips and reports only this
+      // record, where a TypeError from the loop would have had no context.
+      if (!Array.isArray(lunarMarket.incentives)) {
+        throw new Error(
+          `Lunar market ${lunarMarket.address} is missing the incentives array`,
+        );
+      }
 
       for (const incentive of lunarMarket.incentives) {
         // A malformed incentive costs its own reward entry, not the market.
@@ -876,54 +902,55 @@ async function fetchMarketsFromLunar(
 }
 
 const fetchFromGenericCacheApi = async <T>(uri: string): Promise<T> => {
-  const response = await fetch(
-    "https://generic-api-cache.moonwell.workers.dev/",
-    {
-      method: "POST",
-      body: `{"uri":"${uri}","cacheDuration":"300"}`,
-      headers: {
-        ...MOONWELL_FETCH_JSON_HEADERS,
-        "Content-Type": "text/plain",
+  // AbortSignal.timeout is not available in every browser supported by SDK
+  // consumers. Keep the timeout local and release it after reading the body.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const response = await fetch(
+      "https://generic-api-cache.moonwell.workers.dev/",
+      {
+        method: "POST",
+        body: `{"uri":"${uri}","cacheDuration":"300"}`,
+        signal: controller.signal,
+        headers: {
+          ...MOONWELL_FETCH_JSON_HEADERS,
+          "Content-Type": "text/plain",
+        },
       },
-    },
-  );
+    );
 
-  return response.json() as T;
+    if (!response.ok)
+      throw new Error(`Staking APR request failed: ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
-export const fetchLiquidStakingRewards = async () => {
-  const result = {
-    cbETH: 0,
-    rETH: 0,
-    wstETH: 0,
-  };
-
-  try {
-    const cbETH = await fetchFromGenericCacheApi<{ apy: string }>(
+export const fetchLiquidStakingRewards = async (): Promise<{
+  cbETH: number;
+  rETH: number;
+  wstETH: number;
+}> => {
+  // Each provider can succeed independently, and each has a bounded request.
+  // Preserve the existing zero fallback for callers of this optional enrichment.
+  const [cbETH, rETH, wstETH] = await Promise.all([
+    fetchFromGenericCacheApi<{ apy: string }>(
       "https://api.exchange.coinbase.com/wrapped-assets/CBETH",
-    );
-    result.cbETH = Number(cbETH.apy) * 100;
-  } catch (error) {
-    result.cbETH = 0;
-  }
-
-  try {
-    const rETH = await fetchFromGenericCacheApi<{ rethAPR: string }>(
+    )
+      .then((result) => Number(result.apy) * 100)
+      .catch(() => 0),
+    fetchFromGenericCacheApi<{ rethAPR: string }>(
       "https://rocketpool.net/api/mainnet/payload",
-    );
-    result.rETH = Number(rETH.rethAPR);
-  } catch (error) {
-    result.rETH = 0;
-  }
-
-  try {
-    const stETH = await fetchFromGenericCacheApi<{ data: { apr: number } }>(
+    )
+      .then((result) => Number(result.rethAPR))
+      .catch(() => 0),
+    fetchFromGenericCacheApi<{ data: { apr: number } }>(
       "https://eth-api.lido.fi/v1/protocol/steth/apr/last",
-    );
-    result.wstETH = stETH.data.apr;
-  } catch (error) {
-    result.wstETH = 0;
-  }
-
-  return result;
+    )
+      .then((result) => result.data.apr)
+      .catch(() => 0),
+  ]);
+  return { cbETH, rETH, wstETH };
 };

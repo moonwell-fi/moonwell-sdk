@@ -5,6 +5,8 @@ export {
 
 export { MerklApiError } from "./actions/morpho/user-rewards/common.js";
 export { MorphoUserRewardsAggregateError } from "./actions/morpho/user-rewards/getMorphoUserRewards.js";
+export { ChainReadError } from "./common/error.js";
+export type { ChainReadFailure } from "./common/error.js";
 
 export type {
   MarketConfig,
@@ -18,6 +20,7 @@ export type { Discussion } from "./types/discussion.js";
 export type { Market, MarketReward, MarketSnapshot } from "./types/market.js";
 export type {
   MorphoMarket,
+  MorphoMarketSharedLiquidity,
   MorphoMarketParamsType,
   PublicAllocatorSharedLiquidityType,
 } from "./types/morphoMarket.js";

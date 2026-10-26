@@ -15,6 +15,7 @@ import type {
   MorphoVaultMarket,
   MorphoVaultSnapshot,
 } from "../../../types/morphoVault.js";
+import { LunarIndexerError } from "../../lunar-indexer-client.js";
 
 /**
  * Lunar Indexer API Response Types
@@ -248,13 +249,14 @@ export function transformVaultFromIndexer(
   // where totalLiquidity briefly exceeds totalAssets.
   const vaultSupplyValue = Math.max(0, totalAssetsValue - totalLiquidityValue);
 
-  // Transform markets
-  const markets = indexerVault.markets.map((market) =>
+  // Transform markets. The indexer has served vaults without `markets` /
+  // `rewards` (Sentry MOONWELL-FRONTEND-GX); keep the vault with empty lists.
+  const markets = (indexerVault.markets ?? []).map((market) =>
     transformMarket(market, underlyingDecimals, totalAssetsValue, tokenMap),
   );
 
   // Transform rewards
-  const rewards = transformRewards(indexerVault.rewards, tokenMap);
+  const rewards = transformRewards(indexerVault.rewards ?? [], tokenMap);
 
   // Build vault object
   const vault: MorphoVault = {
@@ -313,9 +315,99 @@ export function transformVaultsFromIndexer(
   environment: Environment,
   tokenMap: Map<string, LunarIndexerToken>,
 ): MorphoVault[] {
-  return indexerVaults.map((vault) =>
-    transformVaultFromIndexer(vault, environment, tokenMap),
-  );
+  // A malformed record costs only that record, never the chain's whole list.
+  // Missing `markets` / `rewards` keep the vault (as empty lists); a vault
+  // that cannot be built at all is dropped. Both are reported once per call,
+  // with `droppedCount` telling them apart: only the first error is reported,
+  // so a consumer demoting the kept case (the frontend logs it at warning,
+  // since the list still renders in full) would otherwise misread a batch
+  // where a kept record precedes a dropped one.
+  const malformed: string[] = [];
+  let droppedCount = 0;
+  let firstError: unknown;
+  const vaults = indexerVaults.flatMap((vault) => {
+    // A `null` entry would throw on `vault.markets` below, before the try
+    // (PR #339 review). Drop it and count it with the other malformed records.
+    if (vault === null || typeof vault !== "object") {
+      malformed.push(String(vault));
+      droppedCount += 1;
+      firstError ??= new Error(
+        `Lunar Indexer vault record is ${String(vault)}, not an object`,
+      );
+      return [];
+    }
+    if (!Array.isArray(vault.markets) || !Array.isArray(vault.rewards)) {
+      malformed.push(vault.address);
+      firstError ??= new Error(
+        `Lunar Indexer vault ${vault.address} is missing ${!Array.isArray(vault.markets) ? "markets" : "rewards"}`,
+      );
+    }
+    try {
+      return [transformVaultFromIndexer(vault, environment, tokenMap)];
+    } catch (error) {
+      if (!malformed.includes(vault.address)) malformed.push(vault.address);
+      droppedCount += 1;
+      firstError ??= error;
+      return [];
+    }
+  });
+
+  if (malformed.length > 0) {
+    console.warn(
+      `Malformed Lunar Indexer vault record(s) on chain ${environment.chainId}: ${malformed.join(", ")}`,
+      firstError,
+    );
+    environment.onError?.(firstError, {
+      source: "vaults",
+      chainId: environment.chainId,
+      operation: "malformed-vault-records",
+      failedCount: malformed.length,
+      totalCount: indexerVaults.length,
+      items: malformed,
+      droppedCount,
+    });
+  }
+
+  return vaults;
+}
+
+/**
+ * Fetch JSON from the Lunar Indexer and reject on a non-OK or missing response.
+ *
+ * `response` can arrive `undefined` when a wallet extension monkeypatches
+ * `window.fetch` (Sentry MOONWELL-FRONTEND-H0 / -133, MOO-535); reading `.ok`
+ * on it used to throw a bare TypeError instead of a diagnosable error.
+ *
+ * The rejection is a `LunarIndexerError` whose message must not start with
+ * "Failed to fetch": the frontend's Sentry noise filter substring-matches that
+ * browser transport text and dropped every failure raised here (PR #339
+ * review). Consumers should match on `error.name`, not on the message.
+ *
+ * `AbortSignal.timeout` is missing in Safari < 16 and older WebViews, where it
+ * throws a bare TypeError before `fetch` runs; use AbortController instead and
+ * keep the timer alive until the body has been read.
+ */
+async function fetchJsonFromIndexer<T>(url: string, what: string): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response: Response | undefined = await fetch(url, {
+      signal: controller.signal,
+    });
+    if (!response?.ok) {
+      const status = response
+        ? `${response.status} ${response.statusText}`
+        : "no response";
+      throw new LunarIndexerError(
+        `Lunar Indexer ${what} request failed: ${status}`,
+        response?.status,
+        url,
+      );
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -331,15 +423,15 @@ export async function fetchTokenMap(
 ): Promise<Map<string, LunarIndexerToken>> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/tokens/${chainId}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-
-  if (!response.ok) {
+  const data = await fetchJsonFromIndexer<LunarIndexerTokensResponse>(
+    url,
+    "tokens",
+  );
+  if (!Array.isArray(data?.results)) {
     throw new Error(
-      `Failed to fetch tokens from Lunar Indexer: ${response.status} ${response.statusText}`,
+      `Lunar Indexer tokens response for chain ${chainId} is missing the results array`,
     );
   }
-
-  const data: LunarIndexerTokensResponse = await response.json();
 
   const tokenMap = new Map<string, LunarIndexerToken>();
   for (const token of data.results) {
@@ -373,15 +465,17 @@ export async function fetchVaultsFromIndexer(
 
   const url = `${lunarIndexerUrl}/api/v1/vaults/vaults/${chainId}${params.toString() ? `?${params.toString()}` : ""}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-
-  if (!response.ok) {
+  const data = await fetchJsonFromIndexer<LunarIndexerVaultsResponse>(
+    url,
+    "vaults",
+  );
+  // transformVaultsFromIndexer calls `.flatMap` on this array (PR #339 review).
+  if (!Array.isArray(data?.results)) {
     throw new Error(
-      `Failed to fetch vaults from Lunar Indexer: ${response.status} ${response.statusText}`,
+      `Lunar Indexer vaults response for chain ${chainId} is missing the results array`,
     );
   }
-
-  return response.json();
+  return data;
 }
 
 /**
@@ -397,15 +491,7 @@ export async function fetchVaultFromIndexer(
 ): Promise<LunarIndexerVault> {
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch vault from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.json();
+  return fetchJsonFromIndexer<LunarIndexerVault>(url, "vault");
 }
 
 /**
@@ -464,15 +550,10 @@ export async function fetchVaultSnapshotsFromIndexer(
   const queryString = params.toString();
   const url = `${lunarIndexerUrl}/api/v1/vaults/vault/${vaultId}/snapshots${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch vault snapshots from Lunar Indexer: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.json();
+  return fetchJsonFromIndexer<LunarIndexerVaultSnapshotsResponse>(
+    url,
+    "vault snapshots",
+  );
 }
 
 /**

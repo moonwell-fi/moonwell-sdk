@@ -1,6 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { testClient } from "../../../../test/client.js";
-import type { base } from "../../../environments/index.js";
+import type { MoonwellClient } from "../../../client/createMoonwellClient.js";
+import { ChainReadError } from "../../../common/error.js";
+import type { Environment, base } from "../../../environments/index.js";
+import { getMorphoVaultUserPositions } from "./getMorphoVaultUserPositions.js";
 
 // Test addresses with known positions - can be updated if needed
 const TEST_USER_ADDRESS = "0xd7854FC91f16a58D67EC3644981160B6ca9C41B8";
@@ -364,5 +367,122 @@ describe("Testing getMorphoVaultUserPositions", () => {
         expect(position.chainId).toBe(Number(chainId));
       });
     }
+  });
+});
+
+describe("getMorphoVaultUserPositions failure surfacing", () => {
+  const VAULT_ADDRESS = "0x000000000000000000000000000000000000000a";
+
+  const makeEnv = (
+    chainId: number,
+    balanceOf: ReturnType<typeof vi.fn>,
+  ): { env: Environment; onError: ReturnType<typeof vi.fn> } => {
+    const onError = vi.fn();
+    const env = {
+      chainId,
+      onError,
+      contracts: { views: {}, morphoViews: {} },
+      vaults: {
+        mwUSDC: {
+          address: VAULT_ADDRESS,
+          read: {
+            balanceOf,
+            convertToAssets: vi.fn(async () => 0n),
+          },
+        },
+      },
+      config: {
+        tokens: {
+          USDC: {
+            symbol: "USDC",
+            decimals: 6,
+            address: "0x00000000000000000000000000000000000000ff",
+          },
+          mwUSDC: { symbol: "mwUSDC", decimals: 18, address: VAULT_ADDRESS },
+        },
+        vaults: { mwUSDC: { vaultToken: "mwUSDC", underlyingToken: "USDC" } },
+      },
+    } as unknown as Environment;
+    return { env, onError };
+  };
+
+  test("a failed vault read on one chain rejects with a ChainReadError carrying the healthy chain's positions", async () => {
+    const rpcError = new Error("HTTP request failed: 429 Too Many Requests");
+    const failing = makeEnv(
+      8453,
+      vi.fn(async () => {
+        throw rpcError;
+      }),
+    );
+    const healthy = makeEnv(
+      10,
+      vi.fn(async () => 0n),
+    );
+    const client = {
+      environments: { base: failing.env, optimism: healthy.env },
+    } as unknown as MoonwellClient;
+
+    const promise = getMorphoVaultUserPositions(client, {
+      userAddress: TEST_USER_ADDRESS,
+    });
+
+    await expect(promise).rejects.toBeInstanceOf(ChainReadError);
+    await expect(promise).rejects.toMatchObject({
+      source: "getMorphoVaultUserPositions",
+      failures: [{ chainId: 8453, reason: rpcError }],
+      data: [{ chainId: 10 }],
+    });
+
+    // Surfaced through the rejection only, not additionally through onError.
+    expect(failing.onError).not.toHaveBeenCalled();
+    expect(healthy.onError).not.toHaveBeenCalled();
+  });
+
+  test("every chain failing rejects with a ChainReadError listing each chain", async () => {
+    const baseError = new Error("base down");
+    const optimismError = new Error("optimism down");
+    const a = makeEnv(
+      8453,
+      vi.fn(async () => {
+        throw baseError;
+      }),
+    );
+    const b = makeEnv(
+      10,
+      vi.fn(async () => {
+        throw optimismError;
+      }),
+    );
+    const client = {
+      environments: { base: a.env, optimism: b.env },
+    } as unknown as MoonwellClient;
+
+    await expect(
+      getMorphoVaultUserPositions(client, { userAddress: TEST_USER_ADDRESS }),
+    ).rejects.toMatchObject({
+      failures: [
+        { chainId: 8453, reason: baseError },
+        { chainId: 10, reason: optimismError },
+      ],
+      data: [],
+    });
+  });
+
+  test("an account with no vault shares resolves with zeroed positions and no error", async () => {
+    const healthy = makeEnv(
+      8453,
+      vi.fn(async () => 0n),
+    );
+    const client = {
+      environments: { base: healthy.env },
+    } as unknown as MoonwellClient;
+
+    const result = await getMorphoVaultUserPositions(client, {
+      userAddress: TEST_USER_ADDRESS,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.suppliedShares.exponential).toBe(0n);
+    expect(healthy.onError).not.toHaveBeenCalled();
   });
 });

@@ -610,3 +610,54 @@ describe("getProposals snapshotBlocks passthrough", () => {
     expect(result[0]?.snapshotBlocks?.moonbeam).toBeUndefined();
   });
 });
+
+// The full history is ~7MB across the three governance chains, almost all of it
+// from the halted Moonbeam/Moonriver archives. Callers that only show recent
+// proposals can request just the active chain; the default stays the full list.
+describe("getProposals proposalChainIds", () => {
+  test("fetches only the requested governance chains", async () => {
+    mockedFetchAll.mockResolvedValueOnce([
+      makeApiProposal(ETHEREUM_CHAIN_ID, 5),
+    ]);
+    mockedOnChain.mockResolvedValueOnce([defaultOnChain]);
+
+    const result = await getProposals(client, {
+      network: "ethereum",
+      proposalChainIds: [ETHEREUM_CHAIN_ID],
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(mockedFetchAll).toHaveBeenCalledTimes(1);
+    expect(mockedFetchAll).toHaveBeenCalledWith(ethereumEnv, {
+      chainId: ETHEREUM_CHAIN_ID,
+    });
+    expect(result.map((p) => p.chainId)).toEqual([ETHEREUM_CHAIN_ID]);
+  });
+
+  test("fetches the archive chains on their own", async () => {
+    mockedOnChain.mockResolvedValueOnce([]);
+
+    await getProposals(client, {
+      network: "ethereum",
+      proposalChainIds: [MOONBEAM_CHAIN_ID, MOONRIVER_CHAIN_ID],
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(mockedFetchAll.mock.calls.map(([, o]) => o.chainId)).toEqual([
+      MOONBEAM_CHAIN_ID,
+      MOONRIVER_CHAIN_ID,
+    ]);
+  });
+
+  test("defaults to every governance chain", async () => {
+    mockedOnChain.mockResolvedValueOnce([]);
+
+    await getProposals(client, {
+      network: "ethereum",
+    } as unknown as Parameters<typeof getProposals>[1]);
+
+    expect(mockedFetchAll.mock.calls.map(([, o]) => o.chainId)).toEqual([
+      ETHEREUM_CHAIN_ID,
+      MOONBEAM_CHAIN_ID,
+      MOONRIVER_CHAIN_ID,
+    ]);
+  });
+});

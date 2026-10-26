@@ -1,5 +1,70 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.25.1
+
+### Patch Changes
+
+- [#338](https://github.com/moonwell-fi/moonwell-sdk/pull/338) [`dd6a28b4245de4d28a8add7b24496524fad0561a`](https://github.com/moonwell-fi/moonwell-sdk/commit/dd6a28b4245de4d28a8add7b24496524fad0561a) Thanks [@bprofiro](https://github.com/bprofiro)! - Bump `axios` to `^1.20.0` to pick up the fixes for the advisories published against `axios@<1.20.0`.
+
+- [#339](https://github.com/moonwell-fi/moonwell-sdk/pull/339) [`1469992d7f5250a36dacd88502e35efda6a0c896`](https://github.com/moonwell-fi/moonwell-sdk/commit/1469992d7f5250a36dacd88502e35efda6a0c896) Thanks [@bprofiro](https://github.com/bprofiro)! - Guard the remaining Lunar Indexer response shapes that the SDK iterated unguarded (MOO-535):
+
+  - `getMarkets`: a 2xx markets body without `results` now throws a descriptive error that `getMarketsData` catches, reports once through `onError` (`source: "markets"`) and falls back to on-chain reads, instead of a `TypeError` from `lunarMarkets.some` (Sentry MOONWELL-FRONTEND-10J).
+  - Shared liquidity: a vault record without a `markets` array fails validation with "Invalid shared-liquidity response (vault … has no markets array)" instead of a `TypeError` from the validation loop (Sentry MOONWELL-FRONTEND-116).
+  - Vault indexer fetches (tokens, vaults, vault, snapshots): a `fetch` that resolves without a `Response` (seen when a wallet extension monkeypatches `window.fetch`) now rejects with a `LunarIndexerError` instead of a `TypeError` reading `.ok` on `undefined` (Sentry MOONWELL-FRONTEND-H0 / -133). These rejections, including the existing non-OK ones, now read "Lunar Indexer … request failed: …" instead of "Failed to fetch … from Lunar Indexer: …", so Sentry noise filters that substring-match the browser's "Failed to fetch" transport text no longer drop them; match on `error.name === "LunarIndexerError"` rather than on the message. The 10 s timeout now uses `AbortController` instead of `AbortSignal.timeout`, which is missing in Safari < 16 and older WebViews.
+  - `getMarkets` and the vault transform: a `null` record in the indexer's `results` array is dropped and counted with the other malformed records instead of throwing a `TypeError` out of the whole chain.
+  - `getMarkets`: a market record without an `incentives` array is skipped and reported with the other malformed records (`source: "markets-malformed-records"`) instead of throwing a `TypeError` out of the whole chain.
+  - Tokens and vaults bodies without `results`, and a morpho markets body without `results`, throw "… response for chain … is missing the results array" instead of a `TypeError` from iteration.
+  - Shared liquidity: a `null` vault entry fails validation with the same named error as a vault without `markets`.
+  - `OnErrorContext` gains an optional `droppedCount`: how many of the failed items were left out of the result rather than kept in a degraded form. The vault transform's `malformed-vault-records` report sets it, so a consumer can tell a vault kept with empty `markets` / `rewards` from one dropped from the list (with any user position in it) even when only the first error is reported.
+
+- [#341](https://github.com/moonwell-fi/moonwell-sdk/pull/341) [`93b9c1cd74d22cda3e2c627d24a4561d57d6f9ff`](https://github.com/moonwell-fi/moonwell-sdk/commit/93b9c1cd74d22cda3e2c627d24a4561d57d6f9ff) Thanks [@bprofiro](https://github.com/bprofiro)! - Load the Beam quote implementation (`@biconomy/abstractjs`, `@across-protocol/app-sdk`) on the first `getBeamQuote` call instead of when the client is created, so apps that never request a Beam quote no longer ship those SDKs in their initial bundle.
+
+## 0.25.0
+
+### Minor Changes
+
+- [#335](https://github.com/moonwell-fi/moonwell-sdk/pull/335) [`53cc4d0e2678cc16f2afd3af916495cbfbdf188d`](https://github.com/moonwell-fi/moonwell-sdk/commit/53cc4d0e2678cc16f2afd3af916495cbfbdf188d) Thanks [@bprofiro](https://github.com/bprofiro)! - **Behavior change:** batched reads now report failures through `onError` once per operation instead of once per item. viem batches these reads into a single multicall, so one failed request used to fan out into dozens of events (Sentry MOONWELL-FRONTEND-1AX: ~226 events per session).
+
+  `OnErrorContext` gains the optional fields `operation`, `failedCount`, `totalCount` and `items` (the failed proposalIds, token addresses, vault keys or requesting chainIds). Existing fields are unchanged.
+
+  - `getProposals` / `getProposal`: governor `state` / `proposals` read failures are reported once per chain (`source: "governance-proposals"`, `operation: "proposal-onchain-read"`). The API-derived state fallback is unchanged.
+  - `getUserBalances`: failed token reads are reported once per chain (`source: "user-balances-token-read"`, `operation: "token-balance-read"`). `token` is still set when exactly one token failed.
+  - `getGovernanceTokenPriceFor`: concurrent calls reading through the same price-source environment (the Base environment for every WELL chain) share one in-flight read, and a successful price is reused for 10 seconds; failures are never cached. Environments with different RPC configurations never share a read. A failed read is reported once per `onError` callback, with `chainId` set to the price source chain and `items` listing the requesting chainIds.
+  - `getMorphoVaults({ includeRewards: true })`: staking-reward prices are read once per environment (in parallel across environments) instead of sequentially per vault. Price and per-vault reward failures, previously only logged with `console.warn`, are now reported once per environment (`source: "morpho-vault-staking-rewards"`).
+  - `getMorphoVaults`: a malformed Lunar Indexer vault record no longer takes down the chain's whole vault list (Sentry MOONWELL-FRONTEND-GX). A vault missing `markets` / `rewards` is kept with empty lists; a vault that cannot be built at all is dropped. Both are reported once per chain (`source: "vaults"`, `operation: "malformed-vault-records"`, `items`: vault addresses).
+  - Shared liquidity: when the SDK's own deadline (15s by default, `timeoutMs`) aborts the request, it now rejects and reports an `Error` named `TimeoutError` ("Shared-liquidity request timed out after …ms", original `CanceledError` as `cause`) instead of a bare `CanceledError: canceled` (Sentry MOONWELL-FRONTEND-1C7/1C8/1CA/1CN/1CS). An abort from the caller's `signal` still rejects with the `CanceledError` and is not reported.
+  - Shared liquidity: "Invalid shared-liquidity response" now says what was received (body type, size or top-level keys) to diagnose Sentry MOONWELL-FRONTEND-1C5. Validation is unchanged.
+
+  `getProposals` accepts an optional `proposalChainIds` (e.g. `[1]`) to fetch only some governance chains. The Moonbeam/Moonriver archives are ~6.6MB of the ~7MB full history, so views that only show recent proposals can skip them. The default is unchanged (all chains).
+
+## 0.24.0
+
+### Minor Changes
+
+- [#331](https://github.com/moonwell-fi/moonwell-sdk/pull/331) [`53e8007fee2b2782133ff8a21d6ba4c7ea4e4b66`](https://github.com/moonwell-fi/moonwell-sdk/commit/53e8007fee2b2782133ff8a21d6ba4c7ea4e4b66) Thanks [@apokusin](https://github.com/apokusin)! - Allow isolated-market base data to load independently of public-allocator shared liquidity. Add `includeSharedLiquidity: false` to market actions, explicit liquidity status, and a separate `getMorphoMarketsSharedLiquidity` action with cancellation and a 15-second total request/retry deadline. Existing callers continue to request enrichment by default. Reuse a single Morpho GraphQL response during RPC fallback and omit allocator fields when opted out.
+
+  Validate Lunar allocator quantities before computing liquidity. Malformed or missing required data rejects the independent action and marks default enrichment unavailable while preserving base markets. Keep legitimate zero responses, large raw integers and the supply-minus-borrow fallback.
+
+  Fix retry counts resetting when Axios merges request configs, stop retries on cancellation, and scope HTTP timeouts to SDK requests without mutating the host application's Axios defaults. Fetch staking APR providers in parallel with each other and core markets, with bounded provider requests and the existing fallback behavior.
+
+- [#332](https://github.com/moonwell-fi/moonwell-sdk/pull/332) [`d97006c0c4cea3618c32c000387d39d82a8005ae`](https://github.com/moonwell-fi/moonwell-sdk/commit/d97006c0c4cea3618c32c000387d39d82a8005ae) Thanks [@bprofiro](https://github.com/bprofiro)! - **Behavior change:** `getUserPositions`, `getMorphoMarketUserPositions` and `getMorphoVaultUserPositions` now reject when the read fails on any requested chain instead of silently returning a list that is missing that chain's positions. The rejection is a new exported `ChainReadError` (an `AggregateError` subclass) whose `failures` lists every failed chain as `{ chainId, reason }` with the original RPC/contract error, and whose `data` carries the positions from the chains that did succeed, so a consumer can keep rendering the healthy chains while flagging the broken one.
+
+  These failures are surfaced only through the rejection. They are **not** also reported through the client's `onError` callback, so a consumer that retries the call is not told about the same outage once per attempt per chain; report the rejection where you handle it.
+
+  `getUserPosition`, `getMorphoMarketUserPosition` and `getMorphoVaultUserPosition` likewise reject on a failed read (with the original error, since they read a single chain) instead of resolving to `undefined`. A failed `getUserBalances` / `getUserBorrowsBalances` / `getUserMarketsMemberships` read is no longer treated as an empty balance. When only `getAllMarketsInfo` fails and positions are computed through the per-mToken fallback (USD values reported as `0`), that failure is now reported through `onError` with `source: "user-positions-oracle-fallback"`. Chains without the relevant deployment are still skipped, and an account with no positions still resolves normally.
+
+  Consumers that treated an empty array as "no positions" should now handle the rejection. With TanStack Query: keep the last good result with `placeholderData: keepPreviousData`, gate the empty state on `isError` rather than on `data === undefined`, read partial results from `error.data` when `error instanceof ChainReadError`, and consider a lower `retry` for these queries since every attempt re-reads the healthy chains too. This fixes a Base RPC failure being shown as a `$0.00` credit limit and disabled borrow confirmation in isolated markets (MOO-884, MOO-885).
+
+## 0.23.0
+
+### Minor Changes
+
+- [#327](https://github.com/moonwell-fi/moonwell-sdk/pull/327) [`b57b7eb0d882d7d1357a0a8ae39d9d82714f5fd4`](https://github.com/moonwell-fi/moonwell-sdk/commit/b57b7eb0d882d7d1357a0a8ae39d9d82714f5fd4) Thanks [@bprofiro](https://github.com/bprofiro)! - `getUserBalances` no longer reports a failed balance read as a zero balance (MOO-832). Previously an RPC failure on a single `balanceOf` / `getBalance` call resolved to `{ amount: 0n }`, so consumers received a "successful" response in which a funded wallet read as empty — the Moonwell frontend gates repay-all on that figure, and one transient RPC hiccup during a refetch left the confirm button disabled for 59 users (Sentry MOONWELL-FRONTEND-195).
+
+  A token whose read fails is now **omitted** from the result — an absent entry means the balance is unknown, a `0n` entry means the wallet is genuinely empty — and the failure is routed to `environment.onError` with `source: "user-balances-token-read"` (plus `chainId` and `token`). Per-chain and views-multicall fallback behavior is unchanged. Consumers that index the result by token should treat a missing entry as "could not be determined" rather than as zero.
+
+  The `onError` context shape is now exported as `OnErrorContext` from the environments module and shared by `createEnvironmentConfig`, `Environment`, and the client-level `createMoonwellClient` callback, so `context.token` is typed at every level a consumer can attach the callback.
+
 ## 0.22.0
 
 ### Minor Changes

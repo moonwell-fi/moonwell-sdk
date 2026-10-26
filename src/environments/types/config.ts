@@ -227,6 +227,30 @@ export type MorphoMarketsConfig<markets, tokens> = {} extends markets
 export type ContractsConfig<contracts, tokens> = {} extends contracts
   ? {}
   : { [name in keyof ContractConfig<tokens>]?: ContractConfig<tokens>[name] };
+
+/**
+ * Context passed to `onError` callbacks. `token` is set for per-token read failures.
+ *
+ * Batched reads report once per operation rather than once per item: `error`
+ * is the first failure, `failedCount`/`totalCount` size the batch and `items`
+ * identifies what failed (proposalIds, token/vault addresses, chainIds...).
+ *
+ * `droppedCount` is how many of the failed items were left out of the result
+ * rather than kept in a degraded form. Only `error` (the first failure) is
+ * reported, so without it a consumer cannot tell a batch whose failed records
+ * were all kept from one where a later record was dropped.
+ */
+export type OnErrorContext = {
+  source: string;
+  chainId: number;
+  token?: Address;
+  operation?: string;
+  failedCount?: number;
+  totalCount?: number;
+  items?: string[];
+  droppedCount?: number;
+};
+
 export type CustomConfig<custom> = {} extends custom
   ? {}
   : { [name in keyof CustomConfigType]?: CustomConfigType[name] };
@@ -276,10 +300,7 @@ export const createEnvironmentConfig = <
   indexerUrl?: string;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
-  onError?: (
-    error: unknown,
-    context: { source: string; chainId: number },
-  ) => void;
+  onError?: (error: unknown, context: OnErrorContext) => void;
   tokens: TokensConfig<tokens>;
   markets: MarketsConfig<markets, tokens>;
   vaults: VaultsConfig<vaults, tokens>;
@@ -481,10 +502,7 @@ export type Environment<
   indexerUrl?: string;
   governanceIndexerUrl: string;
   lunarIndexerUrl?: string;
-  onError?: (
-    error: unknown,
-    context: { source: string; chainId: number },
-  ) => void;
+  onError?: (error: unknown, context: OnErrorContext) => void;
   tokens: {
     [name in keyof tokens]: TokenContractReturnType;
   };

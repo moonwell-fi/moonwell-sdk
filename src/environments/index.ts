@@ -49,7 +49,11 @@ import {
 } from "./definitions/polygon/environment.js";
 
 import { optimism } from "viem/chains";
-import type { Environment, TokenConfig } from "./types/config.js";
+import type {
+  Environment,
+  OnErrorContext,
+  TokenConfig,
+} from "./types/config.js";
 
 export {
   arbitrum,
@@ -68,6 +72,7 @@ export type {
   GovernanceToken,
   GovernanceTokenInfo,
   GovernanceTokensType,
+  OnErrorContext,
   Prettify,
   SupportedChains,
   SupportedChainsIds,

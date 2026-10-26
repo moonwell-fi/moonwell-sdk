@@ -144,6 +144,11 @@ import {
   getMorphoMarkets,
 } from "../actions/morpho/markets/getMorphoMarkets.js";
 import {
+  type GetMorphoMarketsSharedLiquidityParameters,
+  type GetMorphoMarketsSharedLiquidityReturnType,
+  getMorphoMarketsSharedLiquidity,
+} from "../actions/morpho/markets/getMorphoMarketsSharedLiquidity.js";
+import {
   type GetMorphoMarketUserPositionParameters,
   type GetMorphoMarketUserPositionReturnType,
   getMorphoMarketUserPosition,
@@ -288,6 +293,12 @@ export type Actions<
     args?: GetMorphoMarketsParameters<environments, chain>,
   ) => GetMorphoMarketsReturnType;
 
+  getMorphoMarketsSharedLiquidity: <
+    chain extends Chain | undefined = Chain | undefined,
+  >(
+    args: GetMorphoMarketsSharedLiquidityParameters<environments, chain>,
+  ) => GetMorphoMarketsSharedLiquidityReturnType;
+
   getMorphoMarketUserPosition: <
     chain extends Chain | undefined = Chain | undefined,
   >(
@@ -399,6 +410,8 @@ export const actions = <
     getUserVotingPowers: (args) => getUserVotingPowers(client, args),
     getMorphoMarket: (args) => getMorphoMarket(client, args),
     getMorphoMarkets: (args) => getMorphoMarkets(client, args),
+    getMorphoMarketsSharedLiquidity: (args) =>
+      getMorphoMarketsSharedLiquidity(client, args),
     getMorphoMarketUserPosition: (args) =>
       getMorphoMarketUserPosition(client, args),
     getMorphoMarketUserPositions: (args) =>

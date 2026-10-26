@@ -20,7 +20,16 @@ import {
 export type GetProposalsParameters<
   environments,
   network extends Chain | undefined,
-> = OptionalNetworkParameterType<environments, network>;
+> = OptionalNetworkParameterType<environments, network> & {
+  /**
+   * Governance chains to fetch proposals from: 1 (Ethereum, active),
+   * 1284 (Moonbeam archive) and/or 1285 (Moonriver archive). Defaults to all
+   * of them. The archives hold almost all of the payload (~6.6MB of ~7MB), so
+   * views that only show recent proposals can pass `[1]` and load the archives
+   * separately when needed. Unsupported chainIds are ignored.
+   */
+  proposalChainIds?: readonly number[];
+};
 
 export type GetProposalsReturnType = Promise<Proposal[]>;
 
@@ -42,7 +51,10 @@ export async function getProposals<
     return [];
   }
 
-  const proposals = await fetchGovernorProposals(governanceEnvironment);
+  const proposals = await fetchGovernorProposals(
+    governanceEnvironment,
+    args?.proposalChainIds,
+  );
   // Newer multigov-ethereum proposals (chainId=1) and historical Moonbeam
   // proposals (chainId=1284) restart their proposalId counters from 1, so IDs
   // may collide across chains. Sort by proposalId desc with chainId as a
@@ -58,7 +70,8 @@ export async function getProposals<
 }
 
 /**
- * Fetch every proposal the Governor API serves, across all governance chains.
+ * Fetch every proposal the Governor API serves, across all governance chains
+ * (or only `proposalChainIds`, when given).
  *
  * One indexer DO serves them all:
  *   - chainId=1    (Ethereum)  — the active multigov contract
@@ -76,16 +89,20 @@ export async function getProposals<
  */
 async function fetchGovernorProposals(
   governanceEnvironment: Environment,
+  proposalChainIds?: readonly number[],
 ): Promise<Proposal[]> {
+  const chainIds = SUPPORTED_GOVERNOR_CHAIN_IDS.filter(
+    (chainId) => !proposalChainIds || proposalChainIds.includes(chainId),
+  );
   const results = await Promise.allSettled(
-    SUPPORTED_GOVERNOR_CHAIN_IDS.map((chainId) =>
+    chainIds.map((chainId) =>
       fetchAllProposals(governanceEnvironment, { chainId }),
     ),
   );
 
   const apiProposals: ApiProposal[] = [];
   results.forEach((result, index) => {
-    const chainId = SUPPORTED_GOVERNOR_CHAIN_IDS[index];
+    const chainId = chainIds[index];
     if (result.status === "fulfilled") {
       apiProposals.push(...result.value);
     } else if (chainId !== undefined) {

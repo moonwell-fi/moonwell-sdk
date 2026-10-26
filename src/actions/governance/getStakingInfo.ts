@@ -10,7 +10,7 @@ import type { NetworkParameterType } from "../../common/types.js";
 import type { Chain, Environment } from "../../environments/index.js";
 import type { StakingInfo } from "../../types/staking.js";
 import { getMerklStakingApr } from "./common.js";
-import { getGovernanceTokenPriceFor } from "./getWellPrice.js";
+import { getGovernanceTokenPriceOrZero } from "./getWellPrice.js";
 
 export type GetStakingInfoParameters<
   environments,
@@ -150,7 +150,7 @@ export async function getStakingInfo<
                 blockNumber: BigInt(34149943),
               })
             : Promise.resolve(undefined),
-          getGovernanceTokenPriceFor(environment, baseEnvironment),
+          getGovernanceTokenPriceOrZero(environment, baseEnvironment),
         ]);
 
       const viewsStaking =
@@ -180,13 +180,6 @@ export async function getStakingInfo<
           : undefined;
 
       const price = priceResult.status === "fulfilled" ? priceResult.value : 0n;
-
-      if (priceResult.status === "rejected") {
-        environment.onError?.(priceResult.reason, {
-          source: "governance-token-price",
-          chainId: environment.chainId,
-        });
-      }
 
       return { stakingInfo, historicalStaking, price };
     }),

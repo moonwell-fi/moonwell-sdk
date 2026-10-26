@@ -574,4 +574,58 @@ describe("computeSharedLiquidityFromLunar", () => {
     const [entry] = result?.publicAllocatorSharedLiquidity ?? [];
     expect(entry?.allocationMarket).toBeUndefined();
   });
+
+  // Sentry MOONWELL-FRONTEND-1C5: the live payload passes validation, so the
+  // failures come from a top-level body that is not the expected shape. The
+  // error now says what was received so the next occurrence is diagnosable.
+  describe("invalid top-level response diagnostics", () => {
+    const compute = (data: unknown) => () =>
+      computeSharedLiquidityFromLunar(
+        data as LunarSharedLiquidityResponse,
+        [TARGET_ID],
+        new Map(),
+        8453,
+      );
+
+    test("describes a non-JSON body", () => {
+      expect(compute("<html>error code: 1102</html>")).toThrow(
+        'Invalid shared-liquidity response (received string of 29 chars: "<html>error code: 1102</html>")',
+      );
+    });
+
+    test("describes an object without the expected fields", () => {
+      expect(compute({ error: "upstream timeout" })).toThrow(
+        "Invalid shared-liquidity response (received object with keys [error]; vaults: undefined, markets: undefined)",
+      );
+    });
+
+    test("describes an empty body", () => {
+      expect(compute("")).toThrow(
+        'Invalid shared-liquidity response (received string of 0 chars: "")',
+      );
+      expect(compute(null)).toThrow(
+        "Invalid shared-liquidity response (received null)",
+      );
+    });
+
+    // Sentry MOONWELL-FRONTEND-116 (MOO-535): a vault record without `markets`
+    // used to escape as a TypeError from the validation loop.
+    // PR #339 review: a `null` entry in `vaults` reached `vault.fee` first.
+    test("describes a null vault record", () => {
+      expect(compute({ vaults: [null], markets: {} })).toThrow(
+        "Invalid shared-liquidity response (vault <null> has no markets array)",
+      );
+    });
+
+    test("describes a vault record without a markets array", () => {
+      expect(
+        compute({
+          vaults: [{ address: "0xabc", name: "Vault", fee: "0" }],
+          markets: {},
+        }),
+      ).toThrow(
+        "Invalid shared-liquidity response (vault 0xabc has no markets array)",
+      );
+    });
+  });
 });

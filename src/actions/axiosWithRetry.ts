@@ -14,17 +14,22 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 
 import { retry } from "./retry.js";
 
-// Only forward args the caller actually passed — calling axios.get(url, undefined)
-// is observably different from axios.get(url) for tests that assert call arity.
+// Request-local defaults: importing the SDK must not change the host app's axios
+// defaults. Callers with a different budget can override this timeout explicitly.
+export const DEFAULT_API_TIMEOUT_MS = 5_000;
 
 export function getWithRetry<T = unknown>(
   url: string,
   config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<T>> {
-  if (config !== undefined) {
-    return retry(() => axios.get<T>(url, config));
-  }
-  return retry(() => axios.get<T>(url));
+  return retry(
+    () =>
+      axios.get<T>(url, {
+        ...config,
+        timeout: config?.timeout ?? DEFAULT_API_TIMEOUT_MS,
+      }),
+    { signal: config?.signal },
+  );
 }
 
 export function postWithRetry<T = unknown, D = unknown>(
@@ -32,11 +37,12 @@ export function postWithRetry<T = unknown, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig<D>,
 ): Promise<AxiosResponse<T>> {
-  if (config !== undefined) {
-    return retry(() => axios.post<T, AxiosResponse<T>, D>(url, data, config));
-  }
-  if (data !== undefined) {
-    return retry(() => axios.post<T, AxiosResponse<T>, D>(url, data));
-  }
-  return retry(() => axios.post<T, AxiosResponse<T>, D>(url));
+  return retry(
+    () =>
+      axios.post<T, AxiosResponse<T>, D>(url, data, {
+        ...config,
+        timeout: config?.timeout ?? DEFAULT_API_TIMEOUT_MS,
+      }),
+    { signal: config?.signal },
+  );
 }

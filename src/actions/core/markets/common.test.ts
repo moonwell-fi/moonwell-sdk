@@ -111,6 +111,22 @@ describe("onError callback", () => {
     expect(mockOnError).not.toHaveBeenCalled();
   });
 
+  // Sentry MOONWELL-FRONTEND-10J (MOO-535): a 2xx body without `results` used
+  // to escape as a TypeError from `lunarMarkets.some`.
+  test("reports a body without results once and falls back to on-chain", async () => {
+    mockListMarkets.mockResolvedValue({});
+
+    await expect(getMarketsData(makeEnvironment())).resolves.toEqual([]);
+
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    const [error, context] = mockOnError.mock.calls[0];
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe(
+      `Lunar Indexer markets response for chain ${MOCK_CHAIN_ID} is missing the results array`,
+    );
+    expect(context).toEqual({ source: "markets", chainId: MOCK_CHAIN_ID });
+  });
+
   test("does not call onError when lunarIndexerUrl is not set", async () => {
     const env = makeEnvironment({
       lunarIndexerUrl: undefined,
@@ -238,6 +254,48 @@ function makeIncentive(overrides: Record<string, unknown> = {}) {
 }
 
 describe("malformed Lunar market records", () => {
+  // PR #339 review: `incentives` was read unguarded in the needsRpcPrices
+  // pre-scan, before the per-record try, so one record without it threw a
+  // TypeError out of the whole chain (on-chain fallback, contextless onError).
+  test("keeps the valid market when another record has no incentives array", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [makeLunarMarket(), makeLunarMarket({ incentives: undefined })],
+    });
+    const env = makeMarketEnvironment();
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    expect(env.contracts.views?.read.getAllMarketsInfo).not.toHaveBeenCalled();
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 malformed market record(s)"),
+      }),
+      { source: "markets-malformed-records", chainId: MOCK_CHAIN_ID },
+    );
+  });
+
+  // PR #339 review: a `null` entry threw a TypeError out of the same pre-scan.
+  test("keeps the valid market when another entry is null", async () => {
+    mockListMarkets.mockResolvedValue({
+      results: [makeLunarMarket(), null],
+    });
+    const env = makeMarketEnvironment();
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    expect(env.contracts.views?.read.getAllMarketsInfo).not.toHaveBeenCalled();
+    expect(mockOnError).toHaveBeenCalledTimes(1);
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 malformed market record(s)"),
+      }),
+      { source: "markets-malformed-records", chainId: MOCK_CHAIN_ID },
+    );
+  });
+
   test("skips a malformed record but keeps the valid ones", async () => {
     mockListMarkets.mockResolvedValue({
       results: [
@@ -414,5 +472,43 @@ describe("malformed Lunar market records", () => {
       }),
       { source: "markets", chainId: MOCK_CHAIN_ID },
     );
+  });
+});
+
+// ─── Governance token price failure ──────────────────────────────────────────
+// A null incentive price makes the market path read the governance token price
+// over RPC. Its failure goes through the shared price helper: reported once
+// with the price-source chain, and the markets still load with a zero price.
+
+describe("governance token price failure", () => {
+  test("reports the failed price read once and still returns markets", async () => {
+    // Own chainId so no other test's shared price read is reused.
+    const chainId = 99990;
+    const env = { ...makeMarketEnvironment(), chainId } as Environment;
+    const views = env.contracts.views as unknown as ReturnType<
+      typeof makeViews
+    >;
+    views.read.getGovernanceTokenPrice.mockRejectedValue(
+      new Error("multicall failed"),
+    );
+    mockListMarkets.mockResolvedValue({
+      results: [
+        makeLunarMarket({ incentives: [makeIncentive({ priceUsd: null })] }),
+      ],
+    });
+
+    const result = await getMarketsData(env);
+
+    expect(result).toHaveLength(1);
+    const priceReports = mockOnError.mock.calls.filter(
+      ([, context]) => context.source === "governance-token-price",
+    );
+    expect(priceReports).toHaveLength(1);
+    expect(priceReports[0]?.[1]).toEqual({
+      source: "governance-token-price",
+      chainId,
+      operation: "governance-token-price-read",
+      items: [String(chainId)],
+    });
   });
 });

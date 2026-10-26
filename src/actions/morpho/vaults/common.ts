@@ -19,7 +19,7 @@ import type {
   MorphoVault,
   MorphoVaultMarket,
 } from "../../../types/morphoVault.js";
-import { getGovernanceTokenPriceFor } from "../../governance/getWellPrice.js";
+import { getGovernanceTokenPriceOrZero } from "../../governance/getWellPrice.js";
 import { getGraphQL, getVaultV2Apy } from "../utils/graphql.js";
 import {
   SECONDS_PER_YEAR,
@@ -300,144 +300,184 @@ async function getMorphoVaultsDataFromIndexer(params: {
 
   // Add staking rewards if includeRewards is true
   if (params.includeRewards) {
+    const vaultsByEnvironment = new Map<
+      Environment,
+      { vault: MorphoVault; multiReward: Address }[]
+    >();
     for (const vault of allVaults) {
       const environment = environments.find(
         (env) => env.chainId === vault.chainId,
       );
       if (!environment) continue;
 
-      const vaultConfig = environment.config.vaults[vault.vaultKey];
-      if (!vaultConfig?.multiReward) continue;
+      const multiReward =
+        environment.config.vaults[vault.vaultKey]?.multiReward;
+      if (!multiReward) continue;
 
-      try {
-        // Fetch market prices from the views contract to calculate rewards
-        const homeEnvironment =
-          (Object.values(publicEnvironments) as Environment[]).find((e) =>
-            e.custom?.governance?.chainIds?.includes(environment.chainId),
-          ) || environment;
-
-        const viewsContract = environment.contracts.views;
-        const homeViewsContract = homeEnvironment.contracts.views;
-
-        const data = await Promise.all([
-          viewsContract?.read.getAllMarketsInfo(),
-          homeViewsContract?.read.getNativeTokenPrice(),
-          getGovernanceTokenPriceFor(environment).catch((err) => {
-            environment.onError?.(err, {
-              source: "governance-token-price",
-              chainId: environment.chainId,
-            });
-            return 0n;
-          }),
-        ]);
-
-        const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
-
-        const governanceTokenPrice = new Amount(governanceTokenPriceRaw, 18);
-        const nativeTokenPrice = new Amount(nativeTokenPriceRaw ?? 0n, 18);
-
-        let tokenPrices =
-          allMarkets
-            ?.map((marketInfo) => {
-              const marketFound = findMarketByAddress(
-                environment,
-                marketInfo.market,
-              );
-              if (marketFound) {
-                return {
-                  token: marketFound.underlyingToken,
-                  tokenPrice: new Amount(
-                    marketInfo.underlyingPrice,
-                    36 - marketFound.underlyingToken.decimals,
-                  ),
-                };
-              } else {
-                return;
-              }
-            })
-            .filter((token) => !!token) || [];
-
-        // Add governance token to token prices
-        if (environment.custom?.governance?.token) {
-          tokenPrices = [
-            ...tokenPrices,
-            {
-              token:
-                environment.config.tokens[environment.custom.governance.token]!,
-              tokenPrice: governanceTokenPrice,
-            },
-          ];
-        }
-
-        // Add native token to token prices
-        tokenPrices = [
-          ...tokenPrices,
-          {
-            token: findTokenByAddress(environment, zeroAddress)!,
-            tokenPrice: nativeTokenPrice,
-          },
-        ];
-
-        const rewards = await getRewardsData(
-          environment,
-          vaultConfig.multiReward,
-        );
-
-        const distributorTotalSupply = await getTotalSupplyData(
-          environment,
-          vaultConfig.multiReward,
-        );
-
-        rewards
-          .filter(
-            (reward) =>
-              reward?.periodFinish &&
-              dayjs.utc().isBefore(dayjs.unix(Number(reward.periodFinish))),
-          )
-          .forEach((reward) => {
-            const token = Object.values(environment.config.tokens).find(
-              (token) => token.address === reward?.token,
-            );
-            if (!token || !reward?.rewardRate) return;
-
-            const market = tokenPrices.find(
-              (m) => m?.token.address === reward.token,
-            );
-
-            const rewardPriceUsd = market?.tokenPrice.value ?? 0;
-
-            const rewardsPerYear =
-              new Amount(reward.rewardRate, market?.token.decimals ?? 18)
-                .value *
-              SECONDS_PER_YEAR *
-              rewardPriceUsd;
-
-            vault.stakingRewards.push({
-              apr:
-                (rewardsPerYear /
-                  (new Amount(distributorTotalSupply, vault.vaultToken.decimals)
-                    .value *
-                    vault.underlyingPrice)) *
-                100,
-              token: token,
-            });
-          });
-
-        vault.stakingRewardsApr = vault.stakingRewards.reduce(
-          (acc, curr) => acc + curr.apr,
-          0,
-        );
-        vault.totalStakingApr = vault.stakingRewardsApr + vault.baseApy;
-      } catch (error) {
-        console.warn(
-          `Failed to fetch staking rewards for vault ${vault.vaultKey}:`,
-          error,
-        );
-      }
+      const group = vaultsByEnvironment.get(environment) ?? [];
+      group.push({ vault, multiReward });
+      vaultsByEnvironment.set(environment, group);
     }
+
+    // Price reads are per environment, not per vault: read them once per
+    // environment (in parallel across environments) and report failures once.
+    await Promise.all(
+      [...vaultsByEnvironment].map(([environment, group]) =>
+        addStakingRewardsForEnvironment(environment, group),
+      ),
+    );
   }
 
   return [...allVaults, ...fallbackVaults];
+}
+
+async function getStakingRewardTokenPrices(
+  environment: Environment,
+): Promise<{ token: TokenConfig; tokenPrice: Amount }[]> {
+  // Fetch market prices from the views contract to calculate rewards
+  const homeEnvironment =
+    (Object.values(publicEnvironments) as Environment[]).find((e) =>
+      e.custom?.governance?.chainIds?.includes(environment.chainId),
+    ) || environment;
+
+  const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] =
+    await Promise.all([
+      environment.contracts.views?.read.getAllMarketsInfo(),
+      homeEnvironment.contracts.views?.read.getNativeTokenPrice(),
+      getGovernanceTokenPriceOrZero(environment),
+    ]);
+
+  const tokenPrices: { token: TokenConfig; tokenPrice: Amount }[] = [];
+  for (const marketInfo of allMarkets ?? []) {
+    const marketFound = findMarketByAddress(environment, marketInfo.market);
+    if (marketFound) {
+      tokenPrices.push({
+        token: marketFound.underlyingToken,
+        tokenPrice: new Amount(
+          marketInfo.underlyingPrice,
+          36 - marketFound.underlyingToken.decimals,
+        ),
+      });
+    }
+  }
+
+  // Add governance token to token prices
+  const governanceToken = environment.custom?.governance?.token
+    ? environment.config.tokens[environment.custom.governance.token]
+    : undefined;
+  if (governanceToken) {
+    tokenPrices.push({
+      token: governanceToken,
+      tokenPrice: new Amount(governanceTokenPriceRaw, 18),
+    });
+  }
+
+  // Add native token to token prices
+  const nativeToken = findTokenByAddress(environment, zeroAddress);
+  if (nativeToken) {
+    tokenPrices.push({
+      token: nativeToken,
+      tokenPrice: new Amount(nativeTokenPriceRaw ?? 0n, 18),
+    });
+  }
+
+  return tokenPrices;
+}
+
+async function addStakingRewardsForEnvironment(
+  environment: Environment,
+  group: { vault: MorphoVault; multiReward: Address }[],
+): Promise<void> {
+  const vaultKeys = group.map(({ vault }) => vault.vaultKey);
+
+  let tokenPrices: { token: TokenConfig; tokenPrice: Amount }[];
+  try {
+    tokenPrices = await getStakingRewardTokenPrices(environment);
+  } catch (error) {
+    console.warn(
+      `Failed to fetch staking reward prices for chain ${environment.chainId}:`,
+      error,
+    );
+    environment.onError?.(error, {
+      source: "morpho-vault-staking-rewards",
+      chainId: environment.chainId,
+      operation: "staking-reward-prices",
+      failedCount: group.length,
+      totalCount: group.length,
+      items: vaultKeys,
+    });
+    return;
+  }
+
+  const settlements = await Promise.allSettled(
+    group.map(async ({ vault, multiReward }) => {
+      const [rewards, distributorTotalSupply] = await Promise.all([
+        getRewardsData(environment, multiReward),
+        getTotalSupplyData(environment, multiReward),
+      ]);
+
+      rewards
+        .filter(
+          (reward) =>
+            reward?.periodFinish &&
+            dayjs.utc().isBefore(dayjs.unix(Number(reward.periodFinish))),
+        )
+        .forEach((reward) => {
+          const token = Object.values(environment.config.tokens).find(
+            (token) => token.address === reward?.token,
+          );
+          if (!token || !reward?.rewardRate) return;
+
+          const market = tokenPrices.find(
+            (m) => m?.token.address === reward.token,
+          );
+
+          const rewardPriceUsd = market?.tokenPrice.value ?? 0;
+
+          const rewardsPerYear =
+            new Amount(reward.rewardRate, market?.token.decimals ?? 18).value *
+            SECONDS_PER_YEAR *
+            rewardPriceUsd;
+
+          vault.stakingRewards.push({
+            apr:
+              (rewardsPerYear /
+                (new Amount(distributorTotalSupply, vault.vaultToken.decimals)
+                  .value *
+                  vault.underlyingPrice)) *
+              100,
+            token: token,
+          });
+        });
+
+      vault.stakingRewardsApr = vault.stakingRewards.reduce(
+        (acc, curr) => acc + curr.apr,
+        0,
+      );
+      vault.totalStakingApr = vault.stakingRewardsApr + vault.baseApy;
+    }),
+  );
+
+  const failedVaultKeys = vaultKeys.filter(
+    (_, i) => settlements[i]?.status === "rejected",
+  );
+  const firstFailure = settlements.find(
+    (s): s is PromiseRejectedResult => s.status === "rejected",
+  );
+  if (firstFailure) {
+    console.warn(
+      `Failed to fetch staking rewards for vault(s) ${failedVaultKeys.join(", ")} (chain ${environment.chainId}):`,
+      firstFailure.reason,
+    );
+    environment.onError?.(firstFailure.reason, {
+      source: "morpho-vault-staking-rewards",
+      chainId: environment.chainId,
+      operation: "staking-rewards",
+      failedCount: failedVaultKeys.length,
+      totalCount: group.length,
+      items: failedVaultKeys,
+    });
+  }
 }
 
 export async function getMorphoVaultsData(params: {
@@ -1060,13 +1100,7 @@ async function getMorphoVaultsDataFromOnChain(params: {
       const data = await Promise.all([
         viewsContract?.read.getAllMarketsInfo(),
         homeViewsContract?.read.getNativeTokenPrice(),
-        getGovernanceTokenPriceFor(environment).catch((err) => {
-          environment.onError?.(err, {
-            source: "governance-token-price",
-            chainId: environment.chainId,
-          });
-          return 0n;
-        }),
+        getGovernanceTokenPriceOrZero(environment),
       ]);
 
       const [allMarkets, nativeTokenPriceRaw, governanceTokenPriceRaw] = data;
