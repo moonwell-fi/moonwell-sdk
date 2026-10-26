@@ -1,5 +1,11 @@
 # @moonwell-fi/moonwell-sdk
 
+## 0.25.2
+
+### Patch Changes
+
+- [#343](https://github.com/moonwell-fi/moonwell-sdk/pull/343) [`52c6daf28ed5d077bdeb78dd44aae58c46731c78`](https://github.com/moonwell-fi/moonwell-sdk/commit/52c6daf28ed5d077bdeb78dd44aae58c46731c78) Thanks [@bprofiro](https://github.com/bprofiro)! - Fix the Morpho V2 vault APY query used by the on-chain fallback path. Morpho's API removed `VaultV2.avgApy` and `VaultStateReward.yearlySupplyTokens`, so every `vaultV2ByAddress` request failed validation with HTTP 400 and V2 vaults got no APY or liquidity from Morpho. Both fields are dropped from the query and from the internal response types; `avgNetApy`, which the SDK actually reads, is unchanged.
+
 ## 0.25.1
 
 ### Patch Changes
